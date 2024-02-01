@@ -1,0 +1,25 @@
+#
+# dd-data-vault configuration file
+#
+server:
+  applicationContextPath: /
+  adminContextPath: /
+  applicationConnectors:
+    - type: http
+      # Replace with port number unique for this service
+      port: 20000 # TODO: Replace with unique port number
+  adminConnectors:
+    - type: http
+      # Replace with port number unique for this service
+      port: 20001 # TODO: Replace with unique port number
+
+#
+# See https://www.dropwizard.io/en/latest/manual/configuration.html#logging
+#
+logging:
+  level: INFO
+  appenders:
+    - type: file
+      archive: false
+      timeZone: system
+      currentLogFilename: /var/opt/dans.knaw.nl/log/dd-data-vault/dd-data-vault.log
