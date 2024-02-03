@@ -83,7 +83,7 @@
             <snapshots>
                 <enabled>false</enabled>
             </snapshots>
-            <url>https://maven.dans.knaw.nl/releases/</url>
+            <url>https://maven.dans.knaw.nl/snapshots/</url>
         </repository>
         <repository>
             <id>dans-snapshots</id>
@@ -106,7 +106,7 @@
             <snapshots>
                 <enabled>false</enabled>
             </snapshots>
-            <url>https://maven.dans.knaw.nl/releases/</url>
+            <url>https://maven.dans.knaw.nl/snapshots/</url>
         </pluginRepository>
         <pluginRepository>
             <id>dans-snapshots</id>
