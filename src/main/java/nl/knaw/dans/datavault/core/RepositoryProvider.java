@@ -17,6 +17,9 @@ package nl.knaw.dans.datavault.core;
 
 import java.nio.file.Path;
 
+/**
+ * Provides access to the repository.
+ */
 public interface RepositoryProvider {
 
     /**

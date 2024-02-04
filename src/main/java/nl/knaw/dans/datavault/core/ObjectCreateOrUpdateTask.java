@@ -33,7 +33,6 @@ public class ObjectCreateOrUpdateTask implements Runnable {
     @Override
     @SneakyThrows
     public void run() {
-        checkVersionDirectoriesValid();
         addVersionsToRepository(getVersionDirectoriesInOrder());
     }
 
@@ -52,30 +51,6 @@ public class ObjectCreateOrUpdateTask implements Runnable {
     private void addVersionsToRepository(List<Path> versions) throws IOException {
         for (var version : versions) {
             repositoryProvider.addVersion(objectDirectory.getFileName().toString(), version);
-        }
-    }
-
-    private void checkVersionDirectoriesValid() throws IOException {
-        try (DirectoryStream<Path> stream = Files.newDirectoryStream(objectDirectory)) {
-            for (Path path : stream) {
-                if (!isValidVersionDirectory(path)) {
-                    throw new IllegalArgumentException("Invalid version directory: " + path);
-                }
-            }
-        }
-    }
-
-    private boolean isValidVersionDirectory(Path dir) {
-        return Files.isDirectory(dir) && isValidTimestamp(dir.getFileName().toString());
-    }
-
-    private boolean isValidTimestamp(String timestampStr) {
-        try {
-            long timestamp = Long.parseLong(timestampStr);
-            return timestamp >= 0;
-        }
-        catch (NumberFormatException e) {
-            return false;
         }
     }
 }

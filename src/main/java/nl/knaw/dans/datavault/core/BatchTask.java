@@ -45,15 +45,77 @@ public class BatchTask implements Runnable {
     @Override
     @SneakyThrows
     public void run() {
+        validateBatchLayout();
         List<Callable<Object>> tasks = new LinkedList<>();
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(batchDirectory)) {
             for (Path path : stream) {
-                String directoryName = path.getFileName().toString();
-                if (validObjectIdentifierPattern.matcher(directoryName).matches()) {
-                    tasks.add(Executors.callable(new ObjectCreateOrUpdateTask(path, repositoryProvider)));
-                }
+                tasks.add(Executors.callable(new ObjectCreateOrUpdateTask(path, repositoryProvider)));
             }
         }
         executorService.invokeAll(tasks);
+    }
+
+    /*
+     * A valid batch layout has the following structure. The batch directory contains a number of directories, each representing an object. The name of
+     * each object directory is the object identifier. The valid pattern for the object identifier is given by the validObjectIdentifierPattern.
+     * Each object directory contains a number of directories, each representing a version of the object. The name of each version directory is a timestamp,
+     * which establishes the order of the versions. The content of each version directory is the content of the version and may consist of an entire
+     * directory tree.
+     *
+     * Example:
+     *
+     *  ├── urn:nbn:nl:ui:13-26febff0-4fd4-4ee7-8a96-b0703b96f812
+     *  │   ├── 1706877020546
+     *  │   │   └── content
+     *  │   ├── 1706877024159
+     *  │   │   └── content
+     *  │   └── 1706877025840
+     *  │       └── content
+     *  ├── urn:nbn:nl:ui:13-2ced2354-3a9d-44b1-a594-107b3af99789
+     *  │   └── 1706877038911
+     *  │       └── content
+     *  └── urn:nbn:nl:ui:13-b7c0742f-a9b2-4c11-bffe-615dbe24c8a0
+     *       └── 1706877046791
+     *           └── content
+     *
+     * In this example an object identifier must be a DANS URN:NBN value.
+     */
+    @SneakyThrows
+    private void validateBatchLayout() {
+        List<Path> invalidObjectDirectories = new LinkedList<>();
+        List<Path> invalidVersionDirectories = new LinkedList<>();
+
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(batchDirectory)) {
+            for (Path objectDir : stream) {
+                String objectDirName = objectDir.getFileName().toString();
+                if (!validObjectIdentifierPattern.matcher(objectDirName).matches()) {
+                    invalidObjectDirectories.add(objectDir);
+                }
+
+                try (DirectoryStream<Path> versionStream = Files.newDirectoryStream(objectDir)) {
+                    for (Path versionDir : versionStream) {
+                        if (!isValidTimestamp(versionDir.getFileName().toString())) {
+                            invalidVersionDirectories.add(versionDir);
+                        }
+                    }
+                }
+            }
+        }
+
+        if (!invalidObjectDirectories.isEmpty() || !invalidVersionDirectories.isEmpty()) {
+            throw new IllegalArgumentException("Invalid batch layout: " +
+                "invalid object directories: " + invalidObjectDirectories +
+                ", invalid version directories: " + invalidVersionDirectories);
+        }
+    }
+
+    private boolean isValidTimestamp(String timestampStr) {
+        try {
+            long timestamp = Long.parseLong(timestampStr);
+            return timestamp >= 0;
+        }
+        catch (NumberFormatException e) {
+            return false;
+        }
     }
 }
