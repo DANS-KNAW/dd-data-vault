@@ -13,14 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package nl.knaw.dans.datavault.core;
 
-package nl.knaw.dans.datavault;
+import javax.persistence.AttributeConverter;
+import javax.persistence.Converter;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import io.dropwizard.core.Configuration;
+// TODO: Move to dans-java-utils
+@Converter(autoApply = true)
+public class PathConverter implements AttributeConverter<Path, String> {
 
-import javax.validation.constraints.NotEmpty;
+    @Override
+    public String convertToDatabaseColumn(Path attribute) {
+        return attribute == null ? null : attribute.toString();
+    }
 
-public class DdDataVaultConfiguration extends Configuration {
-
+    @Override
+    public Path convertToEntityAttribute(String dbData) {
+        return dbData == null ? null : Paths.get(dbData);
+    }
 }

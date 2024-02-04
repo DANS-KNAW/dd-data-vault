@@ -4,12 +4,20 @@ server:
   adminContextPath: /
   applicationConnectors:
     - type: http
-      # Replace with port number unique for this service
-      port: 20000
+      port: 20365
   adminConnectors:
     - type: http
-      # Replace with port number unique for this service
-      port: 20001
+      port: 20366
+
+database:
+  driverClass: org.hsqldb.jdbcDriver
+  url: jdbc:hsqldb:hsql://localhost:9001/dd-data-vault
+  logValidationErrors: true
+  # See: https://stackoverflow.com/questions/10684244/dbcp-validationquery-for-different-databases
+  validationQuery: SELECT * FROM INFORMATION_SCHEMA.SYSTEM_TABLES
+  properties:
+    hibernate.dialect: 'org.hibernate.dialect.HSQLDialect'
+    hibernate.hbm2ddl.auto: update
 
 #
 # See https://www.dropwizard.io/en/latest/manual/configuration.html#logging

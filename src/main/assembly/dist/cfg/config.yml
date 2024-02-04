@@ -6,12 +6,21 @@ server:
   adminContextPath: /
   applicationConnectors:
     - type: http
-      # Replace with port number unique for this service
-      port: 20000 # TODO: Replace with unique port number
+      port: 20365
   adminConnectors:
     - type: http
-      # Replace with port number unique for this service
-      port: 20001 # TODO: Replace with unique port number
+      port: 20366
+
+database:
+  driverClass: org.postgresql.Driver
+  url: jdbc:postgresql://localhost:5432/dd_data_vault
+  user: changeme
+  password: changeme
+  logValidationErrors: true
+  properties:
+    hibernate.dialect: 'org.hibernate.dialect.PostgreSQL95Dialect'
+    hibernate.hbm2ddl.auto: update
+
 
 #
 # See https://www.dropwizard.io/en/latest/manual/configuration.html#logging

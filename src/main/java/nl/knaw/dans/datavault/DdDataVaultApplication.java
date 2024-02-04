@@ -19,8 +19,14 @@ package nl.knaw.dans.datavault;
 import io.dropwizard.core.Application;
 import io.dropwizard.core.setup.Bootstrap;
 import io.dropwizard.core.setup.Environment;
+import io.dropwizard.hibernate.HibernateBundle;
+import nl.knaw.dans.datavault.config.DdDataVaultConfiguration;
+import nl.knaw.dans.datavault.db.JobDao;
+import nl.knaw.dans.datavault.resources.JobsApiResource;
 
 public class DdDataVaultApplication extends Application<DdDataVaultConfiguration> {
+
+    private final HibernateBundle<DdDataVaultConfiguration> hibernateBundle = new DdDataVautHibernateBundle();
 
     public static void main(final String[] args) throws Exception {
         new DdDataVaultApplication().run(args);
@@ -28,17 +34,17 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfiguration
 
     @Override
     public String getName() {
-        return "Dd Data Vault";
+        return "DD Data Vault";
     }
 
     @Override
     public void initialize(final Bootstrap<DdDataVaultConfiguration> bootstrap) {
-        // TODO: application initialization
+        bootstrap.addBundle(hibernateBundle);
     }
 
     @Override
     public void run(final DdDataVaultConfiguration configuration, final Environment environment) {
-
+        environment.jersey().register(new JobsApiResource(new JobDao(hibernateBundle.getSessionFactory())));
     }
 
 }
