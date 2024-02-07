@@ -24,6 +24,8 @@ import org.mapstruct.factory.Mappers;
 
 import javax.ws.rs.core.Response;
 
+import java.util.UUID;
+
 import static javax.ws.rs.core.Response.Status.CREATED;
 
 @AllArgsConstructor
@@ -34,6 +36,11 @@ public class JobsApiResource implements JobsApi {
     @Override
     @UnitOfWork
     public Response jobsGet() {
+        return null;
+    }
+
+    @Override
+    public Response jobsIdGet(UUID id) {
         return null;
     }
 

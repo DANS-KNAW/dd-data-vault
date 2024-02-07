@@ -19,7 +19,9 @@ import io.dropwizard.hibernate.AbstractDAO;
 import nl.knaw.dans.datavault.core.Job;
 import org.hibernate.SessionFactory;
 
+import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.CriteriaQuery;
+import javax.persistence.criteria.Root;
 import java.util.List;
 
 public class JobDao extends AbstractDAO<Job> {
@@ -36,5 +38,19 @@ public class JobDao extends AbstractDAO<Job> {
         query.from(Job.class);
         return list(query);
     }
+
+    public List<Job> getNextJobs(int number) {
+        CriteriaQuery<Job> query = criteriaQuery();
+        CriteriaBuilder cb = currentSession().getCriteriaBuilder();
+        Root<Job> root = query.from(Job.class);
+        query.where(cb.equal(root.get("finished"), false));
+        query.orderBy(cb.asc(root.get("creationTimestamp")));
+        query.select(root);
+
+        return currentSession().createQuery(query)
+            .setMaxResults(number)
+            .getResultList();
+    }
+
 }
 

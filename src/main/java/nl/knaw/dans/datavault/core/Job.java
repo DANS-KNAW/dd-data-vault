@@ -23,8 +23,9 @@ import lombok.NoArgsConstructor;
 import javax.persistence.Column;
 import javax.persistence.Convert;
 import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
-import javax.persistence.Table;
+import javax.persistence.PrePersist;
 import java.nio.file.Path;
 import java.util.UUID;
 
@@ -35,13 +36,21 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 public class Job {
+    @PrePersist
+    protected void onCreate() {
+        creationTimestamp = System.currentTimeMillis();
+    }
 
     @Id
+    @GeneratedValue
     @Column(name = "uuid", columnDefinition = "BINARY(16)")
     private UUID id;
 
-//    @Column(name = "creation_timestamp")
-//    private long creationTimestamp;
+    @Column(name = "creation_timestamp")
+    private long creationTimestamp;
+
+    @Column(name = "finished")
+    private boolean finished;
 
     @Convert(converter = PathConverter.class)
     @Column(name = "batch")
