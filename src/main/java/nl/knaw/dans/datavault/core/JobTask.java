@@ -16,6 +16,7 @@
 package nl.knaw.dans.datavault.core;
 
 import lombok.Builder;
+import lombok.Getter;
 import lombok.SneakyThrows;
 
 import java.nio.file.DirectoryStream;
@@ -29,14 +30,17 @@ import java.util.concurrent.Executors;
 import java.util.regex.Pattern;
 
 @Builder(builderClassName = "Builder")
-public class BatchTask implements Runnable {
+public class JobTask implements Runnable {
     private final Path batchDirectory;
     private final Pattern validObjectIdentifierPattern;
     private final ExecutorService executorService;
     private final RepositoryProvider repositoryProvider;
 
+    @Getter
+    private boolean finished;
+
     public static class Builder {
-        public BatchTask.Builder validObjectIdentifierPattern(String validObjectIdentifierPattern) {
+        public JobTask.Builder validObjectIdentifierPattern(String validObjectIdentifierPattern) {
             this.validObjectIdentifierPattern = Pattern.compile(validObjectIdentifierPattern);
             return this;
         }
@@ -53,6 +57,7 @@ public class BatchTask implements Runnable {
             }
         }
         executorService.invokeAll(tasks);
+        finished = true;
     }
 
     /*

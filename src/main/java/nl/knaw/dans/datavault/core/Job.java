@@ -23,9 +23,12 @@ import lombok.NoArgsConstructor;
 import javax.persistence.Column;
 import javax.persistence.Convert;
 import javax.persistence.Entity;
+import javax.persistence.EnumType;
+import javax.persistence.Enumerated;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
 import javax.persistence.PrePersist;
+import javax.persistence.PreUpdate;
 import java.nio.file.Path;
 import java.util.UUID;
 
@@ -36,9 +39,22 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 public class Job {
+    public enum State {
+        WAITING,
+        RUNNING,
+        SUCCESS,
+        FAIL
+    }
+
     @PrePersist
     protected void onCreate() {
         creationTimestamp = System.currentTimeMillis();
+        state = State.WAITING;
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        modificationTimestamp = System.currentTimeMillis();
     }
 
     @Id
@@ -49,8 +65,12 @@ public class Job {
     @Column(name = "creation_timestamp")
     private long creationTimestamp;
 
-    @Column(name = "finished")
-    private boolean finished;
+    @Column(name = "modification_timestamp")
+    private long modificationTimestamp;
+
+    @Column(name = "state")
+    @Enumerated(EnumType.STRING)
+    private State state;
 
     @Convert(converter = PathConverter.class)
     @Column(name = "batch")

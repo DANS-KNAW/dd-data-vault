@@ -13,21 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package nl.knaw.dans.datavault;
+package nl.knaw.dans.datavault.core;
 
-import io.dropwizard.db.PooledDataSourceFactory;
-import io.dropwizard.hibernate.HibernateBundle;
-import nl.knaw.dans.datavault.config.DdDataVaultConfig;
-import nl.knaw.dans.datavault.core.Job;
-
-public class DdDataVautHibernateBundle extends HibernateBundle<DdDataVaultConfig> {
-
-    public DdDataVautHibernateBundle() {
-        super(Job.class);
-    }
-
-    @Override
-    public PooledDataSourceFactory getDataSourceFactory(DdDataVaultConfig config) {
-        return config.getDatabase();
-    }
+public interface JobHandler {
+    void handleJob(Job job);
 }

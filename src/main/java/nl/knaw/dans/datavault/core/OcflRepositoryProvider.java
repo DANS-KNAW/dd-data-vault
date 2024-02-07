@@ -13,21 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package nl.knaw.dans.datavault;
+package nl.knaw.dans.datavault.core;
 
-import io.dropwizard.db.PooledDataSourceFactory;
-import io.dropwizard.hibernate.HibernateBundle;
-import nl.knaw.dans.datavault.config.DdDataVaultConfig;
-import nl.knaw.dans.datavault.core.Job;
+import lombok.extern.slf4j.Slf4j;
 
-public class DdDataVautHibernateBundle extends HibernateBundle<DdDataVaultConfig> {
+import java.nio.file.Path;
 
-    public DdDataVautHibernateBundle() {
-        super(Job.class);
-    }
-
+@Slf4j
+public class OcflRepositoryProvider implements RepositoryProvider {
     @Override
-    public PooledDataSourceFactory getDataSourceFactory(DdDataVaultConfig config) {
-        return config.getDatabase();
+    public void addVersion(String objectId, Path objectVersionDirectory) {
+        log.debug("Adding version {} to object {}", objectVersionDirectory, objectId);
+        // TODO: implement
     }
 }

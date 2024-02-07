@@ -20,13 +20,19 @@ import io.dropwizard.core.Application;
 import io.dropwizard.core.setup.Bootstrap;
 import io.dropwizard.core.setup.Environment;
 import io.dropwizard.hibernate.HibernateBundle;
-import nl.knaw.dans.datavault.config.DdDataVaultConfiguration;
+import io.dropwizard.hibernate.UnitOfWorkAwareProxyFactory;
+import nl.knaw.dans.datavault.config.DdDataVaultConfig;
+import nl.knaw.dans.datavault.core.JobHandler;
+import nl.knaw.dans.datavault.core.JobPoller;
+import nl.knaw.dans.datavault.core.JobRunner;
+import nl.knaw.dans.datavault.core.OcflRepositoryProvider;
 import nl.knaw.dans.datavault.db.JobDao;
+import nl.knaw.dans.datavault.resources.JobDtoWriter;
 import nl.knaw.dans.datavault.resources.JobsApiResource;
 
-public class DdDataVaultApplication extends Application<DdDataVaultConfiguration> {
+public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
 
-    private final HibernateBundle<DdDataVaultConfiguration> hibernateBundle = new DdDataVautHibernateBundle();
+    private final HibernateBundle<DdDataVaultConfig> hibernateBundle = new DdDataVautHibernateBundle();
 
     public static void main(final String[] args) throws Exception {
         new DdDataVaultApplication().run(args);
@@ -38,13 +44,30 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfiguration
     }
 
     @Override
-    public void initialize(final Bootstrap<DdDataVaultConfiguration> bootstrap) {
+    public void initialize(final Bootstrap<DdDataVaultConfig> bootstrap) {
         bootstrap.addBundle(hibernateBundle);
     }
 
     @Override
-    public void run(final DdDataVaultConfiguration configuration, final Environment environment) {
-        environment.jersey().register(new JobsApiResource(new JobDao(hibernateBundle.getSessionFactory())));
+    public void run(final DdDataVaultConfig configuration, final Environment environment) {
+        var jobDao = new JobDao(hibernateBundle.getSessionFactory());
+        environment.jersey().register(new JobsApiResource(jobDao));
+        environment.jersey().register(new JobDtoWriter());
+
+        String uuidRegex = "[0-9a-fA-F]{8}\\-[0-9a-fA-F]{4}\\-[0-9a-fA-F]{4}\\-[0-9a-fA-F]{4}\\-[0-9a-fA-F]{12}";
+        JobRunner jobRunner = JobRunner.builder()
+            .jobDao(jobDao)
+            .repositoryProvider(new OcflRepositoryProvider()) // TODO: make configurable
+            .validObjectIdentifierPattern("^urn:nbn:nl:ui:13-" + uuidRegex + "$") // TODO: make configurable
+            .executorService(environment.lifecycle().executorService("job-runner-%d").build()) // TODO: make configurable
+            .build();
+
+        environment.lifecycle().manage(createUnitOfWorkAwareJobPoller(jobDao, jobRunner));
+    }
+
+    private JobPoller createUnitOfWorkAwareJobPoller(JobDao jobDao, JobRunner jobRunner) {
+        return new UnitOfWorkAwareProxyFactory(hibernateBundle)
+            .create(JobPoller.class, new Class[] { JobDao.class, JobHandler.class }, new Object[] { jobDao, jobRunner });
     }
 
 }

@@ -16,19 +16,18 @@
 
 package nl.knaw.dans.datavault.config;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import io.dropwizard.core.Configuration;
 import io.dropwizard.db.DataSourceFactory;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 import javax.validation.Valid;
-import javax.validation.constraints.NotEmpty;
 import javax.validation.constraints.NotNull;
 
 @Data
-public class DdDataVaultConfiguration extends Configuration {
+@EqualsAndHashCode(callSuper = true)
+public class DdDataVaultConfig extends Configuration {
     @Valid
     @NotNull
-    private DataSourceFactory database = new DataSourceFactory();
-
+    private DataSourceFactory database;
 }

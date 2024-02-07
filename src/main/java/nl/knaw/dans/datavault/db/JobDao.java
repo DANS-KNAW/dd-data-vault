@@ -21,8 +21,11 @@ import org.hibernate.SessionFactory;
 
 import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.CriteriaQuery;
+import javax.persistence.criteria.CriteriaUpdate;
 import javax.persistence.criteria.Root;
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 public class JobDao extends AbstractDAO<Job> {
     public JobDao(SessionFactory sessionFactory) {
@@ -39,18 +42,28 @@ public class JobDao extends AbstractDAO<Job> {
         return list(query);
     }
 
-    public List<Job> getNextJobs(int number) {
+    public Optional<Job> getNextJob() {
         CriteriaQuery<Job> query = criteriaQuery();
         CriteriaBuilder cb = currentSession().getCriteriaBuilder();
         Root<Job> root = query.from(Job.class);
-        query.where(cb.equal(root.get("finished"), false));
+        query.where(cb.equal(root.get("state"), Job.State.WAITING));
         query.orderBy(cb.asc(root.get("creationTimestamp")));
         query.select(root);
 
         return currentSession().createQuery(query)
-            .setMaxResults(number)
-            .getResultList();
+            .setMaxResults(1)
+            .uniqueResultOptional();
     }
 
+    public void updateState(UUID id, Job.State state) {
+        CriteriaBuilder cb = currentSession().getCriteriaBuilder();
+        CriteriaUpdate<Job> update = cb.createCriteriaUpdate(Job.class);
+        Root<Job> root = update.from(Job.class);
+
+        update.set(root.get("state"), state);
+        update.where(cb.equal(root.get("id"), id));
+
+        currentSession().createQuery(update).executeUpdate();
+    }
 }
 

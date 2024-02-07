@@ -29,6 +29,8 @@ import java.util.UUID;
 public interface Conversions {
     Job convert(JobDto parameters);
 
+    JobDto convert(Job job);
+
     default UUID stringToUuid(String value) {
         if (value == null) {
             return null;

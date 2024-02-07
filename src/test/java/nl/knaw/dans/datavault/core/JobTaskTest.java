@@ -21,11 +21,11 @@ import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-public class BatchTaskTest {
+public class JobTaskTest {
 
     @Test
     public void builder_should_accept_valid_regex_string_for_object_identifier_pattern() {
-        BatchTask.builder()
+        JobTask.builder()
             .batchDirectory(Path.of("dummy"))
             .validObjectIdentifierPattern("^.*$")
             .build();
@@ -34,7 +34,7 @@ public class BatchTaskTest {
     @Test
     public void builder_should_throw_IllegalArgumentException_when_invalid_regex_string_for_object_identifier_pattern() {
         assertThrows(IllegalArgumentException.class, () -> {
-            BatchTask.builder()
+            JobTask.builder()
                 .batchDirectory(Path.of("dummy"))
                 .validObjectIdentifierPattern("(abc")
                 .build();
