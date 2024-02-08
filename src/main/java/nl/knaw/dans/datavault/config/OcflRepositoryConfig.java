@@ -13,8 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package nl.knaw.dans.datavault.core;
+package nl.knaw.dans.datavault.config;
 
-public interface JobHandler {
-    void handleJob(Job job);
+import lombok.Data;
+
+import java.nio.file.Path;
+
+@Data
+public class OcflRepositoryConfig {
+    private Path workDir;
 }

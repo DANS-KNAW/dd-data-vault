@@ -15,14 +15,10 @@
  */
 package nl.knaw.dans.datavault.core;
 
-import org.junit.jupiter.api.Test;
-
-import java.nio.file.Path;
-
-import static org.junit.jupiter.api.Assertions.assertThrows;
-
-public class JobTaskTest {
 
 
-
+public class InvalidJobException extends Exception {
+    public InvalidJobException(String message) {
+        super(message);
+    }
 }

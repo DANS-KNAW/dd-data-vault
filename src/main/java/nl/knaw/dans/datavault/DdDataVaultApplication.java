@@ -22,13 +22,16 @@ import io.dropwizard.core.setup.Environment;
 import io.dropwizard.hibernate.HibernateBundle;
 import io.dropwizard.hibernate.UnitOfWorkAwareProxyFactory;
 import nl.knaw.dans.datavault.config.DdDataVaultConfig;
-import nl.knaw.dans.datavault.core.JobHandler;
-import nl.knaw.dans.datavault.core.JobPoller;
-import nl.knaw.dans.datavault.core.JobRunner;
+import nl.knaw.dans.datavault.core.JobServiceImpl;
 import nl.knaw.dans.datavault.core.OcflRepositoryProvider;
-import nl.knaw.dans.datavault.db.JobDao;
-import nl.knaw.dans.datavault.resources.JobDtoWriter;
 import nl.knaw.dans.datavault.resources.JobsApiResource;
+import nl.knaw.dans.layerstore.ItemStore;
+import nl.knaw.dans.layerstore.LayerDatabaseImpl;
+import nl.knaw.dans.layerstore.LayerManagerImpl;
+import nl.knaw.dans.layerstore.LayeredItemStore;
+
+import java.nio.file.Path;
+import java.util.regex.Pattern;
 
 public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
 
@@ -50,24 +53,25 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
 
     @Override
     public void run(final DdDataVaultConfig configuration, final Environment environment) {
-        var jobDao = new JobDao(hibernateBundle.getSessionFactory());
-        environment.jersey().register(new JobsApiResource(jobDao));
-        environment.jersey().register(new JobDtoWriter());
+        var validObjectIdentifierPattern = Pattern.compile(configuration.getDataVault().getValidObjectIdentifierPattern());
 
-        String uuidRegex = "[0-9a-fA-F]{8}\\-[0-9a-fA-F]{4}\\-[0-9a-fA-F]{4}\\-[0-9a-fA-F]{4}\\-[0-9a-fA-F]{12}";
-        JobRunner jobRunner = JobRunner.builder()
-            .jobDao(jobDao)
-            .repositoryProvider(new OcflRepositoryProvider()) // TODO: make configurable
-            .validObjectIdentifierPattern("^urn:nbn:nl:ui:13-" + uuidRegex + "$") // TODO: make configurable
-            .executorService(environment.lifecycle().executorService("job-runner-%d").build()) // TODO: make configurable
+        var dao = new LayerDatabaseImpl(hibernateBundle.getSessionFactory());
+        var layerManager = new LayerManagerImpl(configuration.getDataVault().getLayerStore().getStagingRoot(), configuration.getDataVault().getLayerStore().getArchiveRoot(),
+            environment.lifecycle().executorService("archiver-worker").build());
+        var itemStore = new LayeredItemStore(dao, layerManager);
+        var ocflRepositoryProvider = createUnitOfWorkAwareOcflRepositoryProvider(itemStore, configuration.getDataVault().getOcflRepository().getWorkDir());
+        environment.lifecycle().manage(ocflRepositoryProvider);
+        var jobService = JobServiceImpl.builder()
+            .repositoryProvider(ocflRepositoryProvider)
+            .validObjectIdentifierPattern(validObjectIdentifierPattern)
+            .createOrUpdateExecutor(configuration.getExecutorService().build(environment))
             .build();
-
-        environment.lifecycle().manage(createUnitOfWorkAwareJobPoller(jobDao, jobRunner));
+        environment.jersey().register(new JobsApiResource(jobService));
     }
 
-    private JobPoller createUnitOfWorkAwareJobPoller(JobDao jobDao, JobRunner jobRunner) {
+    private OcflRepositoryProvider createUnitOfWorkAwareOcflRepositoryProvider(ItemStore itemStore, Path workDir) {
         return new UnitOfWorkAwareProxyFactory(hibernateBundle)
-            .create(JobPoller.class, new Class[] { JobDao.class, JobHandler.class }, new Object[] { jobDao, jobRunner });
+            .create(OcflRepositoryProvider.class, new Class<?>[] { ItemStore.class, Path.class }, new Object[] { itemStore, workDir });
     }
 
 }

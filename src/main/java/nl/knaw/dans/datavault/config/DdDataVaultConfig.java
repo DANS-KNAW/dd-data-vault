@@ -20,6 +20,7 @@ import io.dropwizard.core.Configuration;
 import io.dropwizard.db.DataSourceFactory;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import nl.knaw.dans.lib.util.ExecutorServiceFactory;
 
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
@@ -30,4 +31,10 @@ public class DdDataVaultConfig extends Configuration {
     @Valid
     @NotNull
     private DataSourceFactory database;
+
+    @NotNull
+    private ExecutorServiceFactory executorService;
+
+    @NotNull
+    private DataVaultConfig dataVault;
 }

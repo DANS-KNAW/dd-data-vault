@@ -15,14 +15,11 @@
  */
 package nl.knaw.dans.datavault.core;
 
-import org.junit.jupiter.api.Test;
+import nl.knaw.dans.datavault.api.JobDto;
 
-import java.nio.file.Path;
+public interface JobService {
 
-import static org.junit.jupiter.api.Assertions.assertThrows;
-
-public class JobTaskTest {
-
+    void startJob(JobDto jobDto) throws InvalidJobException;
 
 
 }

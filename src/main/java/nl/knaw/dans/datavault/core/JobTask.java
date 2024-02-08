@@ -39,13 +39,6 @@ public class JobTask implements Runnable {
     @Getter
     private boolean finished;
 
-    public static class Builder {
-        public JobTask.Builder validObjectIdentifierPattern(String validObjectIdentifierPattern) {
-            this.validObjectIdentifierPattern = Pattern.compile(validObjectIdentifierPattern);
-            return this;
-        }
-    }
-
     @Override
     @SneakyThrows
     public void run() {
