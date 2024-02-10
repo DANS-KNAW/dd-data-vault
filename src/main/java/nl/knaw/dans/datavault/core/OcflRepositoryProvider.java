@@ -15,40 +15,67 @@
  */
 package nl.knaw.dans.datavault.core;
 
-import io.dropwizard.hibernate.UnitOfWork;
 import io.dropwizard.lifecycle.Managed;
+import io.ocfl.api.OcflRepository;
+import io.ocfl.api.model.User;
+import io.ocfl.api.model.VersionInfo;
 import io.ocfl.core.OcflRepositoryBuilder;
 import io.ocfl.core.extension.storage.layout.config.NTupleOmitPrefixStorageLayoutConfig;
-import lombok.AllArgsConstructor;
+import lombok.AccessLevel;
+import lombok.Builder;
+import lombok.NonNull;
+import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import nl.knaw.dans.layerstore.ItemStore;
 import nl.knaw.dans.lib.ocflext.LayeredStorage;
+import io.ocfl.api.model.ObjectVersionId;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
 
 @Slf4j
-@AllArgsConstructor
+@RequiredArgsConstructor(access = AccessLevel.PRIVATE)
 public class OcflRepositoryProvider implements RepositoryProvider, Managed {
+    @NonNull
     private ItemStore itemStore;
+
+    @NonNull
     private Path workDir;
 
+    private OcflRepository ocflRepository;
+
+
+    @Builder
+    public static OcflRepositoryProvider create(ItemStore itemStore, Path workDir) {
+        return new OcflRepositoryProvider(itemStore, workDir);
+    }
+
+    // TODO: add user name and email and message to the method
     @Override
-    @UnitOfWork
     public void addVersion(String objectId, Path objectVersionDirectory) {
         log.debug("Adding version {} to object {}", objectVersionDirectory, objectId);
-        // TODO: implement
+        if (ocflRepository == null) {
+            throw new IllegalStateException("OCFL repository is not yet started");
+        }
+        ocflRepository.putObject(ObjectVersionId.head(objectId), objectVersionDirectory, createVersionInfo("default message"));
+    }
+    private VersionInfo createVersionInfo(String message) {
+        return new VersionInfo()
+            .setMessage(message)
+            .setUser(new User()
+                .setName("test-user")
+                .setAddress("mailto:somebody@dans.knaw.nl")
+            );
     }
 
     @Override
     @SneakyThrows
-    @UnitOfWork
     public void start() {
         log.info("Starting OCFL repository provider");
         var layeredStorage = new LayeredStorage(itemStore);
         var layoutConfig = new NTupleOmitPrefixStorageLayoutConfig().setDelimiter(":").setTupleSize(3); // TODO: make configurable
-        new OcflRepositoryBuilder()
+        ocflRepository = new OcflRepositoryBuilder()
             .defaultLayoutConfig(layoutConfig)
             .inventoryCache(null)
             .storage(ocflStorageBuilder -> ocflStorageBuilder.storage(layeredStorage))

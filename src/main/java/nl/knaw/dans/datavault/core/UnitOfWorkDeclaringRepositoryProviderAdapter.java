@@ -15,21 +15,30 @@
  */
 package nl.knaw.dans.datavault.core;
 
-import io.dropwizard.lifecycle.Managed;
+import io.dropwizard.hibernate.UnitOfWork;
+import lombok.AllArgsConstructor;
 
 import java.nio.file.Path;
 
-/**
- * Provides access to the repository.
- */
-public interface RepositoryProvider extends Managed {
+@AllArgsConstructor
+public class UnitOfWorkDeclaringRepositoryProviderAdapter implements RepositoryProvider {
+    private final RepositoryProvider delegate;
 
-    /**
-     * Adds a new version to the object identified by the given object id. If the object does not exist yet, it will be created.
-     *
-     * @param objectId               The identifier of the object
-     * @param objectVersionDirectory The directory containing the new version of the object
-     */
-    void addVersion(String objectId, Path objectVersionDirectory);
+    @Override
+    @UnitOfWork
+    public void addVersion(String objectId, Path objectVersionDirectory) {
+        delegate.addVersion(objectId, objectVersionDirectory);
+    }
 
+    @Override
+    @UnitOfWork
+    public void start() throws Exception {
+        delegate.start();
+    }
+
+    @Override
+    @UnitOfWork
+    public void stop() throws Exception {
+        delegate.stop();
+    }
 }

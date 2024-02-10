@@ -15,11 +15,12 @@
  */
 package nl.knaw.dans.datavault.resources;
 
-import io.dropwizard.hibernate.UnitOfWork;
 import lombok.AllArgsConstructor;
-import nl.knaw.dans.datavault.api.JobDto;
+import nl.knaw.dans.datavault.Conversions;
+import nl.knaw.dans.datavault.api.ImportCommandDto;
+import nl.knaw.dans.datavault.core.ImportService;
 import nl.knaw.dans.datavault.core.InvalidJobException;
-import nl.knaw.dans.datavault.core.JobService;
+import org.mapstruct.factory.Mappers;
 
 import javax.ws.rs.core.Response;
 import java.util.UUID;
@@ -27,26 +28,27 @@ import java.util.UUID;
 import static javax.ws.rs.core.Response.Status.CREATED;
 
 @AllArgsConstructor
-public class JobsApiResource implements JobsApi {
-    private final JobService jobService;
+public class ImportsApiResource implements ImportsApi {
+    private final Conversions conversions = Mappers.getMapper(Conversions.class);
+    private final ImportService importService;
 
     @Override
-    @UnitOfWork
-    public Response jobsGet() {
+    public Response importsGet() {
         return null;
     }
 
     @Override
-    public Response jobsIdGet(UUID id) {
+    public Response importsIdGet(UUID id) {
         return null;
     }
 
     @Override
-    @UnitOfWork
-    public Response jobsPost(JobDto jobDto) {
+    public Response importsPost(ImportCommandDto importJobDto) {
         try {
-            jobService.startJob(jobDto);
-            return Response.status(CREATED).entity(jobDto).build();
+            return Response
+                .status(CREATED)
+                .entity(conversions.convert(importService.addImport(importJobDto)))
+                .build();
         }
         catch (InvalidJobException e) {
             return Response.status(Response.Status.BAD_REQUEST).entity(e.getMessage()).build();

@@ -13,13 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package nl.knaw.dans.datavault.core;
+package nl.knaw.dans.datavault;
 
-import nl.knaw.dans.datavault.api.JobDto;
+import nl.knaw.dans.datavault.api.ImportJobStatusDto;
+import nl.knaw.dans.datavault.core.ImportJob;
+import org.mapstruct.Mapper;
 
-public interface JobService {
-
-    void startJob(JobDto jobDto) throws InvalidJobException;
+@Mapper
+public interface Conversions {
+    ImportJobStatusDto convert(ImportJob importJob);
 
 
 }

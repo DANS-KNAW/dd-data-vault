@@ -15,21 +15,12 @@
  */
 package nl.knaw.dans.datavault.core;
 
-import io.dropwizard.lifecycle.Managed;
+import nl.knaw.dans.datavault.api.ImportCommandDto;
 
-import java.nio.file.Path;
+public interface ImportService {
 
-/**
- * Provides access to the repository.
- */
-public interface RepositoryProvider extends Managed {
+    ImportJob addImport(ImportCommandDto command) throws InvalidJobException;
 
-    /**
-     * Adds a new version to the object identified by the given object id. If the object does not exist yet, it will be created.
-     *
-     * @param objectId               The identifier of the object
-     * @param objectVersionDirectory The directory containing the new version of the object
-     */
-    void addVersion(String objectId, Path objectVersionDirectory);
+
 
 }

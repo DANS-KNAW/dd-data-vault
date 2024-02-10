@@ -22,15 +22,15 @@ import io.dropwizard.core.setup.Environment;
 import io.dropwizard.hibernate.HibernateBundle;
 import io.dropwizard.hibernate.UnitOfWorkAwareProxyFactory;
 import nl.knaw.dans.datavault.config.DdDataVaultConfig;
-import nl.knaw.dans.datavault.core.JobServiceImpl;
+import nl.knaw.dans.datavault.core.ImportServiceImpl;
 import nl.knaw.dans.datavault.core.OcflRepositoryProvider;
-import nl.knaw.dans.datavault.resources.JobsApiResource;
-import nl.knaw.dans.layerstore.ItemStore;
+import nl.knaw.dans.datavault.core.RepositoryProvider;
+import nl.knaw.dans.datavault.core.UnitOfWorkDeclaringRepositoryProviderAdapter;
+import nl.knaw.dans.datavault.resources.ImportsApiResource;
 import nl.knaw.dans.layerstore.LayerDatabaseImpl;
 import nl.knaw.dans.layerstore.LayerManagerImpl;
 import nl.knaw.dans.layerstore.LayeredItemStore;
 
-import java.nio.file.Path;
 import java.util.regex.Pattern;
 
 public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
@@ -59,19 +59,22 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
         var layerManager = new LayerManagerImpl(configuration.getDataVault().getLayerStore().getStagingRoot(), configuration.getDataVault().getLayerStore().getArchiveRoot(),
             environment.lifecycle().executorService("archiver-worker").build());
         var itemStore = new LayeredItemStore(dao, layerManager);
-        var ocflRepositoryProvider = createUnitOfWorkAwareOcflRepositoryProvider(itemStore, configuration.getDataVault().getOcflRepository().getWorkDir());
+        var ocflRepositoryProvider = createUnitOfWorkAwareProxy(OcflRepositoryProvider.builder()
+            .itemStore(itemStore)
+            .workDir(configuration.getDataVault().getOcflRepository().getWorkDir())
+            .build());
         environment.lifecycle().manage(ocflRepositoryProvider);
-        var jobService = JobServiceImpl.builder()
-            .repositoryProvider(ocflRepositoryProvider)
+        var jobService = ImportServiceImpl.builder()
+            .repositoryProvider(createUnitOfWorkAwareProxy(ocflRepositoryProvider))
             .validObjectIdentifierPattern(validObjectIdentifierPattern)
             .createOrUpdateExecutor(configuration.getExecutorService().build(environment))
             .build();
-        environment.jersey().register(new JobsApiResource(jobService));
+        environment.jersey().register(new ImportsApiResource(jobService));
     }
 
-    private OcflRepositoryProvider createUnitOfWorkAwareOcflRepositoryProvider(ItemStore itemStore, Path workDir) {
+    private RepositoryProvider createUnitOfWorkAwareProxy(RepositoryProvider repositoryProvider) {
         return new UnitOfWorkAwareProxyFactory(hibernateBundle)
-            .create(OcflRepositoryProvider.class, new Class<?>[] { ItemStore.class, Path.class }, new Object[] { itemStore, workDir });
+            .create(UnitOfWorkDeclaringRepositoryProviderAdapter.class, new Class<?>[] { RepositoryProvider.class }, new Object[] { repositoryProvider });
     }
 
 }

@@ -20,16 +20,19 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
-import nl.knaw.dans.datavault.api.JobDto;
+import nl.knaw.dans.datavault.api.ImportCommandDto;
+import nl.knaw.dans.datavault.api.ImportJobStatusDto;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.regex.Pattern;
 
 @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
-public class JobServiceImpl implements JobService, Managed {
+public class ImportServiceImpl implements ImportService, Managed {
     // Must be a single thread executor to ensure that jobs are executed in the order they are submitted.
     private final ExecutorService jobExecutor = Executors.newSingleThreadExecutor();
 
@@ -42,26 +45,32 @@ public class JobServiceImpl implements JobService, Managed {
     @NonNull
     private final RepositoryProvider repositoryProvider;
 
+    private final List<ImportJob> importTasks = new ArrayList<>();
+
     @Builder
-    public static JobServiceImpl create(ExecutorService createOrUpdateExecutor, Pattern validObjectIdentifierPattern, RepositoryProvider repositoryProvider) {
-        return new JobServiceImpl(createOrUpdateExecutor, validObjectIdentifierPattern, repositoryProvider);
+    public static ImportServiceImpl create(ExecutorService createOrUpdateExecutor, Pattern validObjectIdentifierPattern, RepositoryProvider repositoryProvider) {
+        return new ImportServiceImpl(createOrUpdateExecutor, validObjectIdentifierPattern, repositoryProvider);
     }
 
     @Override
-    public void startJob(JobDto jobDto) throws InvalidJobException {
-        validateJobDto(jobDto);
-        jobExecutor.execute(JobTask.builder()
-            .batchDirectory(Path.of(jobDto.getBatch()))
+    public ImportJob addImport(ImportCommandDto command) throws InvalidJobException {
+        validateJobDto(command);
+        var importTask = ImportJob.builder()
+            .path(Path.of(command.getPath()))
+            .singleObject(command.getSingleObject())
             .validObjectIdentifierPattern(validObjectIdentifierPattern)
             .executorService(createOrUpdateExecutor)
             .repositoryProvider(repositoryProvider)
-            .build());
+            .build();
+        jobExecutor.execute(importTask);
+        importTasks.add(importTask);
+        return importTask;
     }
 
-    private void validateJobDto(JobDto jobDto) throws InvalidJobException {
-        var directoryName = jobDto.getBatch();
-        if (!Files.isDirectory(Path.of(directoryName))) {
-            throw new InvalidJobException(String.format("Batch directory '%s' does not exist or is not a directory", directoryName));
+    private void validateJobDto(ImportCommandDto jobDto) throws InvalidJobException {
+        var path = jobDto.getPath();
+        if (!Files.isDirectory(Path.of(path))) {
+            throw new InvalidJobException(String.format("Path '%s' does not exist or is not a directory", path));
         }
     }
 

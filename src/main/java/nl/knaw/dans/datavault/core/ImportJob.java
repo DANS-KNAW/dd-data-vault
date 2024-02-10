@@ -16,41 +16,57 @@
 package nl.knaw.dans.datavault.core;
 
 import lombok.Builder;
-import lombok.Getter;
+import lombok.Builder.Default;
 import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.regex.Pattern;
 
 @Builder(builderClassName = "Builder")
-public class JobTask implements Runnable {
-    private final Path batchDirectory;
+@Slf4j
+public class ImportJob implements Runnable {
+    public enum Status {
+        PENDING,
+        RUNNING,
+        SUCCESS,
+        FAILED
+    }
+
+    @Default
+    private final UUID id = UUID.randomUUID();
+
+    private final Path path;
+    private final boolean singleObject;
     private final Pattern validObjectIdentifierPattern;
     private final ExecutorService executorService;
     private final RepositoryProvider repositoryProvider;
 
-    @Getter
-    private boolean finished;
+    private Status status = Status.PENDING;
 
     @Override
     @SneakyThrows
     public void run() {
+        log.debug("Starting job for batch directory {}", path);
+        status = Status.RUNNING;
         validateBatchLayout();
         List<Callable<Object>> tasks = new LinkedList<>();
-        try (DirectoryStream<Path> stream = Files.newDirectoryStream(batchDirectory)) {
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(path)) {
             for (Path path : stream) {
                 tasks.add(Executors.callable(new ObjectCreateOrUpdateTask(path, repositoryProvider)));
             }
         }
         executorService.invokeAll(tasks);
-        finished = true;
+        // TODO: check if all tasks were successful and set status accordingly
+        status = Status.SUCCESS;
     }
 
     /*
@@ -80,10 +96,11 @@ public class JobTask implements Runnable {
      */
     @SneakyThrows
     private void validateBatchLayout() {
+        log.debug("Validating batch layout for batch directory {}", path);
         List<Path> invalidObjectDirectories = new LinkedList<>();
         List<Path> invalidVersionDirectories = new LinkedList<>();
 
-        try (DirectoryStream<Path> stream = Files.newDirectoryStream(batchDirectory)) {
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(path)) {
             for (Path objectDir : stream) {
                 String objectDirName = objectDir.getFileName().toString();
                 if (!validObjectIdentifierPattern.matcher(objectDirName).matches()) {
@@ -105,6 +122,7 @@ public class JobTask implements Runnable {
                 "invalid object directories: " + invalidObjectDirectories +
                 ", invalid version directories: " + invalidVersionDirectories);
         }
+        log.debug("Batch layout for batch directory {} is valid", path);
     }
 
     private boolean isValidTimestamp(String timestampStr) {
