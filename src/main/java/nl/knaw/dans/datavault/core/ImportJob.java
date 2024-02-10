@@ -17,18 +17,21 @@ package nl.knaw.dans.datavault.core;
 
 import lombok.Builder;
 import lombok.Builder.Default;
+import lombok.Data;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.regex.Pattern;
 
 @Builder(builderClassName = "Builder")
@@ -39,6 +42,12 @@ public class ImportJob implements Runnable {
         RUNNING,
         SUCCESS,
         FAILED
+    }
+
+    @Data
+    private static class ObjectValidationResult {
+        private boolean objectImportDirNameIsValid;
+        private final List<Path> invalidVersionDirectories = new ArrayList<>();
     }
 
     @Default
@@ -55,18 +64,50 @@ public class ImportJob implements Runnable {
     @Override
     @SneakyThrows
     public void run() {
-        log.debug("Starting job for batch directory {}", path);
+        log.debug("Starting job for {}", path);
         status = Status.RUNNING;
-        validateBatchLayout();
+        if (singleObject) {
+            createOrUpdateObject();
+        }
+        else {
+            createOrUpdateObjects();
+        }
+
+    }
+
+    private void createOrUpdateObject() {
+        try {
+            checkObjectImportDirectoryLayout(path);
+            new ObjectCreateOrUpdateTask(path, repositoryProvider).run();
+            status = Status.SUCCESS;
+        }
+        catch (Exception e) {
+            status = Status.FAILED;
+            throw e;
+        }
+    }
+
+    @SneakyThrows
+    private void createOrUpdateObjects() {
+        checkBatchLayout();
         List<Callable<Object>> tasks = new LinkedList<>();
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(path)) {
             for (Path path : stream) {
                 tasks.add(Executors.callable(new ObjectCreateOrUpdateTask(path, repositoryProvider)));
             }
         }
-        executorService.invokeAll(tasks);
-        // TODO: check if all tasks were successful and set status accordingly
-        status = Status.SUCCESS;
+        var futures = executorService.invokeAll(tasks);
+        status = futures.stream().allMatch(this::checkFuture) ? Status.SUCCESS : Status.FAILED;
+    }
+
+    private boolean checkFuture(Future<Object> future) {
+        try {
+            future.get();
+            return true;
+        }
+        catch (Exception e) {
+            return false;
+        }
     }
 
     /*
@@ -95,24 +136,19 @@ public class ImportJob implements Runnable {
      * In this example an object identifier must be a DANS URN:NBN value.
      */
     @SneakyThrows
-    private void validateBatchLayout() {
+    private void checkBatchLayout() {
         log.debug("Validating batch layout for batch directory {}", path);
         List<Path> invalidObjectDirectories = new LinkedList<>();
         List<Path> invalidVersionDirectories = new LinkedList<>();
 
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(path)) {
             for (Path objectDir : stream) {
-                String objectDirName = objectDir.getFileName().toString();
-                if (!validObjectIdentifierPattern.matcher(objectDirName).matches()) {
+                var result = validateObjectImportDirectoryLayout(objectDir);
+                if (!result.isObjectImportDirNameIsValid()) {
                     invalidObjectDirectories.add(objectDir);
                 }
-
-                try (DirectoryStream<Path> versionStream = Files.newDirectoryStream(objectDir)) {
-                    for (Path versionDir : versionStream) {
-                        if (!isValidTimestamp(versionDir.getFileName().toString())) {
-                            invalidVersionDirectories.add(versionDir);
-                        }
-                    }
+                else if (!result.getInvalidVersionDirectories().isEmpty()) {
+                    invalidVersionDirectories.addAll(result.getInvalidVersionDirectories());
                 }
             }
         }
@@ -123,6 +159,34 @@ public class ImportJob implements Runnable {
                 ", invalid version directories: " + invalidVersionDirectories);
         }
         log.debug("Batch layout for batch directory {} is valid", path);
+    }
+
+    private void checkObjectImportDirectoryLayout(Path objectDir) {
+        var result = validateObjectImportDirectoryLayout(objectDir);
+        if (!result.isObjectImportDirNameIsValid() || !result.getInvalidVersionDirectories().isEmpty()) {
+            throw new IllegalArgumentException("Invalid object import directory layout: " +
+                "invalid object directory: " + objectDir +
+                ", invalid version directories: " + result.getInvalidVersionDirectories());
+        }
+    }
+
+    @SneakyThrows
+    private ObjectValidationResult validateObjectImportDirectoryLayout(Path objectDir) {
+        var result = new ObjectValidationResult();
+        String objectDirName = objectDir.getFileName().toString();
+
+        if (validObjectIdentifierPattern.matcher(objectDirName).matches()) {
+            // Only bother to check the version directories if the object directory name is valid.
+            result.setObjectImportDirNameIsValid(true);
+            try (DirectoryStream<Path> versionStream = Files.newDirectoryStream(objectDir)) {
+                for (Path versionDir : versionStream) {
+                    if (!isValidTimestamp(versionDir.getFileName().toString())) {
+                        result.getInvalidVersionDirectories().add(versionDir);
+                    }
+                }
+            }
+        }
+        return result;
     }
 
     private boolean isValidTimestamp(String timestampStr) {
