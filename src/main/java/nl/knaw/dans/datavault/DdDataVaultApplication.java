@@ -30,7 +30,9 @@ import nl.knaw.dans.datavault.resources.ImportsApiResource;
 import nl.knaw.dans.layerstore.LayerDatabaseImpl;
 import nl.knaw.dans.layerstore.LayerManagerImpl;
 import nl.knaw.dans.layerstore.LayeredItemStore;
+import nl.knaw.dans.lib.ocflext.InventoryFilter;
 
+import javax.persistence.criteria.CriteriaBuilder.In;
 import java.util.regex.Pattern;
 
 public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
@@ -58,7 +60,7 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
         var dao = new LayerDatabaseImpl(hibernateBundle.getSessionFactory());
         var layerManager = new LayerManagerImpl(configuration.getDataVault().getLayerStore().getStagingRoot(), configuration.getDataVault().getLayerStore().getArchiveRoot(),
             environment.lifecycle().executorService("archiver-worker").build());
-        var itemStore = new LayeredItemStore(dao, layerManager);
+        var itemStore = new LayeredItemStore(dao, layerManager, new InventoryFilter());
         var ocflRepositoryProvider = createUnitOfWorkAwareProxy(OcflRepositoryProvider.builder()
             .itemStore(itemStore)
             .workDir(configuration.getDataVault().getOcflRepository().getWorkDir())

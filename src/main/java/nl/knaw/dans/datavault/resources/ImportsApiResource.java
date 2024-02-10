@@ -26,6 +26,7 @@ import javax.ws.rs.core.Response;
 import java.util.UUID;
 
 import static javax.ws.rs.core.Response.Status.CREATED;
+import static javax.ws.rs.core.Response.Status.OK;
 
 @AllArgsConstructor
 public class ImportsApiResource implements ImportsApi {
@@ -39,7 +40,10 @@ public class ImportsApiResource implements ImportsApi {
 
     @Override
     public Response importsIdGet(UUID id) {
-        return null;
+        return Response
+            .status(OK)
+            .entity(conversions.convert(importService.getImport(id)))
+            .build();
     }
 
     @Override

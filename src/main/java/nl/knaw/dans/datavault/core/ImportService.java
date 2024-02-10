@@ -17,10 +17,12 @@ package nl.knaw.dans.datavault.core;
 
 import nl.knaw.dans.datavault.api.ImportCommandDto;
 
+import java.nio.file.Path;
+import java.util.UUID;
+
 public interface ImportService {
 
     ImportJob addImport(ImportCommandDto command) throws InvalidJobException;
 
-
-
+    ImportJob getImport(UUID id);
 }

@@ -16,12 +16,22 @@
 package nl.knaw.dans.datavault;
 
 import nl.knaw.dans.datavault.api.ImportJobStatusDto;
+import nl.knaw.dans.datavault.api.ImportJobStatusDto.StatusEnum;
 import nl.knaw.dans.datavault.core.ImportJob;
 import org.mapstruct.Mapper;
+
+import java.nio.file.Path;
 
 @Mapper
 public interface Conversions {
     ImportJobStatusDto convert(ImportJob importJob);
 
+    default String convert(Path path) {
+        return path.toString();
+    }
+
+    default StatusEnum convert(ImportJob.Status status) {
+        return StatusEnum.fromValue(status.name());
+    }
 
 }

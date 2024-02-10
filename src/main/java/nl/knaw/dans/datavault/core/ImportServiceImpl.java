@@ -21,12 +21,12 @@ import lombok.Builder;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import nl.knaw.dans.datavault.api.ImportCommandDto;
-import nl.knaw.dans.datavault.api.ImportJobStatusDto;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.regex.Pattern;
@@ -55,16 +55,16 @@ public class ImportServiceImpl implements ImportService, Managed {
     @Override
     public ImportJob addImport(ImportCommandDto command) throws InvalidJobException {
         validateJobDto(command);
-        var importTask = ImportJob.builder()
+        var importJob = ImportJob.builder()
             .path(Path.of(command.getPath()))
             .singleObject(command.getSingleObject())
             .validObjectIdentifierPattern(validObjectIdentifierPattern)
             .executorService(createOrUpdateExecutor)
             .repositoryProvider(repositoryProvider)
             .build();
-        jobExecutor.execute(importTask);
-        importTasks.add(importTask);
-        return importTask;
+        jobExecutor.execute(importJob);
+        importTasks.add(importJob);
+        return importJob;
     }
 
     private void validateJobDto(ImportCommandDto jobDto) throws InvalidJobException {
@@ -72,6 +72,14 @@ public class ImportServiceImpl implements ImportService, Managed {
         if (!Files.isDirectory(Path.of(path))) {
             throw new InvalidJobException(String.format("Path '%s' does not exist or is not a directory", path));
         }
+    }
+
+    @Override
+    public ImportJob getImport(UUID id) {
+        return importTasks.stream()
+            .filter(job -> job.getId().equals(id))
+            .findFirst()
+            .orElse(null);
     }
 
     @Override

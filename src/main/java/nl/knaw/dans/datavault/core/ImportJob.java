@@ -18,6 +18,7 @@ package nl.knaw.dans.datavault.core;
 import lombok.Builder;
 import lombok.Builder.Default;
 import lombok.Data;
+import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 
@@ -50,15 +51,23 @@ public class ImportJob implements Runnable {
         private final List<Path> invalidVersionDirectories = new ArrayList<>();
     }
 
-    @Default
-    private final UUID id = UUID.randomUUID();
-
-    private final Path path;
-    private final boolean singleObject;
     private final Pattern validObjectIdentifierPattern;
     private final ExecutorService executorService;
     private final RepositoryProvider repositoryProvider;
 
+
+    @Default
+    @Getter
+    private final UUID id = UUID.randomUUID();
+
+    @Getter
+    private final Path path;
+
+    @Getter
+    private final boolean singleObject;
+
+    @Default
+    @Getter
     private Status status = Status.PENDING;
 
     @Override
