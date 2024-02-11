@@ -27,6 +27,7 @@ import nl.knaw.dans.datavault.core.OcflRepositoryProvider;
 import nl.knaw.dans.datavault.core.RepositoryProvider;
 import nl.knaw.dans.datavault.core.UnitOfWorkDeclaringRepositoryProviderAdapter;
 import nl.knaw.dans.datavault.resources.ImportsApiResource;
+import nl.knaw.dans.datavault.resources.LayersApiResource;
 import nl.knaw.dans.layerstore.LayerDatabaseImpl;
 import nl.knaw.dans.layerstore.LayerManagerImpl;
 import nl.knaw.dans.layerstore.LayeredItemStore;
@@ -73,6 +74,7 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
             .createOrUpdateExecutor(configuration.getExecutorService().build(environment))
             .build();
         environment.jersey().register(new ImportsApiResource(jobService));
+        environment.jersey().register(new LayersApiResource(layerManager));
     }
 
     private RepositoryProvider createUnitOfWorkAwareProxy(RepositoryProvider repositoryProvider) {
