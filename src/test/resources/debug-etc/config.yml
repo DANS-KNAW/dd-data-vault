@@ -19,6 +19,45 @@ database:
     hibernate.dialect: 'org.hibernate.dialect.HSQLDialect'
     hibernate.hbm2ddl.auto: update
 
+dataVault:
+  #
+  # Regular expression that object identifiers must match.
+  #
+  validObjectIdentifierPattern: "urn:nbn:nl:ui:13-.*"
+
+  #
+  #
+  #
+  ocflRepository:
+    workDir: data/ocfl-work
+
+  #
+  # Settings for the layer store in which the data vault stores its data.
+  #
+  layerStore:
+    #
+    # Directory containing staged layers. A new layer is first staged under this directory. When it is full enough, it is then
+    # packaged into an archive file and stored under the archiveRoot.
+    #
+    stagingRoot: data/vault/staging
+
+    #
+    # Directory containing archived layers.
+    #
+    archiveRoot: data/vault/archive
+
+executorService:
+  nameFormat: "create-or-update-object-worker-%d"
+  maxQueueSize: 5000
+  # Number of threads will be increased when maxQueueSize is exceeded.
+  minThreads: 2
+  # No more than maxThreads will be created though
+  maxThreads: 5
+  # Threads will die after 60 seconds of idleness
+  keepAliveTime: 60 seconds
+
+
+
 #
 # See https://www.dropwizard.io/en/latest/manual/configuration.html#logging
 #

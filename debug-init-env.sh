@@ -19,3 +19,13 @@ echo -n "Pre-creating log..."
 TEMPDIR=data
 touch $TEMPDIR/dd-data-vault.log
 echo "OK"
+
+echo -n "Pre-creating vault directory..."
+mkdir -p $TEMPDIR/vault
+mkdir -p $TEMPDIR/vault/archive
+mkdir -p $TEMPDIR/vault/staging
+echo "OK"
+
+echo -n "Pre-creating ocfl-work directory..."
+mkdir -p $TEMPDIR/ocfl-work
+echo "OK"
