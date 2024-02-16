@@ -44,7 +44,16 @@ dataVault:
     #
     # Directory containing archived layers.
     #
-    archiveRoot: data/vault/archive
+    archiveProvider:
+      type: TAR
+      archiveRoot: /var/opt/dans.knaw.nl/tmp/dd-data-vault/archive
+    #   type: ZIP
+    #   archiveRoot: /var/opt/dans.knaw.nl/tmp/dd-data-vault/archive
+    #   type: DMFTAR
+    #   host: <host where DMF runs>
+    #   user: <user to log in to DMF host>
+    #   archiveRoot: <directory on DMF host where the archive files are stored>
+
 
 executorService:
   nameFormat: "create-or-update-object-worker-%d"

@@ -60,7 +60,7 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
         var dao = new LayerDatabaseImpl(hibernateBundle.getSessionFactory());
         var layerManager = new LayerManagerImpl(
             configuration.getDataVault().getLayerStore().getStagingRoot(),
-            configuration.getDataVault().getLayerStore().getArchiveRoot(),
+            configuration.getDataVault().getLayerStore().getArchiveProvider().build(),
             environment.lifecycle().executorService("archiver-worker").build());
         var itemStore = new LayeredItemStore(dao, layerManager, new StoreInventoryDbBackedContentManager());
         var ocflRepositoryProvider = createUnitOfWorkAwareProxy(OcflRepositoryProvider.builder()

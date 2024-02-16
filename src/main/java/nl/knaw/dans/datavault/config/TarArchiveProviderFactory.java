@@ -15,12 +15,19 @@
  */
 package nl.knaw.dans.datavault.config;
 
-import lombok.Data;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonTypeName;
+import nl.knaw.dans.layerstore.ArchiveProvider;
+import nl.knaw.dans.layerstore.TarArchiveProvider;
 
 import java.nio.file.Path;
 
-@Data
-public class LayerStoreConfig {
-    private Path stagingRoot;
-    private ArchiveProviderFactory archiveProvider;
+@JsonTypeName("TAR")
+public class TarArchiveProviderFactory implements ArchiveProviderFactory {
+    @JsonProperty
+    private Path archiveRoot;
+    @Override
+    public ArchiveProvider build() {
+        return new TarArchiveProvider(archiveRoot);
+    }
 }

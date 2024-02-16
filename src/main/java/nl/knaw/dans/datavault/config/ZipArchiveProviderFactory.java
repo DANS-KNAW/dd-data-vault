@@ -15,12 +15,21 @@
  */
 package nl.knaw.dans.datavault.config;
 
-import lombok.Data;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonTypeName;
+import nl.knaw.dans.layerstore.ArchiveProvider;
+import nl.knaw.dans.layerstore.ZipArchiveProvider;
 
 import java.nio.file.Path;
 
-@Data
-public class LayerStoreConfig {
-    private Path stagingRoot;
-    private ArchiveProviderFactory archiveProvider;
+@JsonTypeName("ZIP")
+public class ZipArchiveProviderFactory implements ArchiveProviderFactory {
+
+    @JsonProperty
+    private Path archiveRoot;
+
+    @Override
+    public ArchiveProvider build() {
+        return new ZipArchiveProvider(archiveRoot);
+    }
 }
