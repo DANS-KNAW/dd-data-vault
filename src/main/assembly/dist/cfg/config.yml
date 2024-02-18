@@ -41,7 +41,7 @@ dataVault:
   #
   #
   ocflRepository:
-    workDir: /var/opt/dans.knaw.nl/tmp/dd-data-vault/ocfl-work
+    workDir: /data/vault/tmp
 
   #
   # Settings for the layer store in which the data vault stores its data.
@@ -51,29 +51,20 @@ dataVault:
     # Directory containing staged layers. A new layer is first staged under this directory. When it is full enough, it is then
     # packaged into an archive file and stored under the archiveRoot.
     #
-    stagingRoot: /var/opt/dans.knaw.nl/tmp/dd-data-vault/staging
+    stagingRoot: /data/vault/staging
 
     #
     # Class that creates and manages the archive files. Several implementations are available.
     #
     archiveProvider:
         type: TAR
-        archiveRoot: /var/opt/dans.knaw.nl/tmp/dd-data-vault/archive
+        archiveRoot: /data/vault/archive
     #   type: ZIP
     #   archiveRoot: /var/opt/dans.knaw.nl/tmp/dd-data-vault/archive
     #   type: DMFTAR
     #   host: <host where DMF runs>
     #   user: <user to log in to DMF host>
     #   archiveRoot: <directory on DMF host where the archive files are stored>
-
-    #
-    # Directory containing archived layers.
-    #
-    archiveRoot: /var/opt/dans.knaw.nl/tmp/dd-data-vault/archive
-
-
-
-
 
 #
 # See https://www.dropwizard.io/en/latest/manual/configuration.html#logging
