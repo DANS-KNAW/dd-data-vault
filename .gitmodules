@@ -1,0 +1,3 @@
+[submodule "dmftar"]
+	path = dmftar
+	url = https://gitlab.com/surfsara/dmftar.git

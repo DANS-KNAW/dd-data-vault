@@ -27,7 +27,8 @@ import nl.knaw.dans.layerstore.ArchiveProvider;
 @JsonTypeInfo(use = Id.NAME, property = "type")
 @JsonSubTypes({
         @JsonSubTypes.Type(value = ZipArchiveProviderFactory.class, name = "ZIP"),
-        @JsonSubTypes.Type(value = TarArchiveProviderFactory.class, name = "TAR")
+        @JsonSubTypes.Type(value = TarArchiveProviderFactory.class, name = "TAR"),
+        @JsonSubTypes.Type(value = DmfTarArchiveProviderFactory.class, name = "DMFTAR")
 })
 public interface ArchiveProviderFactory extends Discoverable {
     ArchiveProvider build();

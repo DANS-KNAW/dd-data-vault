@@ -62,6 +62,7 @@ dataVault:
     #   type: ZIP
     #   archiveRoot: /var/opt/dans.knaw.nl/tmp/dd-data-vault/archive
     #   type: DMFTAR
+    #   dmfTarExecutable: /usr/local/bin/dmftar # path to the dmftar executable
     #   host: <host where DMF runs>
     #   user: <user to log in to DMF host>
     #   archiveRoot: <directory on DMF host where the archive files are stored>

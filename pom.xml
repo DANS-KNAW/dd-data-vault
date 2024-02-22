@@ -23,7 +23,7 @@
     <parent>
         <groupId>nl.knaw.dans</groupId>
         <artifactId>dd-parent</artifactId>
-        <version>0.26.0</version>
+        <version>1.0.1-SNAPSHOT</version>
     </parent>
 
     <artifactId>dd-data-vault</artifactId>
@@ -116,6 +116,15 @@
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>com.mycila</groupId>
+                <artifactId>license-maven-plugin</artifactId>
+                <configuration combine.children="override">
+                    <excludes combine.children="append">
+                        <exclude>dmftar/</exclude>
+                    </excludes>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

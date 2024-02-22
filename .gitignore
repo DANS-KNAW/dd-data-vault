@@ -21,5 +21,4 @@
 /.yum-repo
 /.dans.knaw.nl-yum-repo
 /venv/
-/.venv-mkdocs
-
+/.venv*

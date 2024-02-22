@@ -16,6 +16,8 @@
 
 package nl.knaw.dans.datavault;
 
+import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
+import io.dropwizard.configuration.SubstitutingSourceProvider;
 import io.dropwizard.core.Application;
 import io.dropwizard.core.setup.Bootstrap;
 import io.dropwizard.core.setup.Environment;
@@ -51,6 +53,9 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
     @Override
     public void initialize(final Bootstrap<DdDataVaultConfig> bootstrap) {
         bootstrap.addBundle(hibernateBundle);
+        bootstrap.setConfigurationSourceProvider(
+            new SubstitutingSourceProvider(bootstrap.getConfigurationSourceProvider(),
+                new EnvironmentVariableSubstitutor(true)));
     }
 
     @Override
