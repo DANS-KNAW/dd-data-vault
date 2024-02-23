@@ -18,8 +18,9 @@ package nl.knaw.dans.datavault.config;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import nl.knaw.dans.layerstore.ArchiveProvider;
-import nl.knaw.dans.layerstore.DmfTar;
 import nl.knaw.dans.layerstore.DmfTarArchiveProvider;
+import nl.knaw.dans.layerstore.DmfTarRunner;
+import nl.knaw.dans.layerstore.SshRunner;
 
 import java.nio.file.Path;
 
@@ -27,6 +28,9 @@ import java.nio.file.Path;
 public class DmfTarArchiveProviderFactory implements ArchiveProviderFactory {
     @JsonProperty
     private Path dmfTarExecutable;
+
+    @JsonProperty
+    private Path sshExecutable;
 
     @JsonProperty
     private String user;
@@ -38,6 +42,8 @@ public class DmfTarArchiveProviderFactory implements ArchiveProviderFactory {
 
     @Override
     public ArchiveProvider build() {
-        return new DmfTarArchiveProvider(new DmfTar(dmfTarExecutable, user, host, archiveRoot));
+        return new DmfTarArchiveProvider(
+            new DmfTarRunner(dmfTarExecutable, user, host, archiveRoot),
+            new SshRunner(sshExecutable, user, host, archiveRoot));
     }
 }

@@ -14,35 +14,8 @@
 # limitations under the License.
 #
 
-site_name: dd-data-vault
-theme:
-  name: readthedocs
+mvn dans-build-resources:get-helper-script
+sh target/add-swagger-ui.sh
 
-repo_name: DANS-KNAW/dd-data-vault
-repo_url: https://github.com/DANS-KNAW/dd-data-vault
-
-nav:
-  - Manual:
-     - DESCRIPTION: index.md
-     - INSTALLATION: installation.md
-     - CONFIGURATION: config.md
-     - API: to-api.md
-     - ⇒ Context: context.md
-  - Development:
-     - Overview: dev.md
-
-plugins:
-  - markdownextradata
-  - search
-
-markdown_extensions:
-  - attr_list
-  - admonition
-  - codehilite:
-      guess_lang: False
-      use_pygments: False
-  - def_list
-  - footnotes
-  - meta
-  - toc:
-      permalink: True
+mvn initialize
+cp target/openapi/dd-data-vault-api.yml docs/api.yml

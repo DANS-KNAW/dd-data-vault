@@ -54,13 +54,15 @@ dataVault:
     stagingRoot: /data/vault/staging
 
     #
-    # Class that creates and manages the archive files. Several implementations are available.
+    # Class that creates and manages the archive files. Several implementations are available. Only one of them can be active at a time.
     #
     archiveProvider:
-        type: TAR
-        archiveRoot: /data/vault/archive
+      type: TAR
+      archiveRoot: /data/vault/archive
+
     #   type: ZIP
     #   archiveRoot: /var/opt/dans.knaw.nl/tmp/dd-data-vault/archive
+
     #   type: DMFTAR
     #   dmfTarExecutable: /usr/local/bin/dmftar # path to the dmftar executable
     #   host: <host where DMF runs>

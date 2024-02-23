@@ -20,5 +20,7 @@
 /.vagrant/
 /.yum-repo
 /.dans.knaw.nl-yum-repo
+/docs/swagger-ui/
+/docs/api.yml
 /venv/
 /.venv*
