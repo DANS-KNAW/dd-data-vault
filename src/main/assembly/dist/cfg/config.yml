@@ -65,6 +65,7 @@ dataVault:
 
     #   type: DMFTAR
     #   dmfTarExecutable: /usr/local/bin/dmftar # path to the dmftar executable
+    #   sshExecutable: /usr/bin/ssh # path to the ssh executable
     #   host: <host where DMF runs>
     #   user: <user to log in to DMF host>
     #   archiveRoot: <directory on DMF host where the archive files are stored>
