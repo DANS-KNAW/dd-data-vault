@@ -1,4 +1,3 @@
-#!/usr/bin/env bash
 #
 # Copyright (C) 2024 DANS - Data Archiving and Networked Services (info@dans.knaw.nl)
 #
@@ -15,17 +14,8 @@
 # limitations under the License.
 #
 
-echo -n "Pre-creating log..."
-TEMPDIR=data
-touch $TEMPDIR/dd-data-vault.log
-echo "OK"
+mvn dans-build-resources:get-helper-script
+sh target/add-swagger-ui.sh
 
-echo -n "Pre-creating vault directory..."
-mkdir -p $TEMPDIR/vault
-mkdir -p $TEMPDIR/vault/archive
-mkdir -p $TEMPDIR/vault/staging
-echo "OK"
-
-echo -n "Pre-creating ocfl-work directory..."
-mkdir -p $TEMPDIR/ocfl-work
-echo "OK"
+mvn initialize
+cp target/openapi/dd-data-vault-api.yml docs/api.yml

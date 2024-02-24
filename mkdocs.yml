@@ -22,7 +22,14 @@ repo_name: DANS-KNAW/dd-data-vault
 repo_url: https://github.com/DANS-KNAW/dd-data-vault
 
 nav:
-  - Manual: index.md
+  - Manual:
+     - DESCRIPTION: index.md
+     - INSTALLATION: installation.md
+     - CONFIGURATION: config.md
+     - API: to-api.md
+     - ⇒ Context: context.md
+  - Development:
+     - Overview: dev.md
 
 plugins:
   - markdownextradata
