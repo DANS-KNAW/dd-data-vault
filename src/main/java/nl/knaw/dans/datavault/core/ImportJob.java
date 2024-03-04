@@ -54,6 +54,7 @@ public class ImportJob implements Runnable {
     private final Pattern validObjectIdentifierPattern;
     private final ExecutorService executorService;
     private final RepositoryProvider repositoryProvider;
+    private final boolean acceptTimestampVersionDirectories;
 
 
     @Default
@@ -73,21 +74,26 @@ public class ImportJob implements Runnable {
     @Override
     @SneakyThrows
     public void run() {
-        log.debug("Starting job for {}", path);
-        status = Status.RUNNING;
-        if (singleObject) {
-            createOrUpdateObject();
+        try {
+            log.debug("Starting job for {}", path);
+            status = Status.RUNNING;
+            if (singleObject) {
+                createOrUpdateObject();
+            }
+            else {
+                createOrUpdateObjects();
+            }
+        } catch (Exception e) {
+            log.error("Job for {} failed", path, e);
+            status = Status.FAILED;
+            throw e;
         }
-        else {
-            createOrUpdateObjects();
-        }
-
     }
 
     private void createOrUpdateObject() {
         try {
             checkObjectImportDirectoryLayout(path);
-            new ObjectCreateOrUpdateTask(path, repositoryProvider).run();
+            new ObjectCreateOrUpdateTask(path, repositoryProvider, acceptTimestampVersionDirectories).run();
             status = Status.SUCCESS;
         }
         catch (Exception e) {
@@ -102,9 +108,10 @@ public class ImportJob implements Runnable {
         List<Callable<Object>> tasks = new LinkedList<>();
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(path)) {
             for (Path path : stream) {
-                tasks.add(Executors.callable(new ObjectCreateOrUpdateTask(path, repositoryProvider)));
+                tasks.add(Executors.callable(new ObjectCreateOrUpdateTask(path, repositoryProvider, acceptTimestampVersionDirectories)));
             }
         }
+        log.info("Starting {} tasks for batch directory {}", tasks.size(), path);
         var futures = executorService.invokeAll(tasks);
         status = futures.stream().allMatch(this::checkFuture) ? Status.SUCCESS : Status.FAILED;
     }
