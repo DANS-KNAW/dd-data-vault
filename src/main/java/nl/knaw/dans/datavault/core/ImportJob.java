@@ -56,7 +56,6 @@ public class ImportJob implements Runnable {
     private final RepositoryProvider repositoryProvider;
     private final boolean acceptTimestampVersionDirectories;
 
-
     @Default
     @Getter
     private final UUID id = UUID.randomUUID();
@@ -83,7 +82,8 @@ public class ImportJob implements Runnable {
             else {
                 createOrUpdateObjects();
             }
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             log.error("Job for {} failed", path, e);
             status = Status.FAILED;
             throw e;
@@ -196,7 +196,7 @@ public class ImportJob implements Runnable {
             result.setObjectImportDirNameIsValid(true);
             try (DirectoryStream<Path> versionStream = Files.newDirectoryStream(objectDir)) {
                 for (Path versionDir : versionStream) {
-                    if (!isValidTimestamp(versionDir.getFileName().toString())) {
+                    if (!isValidateObjectVersionImportDirName(versionDir.getFileName().toString())) {
                         result.getInvalidVersionDirectories().add(versionDir);
                     }
                 }
@@ -205,13 +205,20 @@ public class ImportJob implements Runnable {
         return result;
     }
 
-    private boolean isValidTimestamp(String timestampStr) {
-        try {
-            long timestamp = Long.parseLong(timestampStr);
-            return timestamp >= 0;
+    private boolean isValidateObjectVersionImportDirName(String dirName) {
+        if (acceptTimestampVersionDirectories) {
+            try {
+                long timestamp = Long.parseLong(dirName);
+                return timestamp >= 0;
+            }
+            catch (NumberFormatException e) {
+                return false;
+            }
         }
-        catch (NumberFormatException e) {
-            return false;
+        else {
+            return dirName.startsWith("v") &&
+                dirName.length() > 1 &&
+                dirName.substring(1).matches("\\d+");
         }
     }
 }
