@@ -35,7 +35,7 @@
 
     <properties>
         <main-class>nl.knaw.dans.datavault.DdDataVaultApplication</main-class>
-        <dd-data-vault-api.version>0.1.1-SNAPSHOT</dd-data-vault-api.version>
+        <dd-data-vault-api.version>0.2.0</dd-data-vault-api.version>
     </properties>
 
     <scm>
