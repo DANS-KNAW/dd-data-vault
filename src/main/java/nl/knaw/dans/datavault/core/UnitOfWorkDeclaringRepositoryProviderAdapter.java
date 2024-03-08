@@ -26,8 +26,14 @@ public class UnitOfWorkDeclaringRepositoryProviderAdapter implements RepositoryP
 
     @Override
     @UnitOfWork
-    public void addVersion(String objectId, Path objectVersionDirectory) {
-        delegate.addVersion(objectId, objectVersionDirectory);
+    public void addVersion(String objectId, int version, Path objectVersionDirectory) {
+        delegate.addVersion(objectId, version, objectVersionDirectory);
+    }
+
+    @Override
+    @UnitOfWork
+    public void addHeadVersion(String objectId, Path objectVersionDirectory) {
+        delegate.addHeadVersion(objectId, objectVersionDirectory);
     }
 
     @Override

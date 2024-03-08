@@ -25,11 +25,21 @@ import java.nio.file.Path;
 public interface RepositoryProvider extends Managed {
 
     /**
-     * Adds a new version to the object identified by the given object id. If the object does not exist yet, it will be created.
+     * Adds a new version to the object identified by the given object id. If the object does not exist yet, it will be created. Note that the version number must be the next version number in the
+     * sequence of versions for the object.
      *
      * @param objectId               The identifier of the object
+     * @param version                The version number of the new version
      * @param objectVersionDirectory The directory containing the new version of the object
      */
-    void addVersion(String objectId, Path objectVersionDirectory);
+    void addVersion(String objectId, int version, Path objectVersionDirectory);
+
+    /**
+     * Adds a new head version to the object identified by the given object id. If the object does not exist yet, it will be created.
+     *
+     * @param objectId               The identifier of the object
+     * @param objectVersionDirectory The directory containing the new head version of the object
+     */
+    void addHeadVersion(String objectId, Path objectVersionDirectory);
 
 }

@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.StreamSupport;
 
@@ -29,6 +30,38 @@ import java.util.stream.StreamSupport;
 public class ObjectCreateOrUpdateTask implements Runnable {
     private final Path objectDirectory;
     private final RepositoryProvider repositoryProvider;
+    private final boolean acceptTimestampVersionDirectories;
+
+    private static class VersionDirectoryComparator implements Comparator<Path> {
+        @Override
+        public int compare(Path p1, Path p2) {
+            if (!p1.getFileName().startsWith("v") || !p2.getFileName().startsWith("v")) {
+                throw new IllegalArgumentException("Version directory names should start with 'v'");
+            }
+            try {
+                Long l1 = Long.parseLong(p1.getFileName().toString().substring(1));
+                Long l2 = Long.parseLong(p2.getFileName().toString().substring(1));
+                return l1.compareTo(l2);
+            }
+            catch (NumberFormatException e) {
+                throw new IllegalArgumentException("Version directory names should start with 'v' followed by a number");
+            }
+        }
+    }
+
+    private static class TimestampDirectoryComparator implements Comparator<Path> {
+        @Override
+        public int compare(Path p1, Path p2) {
+            try {
+                Long l1 = Long.parseLong(p1.getFileName().toString());
+                Long l2 = Long.parseLong(p2.getFileName().toString());
+                return l1.compareTo(l2);
+            }
+            catch (NumberFormatException e) {
+                throw new IllegalArgumentException("Timestamp directory names should be numbers");
+            }
+        }
+    }
 
     @Override
     @SneakyThrows
@@ -39,18 +72,21 @@ public class ObjectCreateOrUpdateTask implements Runnable {
     private List<Path> getVersionDirectoriesInOrder() throws IOException {
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(objectDirectory)) {
             return StreamSupport.stream(stream.spliterator(), false)
-                .sorted((p1, p2) -> {
-                    Long l1 = Long.parseLong(p1.getFileName().toString());
-                    Long l2 = Long.parseLong(p2.getFileName().toString());
-                    return l1.compareTo(l2);
-                })
+                .sorted(acceptTimestampVersionDirectories ? new TimestampDirectoryComparator() : new VersionDirectoryComparator())
                 .toList();
         }
     }
 
     private void addVersionsToRepository(List<Path> versions) throws IOException {
-        for (var version : versions) {
-            repositoryProvider.addVersion(objectDirectory.getFileName().toString(), version);
+        if (acceptTimestampVersionDirectories) {
+            for (var version : versions) {
+                repositoryProvider.addVersion(objectDirectory.getFileName().toString(), Integer.parseInt(version.getFileName().toString()), version);
+            }
+        }
+        else {
+            for (var version : versions) {
+                repositoryProvider.addVersion(objectDirectory.getFileName().toString(), Integer.parseInt(version.getFileName().toString().substring(1)), version);
+            }
         }
     }
 }

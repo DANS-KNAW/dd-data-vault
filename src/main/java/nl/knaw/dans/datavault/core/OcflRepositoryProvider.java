@@ -53,13 +53,24 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
 
     // TODO: add user name and email and message to the method
     @Override
-    public void addVersion(String objectId, Path objectVersionDirectory) {
-        log.debug("Adding version {} to object {}", objectVersionDirectory, objectId);
+    public void addVersion(String objectId, int version, Path objectVersionDirectory) {
+        log.debug("Adding version import directory {} to object {} as version v{}", objectVersionDirectory, objectId, version);
+        if (ocflRepository == null) {
+            throw new IllegalStateException("OCFL repository is not yet started");
+        }
+        // putObject wants the version number of HEAD, so we need to subtract 1 from the version number
+        ocflRepository.putObject(ObjectVersionId.version(objectId, version - 1), objectVersionDirectory, createVersionInfo("default message"));
+    }
+
+    @Override
+    public void addHeadVersion(String objectId, Path objectVersionDirectory) {
+        log.debug("Adding version import directory {} to object {} as head version", objectVersionDirectory, objectId);
         if (ocflRepository == null) {
             throw new IllegalStateException("OCFL repository is not yet started");
         }
         ocflRepository.putObject(ObjectVersionId.head(objectId), objectVersionDirectory, createVersionInfo("default message"));
     }
+
     private VersionInfo createVersionInfo(String message) {
         return new VersionInfo()
             .setMessage(message)
