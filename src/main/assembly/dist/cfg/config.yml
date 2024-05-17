@@ -38,6 +38,20 @@ dataVault:
   validObjectIdentifierPattern: "urn:nbn:nl:ui:13-.*"
 
   #
+  # Settings for the ingest area
+  #
+  ingest:
+    # TODO: rename dir data-vault to dd-data-vault
+    #
+    # Object import directories must be located under the inbox directory, possibly in a batch subdirectory.
+    #
+    inbox: /var/opt/dans.knaw.nl/tmp/data-vault/inbox
+    #
+    # 
+    #
+    outbox: /var/opt/dans.knaw.nl/tmp/data-vault/outbox
+
+  #
   #
   #
   ocflRepository:
@@ -49,7 +63,7 @@ dataVault:
   layerStore:
     #
     # Directory containing staged layers. A new layer is first staged under this directory. When it is full enough, it is then
-    # packaged into an archive file and stored under the archiveRoot.
+    # packaged into an archive file and stored under the archiveRoot. It is up to the client to decide when a layer is full enough.
     #
     stagingRoot: /data/vault/staging
 
