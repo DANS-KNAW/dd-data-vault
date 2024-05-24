@@ -43,20 +43,41 @@ public class ImportServiceImpl implements ImportService, Managed {
     private final Pattern validObjectIdentifierPattern;
 
     @NonNull
+    private final Path inboxDir;
+
+    @NonNull
+    private final Path outboxDir;
+
+    @NonNull
     private final RepositoryProvider repositoryProvider;
 
     private final List<ImportJob> importTasks = new ArrayList<>();
 
     @Builder
-    public static ImportServiceImpl create(ExecutorService createOrUpdateExecutor, Pattern validObjectIdentifierPattern, RepositoryProvider repositoryProvider) {
-        return new ImportServiceImpl(createOrUpdateExecutor, validObjectIdentifierPattern, repositoryProvider);
+    public static ImportServiceImpl create(
+        ExecutorService createOrUpdateExecutor,
+        Pattern validObjectIdentifierPattern,
+        Path inboxDir,
+        Path outboxDir,
+        RepositoryProvider repositoryProvider) {
+        return new ImportServiceImpl(
+            createOrUpdateExecutor,
+            validObjectIdentifierPattern,
+            // Converting inbox and outbox to absolute paths. Normally, they should already be absolute, but in development testing, 
+            // they are provided as paths relative to the project root for convenience.
+            inboxDir.toAbsolutePath(),
+            outboxDir.toAbsolutePath(),
+            repositoryProvider);
     }
 
     @Override
-    public ImportJob addImport(ImportCommandDto command) throws InvalidJobException {
-        validateJobDto(command);
+    public ImportJob addImport(ImportCommandDto command) throws InvalidImportException {
+        validateImportCommandDto(command);
+        var batchOutbox = outboxDir.resolve(inboxDir.relativize(Path.of(command.getPath())));
+        initializeBatchOutbox(batchOutbox);
         var importJob = ImportJob.builder()
             .path(Path.of(command.getPath()))
+            .batchOutbox(batchOutbox)
             .singleObject(command.getSingleObject())
             .validObjectIdentifierPattern(validObjectIdentifierPattern)
             .executorService(createOrUpdateExecutor)
@@ -67,10 +88,28 @@ public class ImportServiceImpl implements ImportService, Managed {
         return importJob;
     }
 
-    private void validateJobDto(ImportCommandDto jobDto) throws InvalidJobException {
+    private void initializeBatchOutbox(Path batchOutbox) {
+        if (!Files.exists(batchOutbox)) {
+            try {
+                Files.createDirectories(batchOutbox.resolve("processed"));
+                Files.createDirectories(batchOutbox.resolve("failed"));
+            }
+            catch (Exception e) {
+                throw new RuntimeException(String.format("Failed to create outbox directory '%s'", batchOutbox), e);
+            }
+        }
+    }
+
+    private void validateImportCommandDto(ImportCommandDto jobDto) throws InvalidImportException {
         var path = jobDto.getPath();
+        if (!Path.of(path).isAbsolute()) {
+            throw new InvalidImportException(String.format("Path '%s' is not an absolute path", path));
+        }
         if (!Files.isDirectory(Path.of(path))) {
-            throw new InvalidJobException(String.format("Path '%s' does not exist or is not a directory", path));
+            throw new InvalidImportException(String.format("Path '%s' does not exist or is not a directory", path));
+        }
+        if (!Path.of(path).startsWith(inboxDir)) {
+            throw new InvalidImportException(String.format("Path '%s' is not a subdirectory of the inbox directory", path));
         }
     }
 

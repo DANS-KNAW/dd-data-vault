@@ -19,7 +19,7 @@ import lombok.AllArgsConstructor;
 import nl.knaw.dans.datavault.Conversions;
 import nl.knaw.dans.datavault.api.ImportCommandDto;
 import nl.knaw.dans.datavault.core.ImportService;
-import nl.knaw.dans.datavault.core.InvalidJobException;
+import nl.knaw.dans.datavault.core.InvalidImportException;
 import org.mapstruct.factory.Mappers;
 
 import javax.ws.rs.core.Response;
@@ -54,7 +54,7 @@ public class ImportsApiResource implements ImportsApi {
                 .entity(conversions.convert(importService.addImport(importJobDto)))
                 .build();
         }
-        catch (InvalidJobException e) {
+        catch (InvalidImportException e) {
             return Response.status(Response.Status.BAD_REQUEST).entity(e.getMessage()).build();
         }
     }

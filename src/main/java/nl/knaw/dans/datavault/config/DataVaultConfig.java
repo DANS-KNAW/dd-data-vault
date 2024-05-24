@@ -17,12 +17,17 @@ package nl.knaw.dans.datavault.config;
 
 import lombok.Data;
 
+import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 
 @Data
 public class DataVaultConfig {
     @NotNull
     private String validObjectIdentifierPattern;
+    @NotNull
+    @Valid  
+    private IngestConfig ingest;
+    
     @NotNull
     private OcflRepositoryConfig ocflRepository;
     @NotNull

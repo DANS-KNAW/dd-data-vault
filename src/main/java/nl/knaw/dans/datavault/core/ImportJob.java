@@ -63,6 +63,8 @@ public class ImportJob implements Runnable {
     @Getter
     private final Path path;
 
+    private final Path batchOutbox;
+
     @Getter
     private final boolean singleObject;
 
@@ -92,8 +94,8 @@ public class ImportJob implements Runnable {
 
     private void createOrUpdateObject() {
         try {
-            checkObjectImportDirectoryLayout(path);
-            new ObjectCreateOrUpdateTask(path, repositoryProvider, acceptTimestampVersionDirectories).run();
+            checkBatchLayout(path.getParent());
+            new ObjectCreateOrUpdateTask(path, batchOutbox, repositoryProvider, acceptTimestampVersionDirectories).run();
             status = Status.SUCCESS;
         }
         catch (Exception e) {
@@ -104,11 +106,11 @@ public class ImportJob implements Runnable {
 
     @SneakyThrows
     private void createOrUpdateObjects() {
-        checkBatchLayout();
+        checkBatchLayout(path);
         List<Callable<Object>> tasks = new LinkedList<>();
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(path)) {
             for (Path path : stream) {
-                tasks.add(Executors.callable(new ObjectCreateOrUpdateTask(path, repositoryProvider, acceptTimestampVersionDirectories)));
+                tasks.add(Executors.callable(new ObjectCreateOrUpdateTask(path, batchOutbox, repositoryProvider, acceptTimestampVersionDirectories)));
             }
         }
         log.info("Starting {} tasks for batch directory {}", tasks.size(), path);
@@ -152,7 +154,7 @@ public class ImportJob implements Runnable {
      * In this example an object identifier must be a DANS URN:NBN value.
      */
     @SneakyThrows
-    private void checkBatchLayout() {
+    private void checkBatchLayout(Path path) {
         log.debug("Validating batch layout for batch directory {}", path);
         List<Path> invalidObjectDirectories = new LinkedList<>();
         List<Path> invalidVersionDirectories = new LinkedList<>();
@@ -175,15 +177,6 @@ public class ImportJob implements Runnable {
                 ", invalid version directories: " + invalidVersionDirectories);
         }
         log.debug("Batch layout for batch directory {} is valid", path);
-    }
-
-    private void checkObjectImportDirectoryLayout(Path objectDir) {
-        var result = validateObjectImportDirectoryLayout(objectDir);
-        if (!result.isObjectImportDirNameIsValid() || !result.getInvalidVersionDirectories().isEmpty()) {
-            throw new IllegalArgumentException("Invalid object import directory layout: " +
-                "invalid object directory: " + objectDir +
-                ", invalid version directories: " + result.getInvalidVersionDirectories());
-        }
     }
 
     @SneakyThrows

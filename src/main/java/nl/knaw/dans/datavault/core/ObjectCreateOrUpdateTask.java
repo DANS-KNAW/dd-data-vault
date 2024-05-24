@@ -16,7 +16,7 @@
 package nl.knaw.dans.datavault.core;
 
 import lombok.AllArgsConstructor;
-import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 import java.nio.file.DirectoryStream;
@@ -26,9 +26,11 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.stream.StreamSupport;
 
+@Slf4j
 @AllArgsConstructor
 public class ObjectCreateOrUpdateTask implements Runnable {
     private final Path objectDirectory;
+    private final Path batchOutbox;
     private final RepositoryProvider repositoryProvider;
     private final boolean acceptTimestampVersionDirectories;
 
@@ -64,9 +66,25 @@ public class ObjectCreateOrUpdateTask implements Runnable {
     }
 
     @Override
-    @SneakyThrows
     public void run() {
-        addVersionsToRepository(getVersionDirectoriesInOrder());
+        try {
+            addVersionsToRepository(getVersionDirectoriesInOrder());
+            moveDirectoryToOutbox("processed");
+        }
+        catch (Exception e) {
+            log.error("Error processing object directory {}", objectDirectory, e);
+            moveDirectoryToOutbox("failed");
+        }
+    }
+
+    private void moveDirectoryToOutbox(String subdir) {
+        var outboxSubdir = batchOutbox.resolve(subdir);
+        try {
+            Files.move(objectDirectory, outboxSubdir.resolve(objectDirectory.getFileName()));
+        }
+        catch (IOException e) {
+            log.error("Failed to move object directory {} to outbox {}", objectDirectory, outboxSubdir, e);
+        }
     }
 
     private List<Path> getVersionDirectoriesInOrder() throws IOException {

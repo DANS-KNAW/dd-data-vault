@@ -17,9 +17,11 @@ package nl.knaw.dans.datavault.config;
 
 import lombok.Data;
 
+import javax.validation.constraints.NotNull;
 import java.nio.file.Path;
 
 @Data
 public class OcflRepositoryConfig {
+    @NotNull
     private Path workDir;
 }

@@ -13,22 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package nl.knaw.dans.datavault.core;
+package nl.knaw.dans.datavault.config;
 
-import nl.knaw.dans.datavault.api.ImportCommandDto;
+import lombok.Data;
 
-import java.util.UUID;
+import javax.validation.constraints.NotNull;
+import java.nio.file.Path;
 
-public interface ImportService {
-
-    /**
-     * Add an import job to the queue.
-     *
-     * @param command the import command
-     * @return the resulting import job
-     * @throws InvalidImportException if the import is invalid
-     */
-    ImportJob addImport(ImportCommandDto command) throws InvalidImportException;
-
-    ImportJob getImport(UUID id);
+@Data
+public class IngestConfig {
+    @NotNull
+    private Path inbox;
+    @NotNull
+    private Path outbox;
 }
