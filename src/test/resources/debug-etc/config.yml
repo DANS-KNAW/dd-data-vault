@@ -29,11 +29,10 @@ dataVault:
   # Settings for the ingest area
   #
   ingest:
-    # TODO: rename dir data-vault to dd-data-vault
     #
     # Object import directories must be located under the inbox directory, possibly in a batch subdirectory.
     #
-    inbox: data/inbox
+    inbox: data/ingest/inbox
     #
     # Object import directories that have been processed are moved to the outbox directory, under the same relative path as in the inbox, 
     # with an additional 'processed' or 'failed' subdirectory.
@@ -41,7 +40,7 @@ dataVault:
     # For example, if an object import directory is located at /var/opt/dans.knaw.nl/tmp/data-vault/inbox/batch-1, then after processing it is moved to
     # /var/opt/dans.knaw.nl/tmp/data-vault/outbox/batch-1/processed or /var/opt/dans.knaw.nl/tmp/data-vault/outbox/batch-1/failed.
     #
-    outbox: data/outbox
+    outbox: data/ingest/outbox
 
 
   #

@@ -75,6 +75,8 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
         environment.lifecycle().manage(ocflRepositoryProvider);
         var jobService = ImportServiceImpl.builder()
             .repositoryProvider(createUnitOfWorkAwareProxy(ocflRepositoryProvider))
+            .inboxDir(configuration.getDataVault().getIngest().getInbox())
+            .outboxDir(configuration.getDataVault().getIngest().getOutbox())
             .validObjectIdentifierPattern(validObjectIdentifierPattern)
             .createOrUpdateExecutor(configuration.getExecutorService().build(environment))
             .build();
