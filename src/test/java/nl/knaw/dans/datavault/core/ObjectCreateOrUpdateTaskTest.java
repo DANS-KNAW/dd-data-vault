@@ -36,33 +36,56 @@ public class ObjectCreateOrUpdateTaskTest extends AbstractTestFixture {
 
     @Test
     public void simple_object_should_be_added_and_moved_to_processed_folder() throws Exception {
-        var simpleObject = copyToTestDir("simple-object");
+        String objectName = "simple-object";
+        var simpleObject = copyToTestDir(objectName);
         var task = new ObjectCreateOrUpdateTask(simpleObject, testDir.resolve("out"), repositoryProvider, false);
         task.run();
         Mockito.verify(repositoryProvider).addVersion(
-            "simple-object",
+            objectName,
             1,
             simpleObject.resolve("v1")
         );
-        assertDirectoriesEqual(getTestInput("simple-object"), testDir.resolve("out/processed/simple-object"));
+        assertDirectoriesEqual(getTestInput(objectName), testDir.resolve("out/processed/" + objectName));
     }
 
     @Test
     public void multi_version_object_should_add_multiple_versions_and_be_moved_to_processed_folder() throws Exception {
-        var multiVersionObject = copyToTestDir("multi-version-object");
+        String objectName = "multi-version-object";
+        var multiVersionObject = copyToTestDir(objectName);
         var task = new ObjectCreateOrUpdateTask(multiVersionObject, testDir.resolve("out"), repositoryProvider, false);
         task.run();
         Mockito.verify(repositoryProvider).addVersion(
-            "multi-version-object",
+            objectName,
             1,
             multiVersionObject.resolve("v1")
         );
         Mockito.verify(repositoryProvider).addVersion(
-            "multi-version-object",
+            objectName,
             2,
             multiVersionObject.resolve("v2")
         );
-        assertDirectoriesEqual(getTestInput("multi-version-object"), testDir.resolve("out/processed/multi-version-object"));
+        assertDirectoriesEqual(getTestInput(objectName), testDir.resolve("out/processed/" + objectName));
     }
 
+    @Test
+    public void invalid_version_directories_because_of_non_number_version_should_result_in_object_being_moved_to_failed_folder() throws Exception {
+        // Note that this will NOT result in a failure if there is only one version, because then the comparison will not be made. However, the layout is
+        // also checked at a higher level, so this is not a problem.
+        var objectName = "invalid-version-object-NaN";
+        var invalidVersionObject = copyToTestDir(objectName);
+        var task = new ObjectCreateOrUpdateTask(invalidVersionObject, testDir.resolve("out"), repositoryProvider, false);
+        task.run();
+        assertDirectoriesEqual(getTestInput(objectName), testDir.resolve("out/failed/").resolve(objectName));
+    }
+
+    @Test
+    public void invalid_version_directories_because_of_mission_v_prefix_should_result_in_object_being_moved_to_failed_folder() throws Exception {
+        // Note that this will NOT result in a failure if there is only one version, because then the comparison will not be made. However, the layout is
+        // also checked at a higher level, so this is not a problem.
+        var objectName = "invalid-version-object-no-v";
+        var invalidVersionObject = copyToTestDir(objectName);
+        var task = new ObjectCreateOrUpdateTask(invalidVersionObject, testDir.resolve("out"), repositoryProvider, false);
+        task.run();
+        assertDirectoriesEqual(getTestInput(objectName), testDir.resolve("out/failed/").resolve(objectName));
+    }
 }
