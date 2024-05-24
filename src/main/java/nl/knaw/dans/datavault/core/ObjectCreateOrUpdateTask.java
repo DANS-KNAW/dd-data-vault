@@ -37,7 +37,7 @@ public class ObjectCreateOrUpdateTask implements Runnable {
     private static class VersionDirectoryComparator implements Comparator<Path> {
         @Override
         public int compare(Path p1, Path p2) {
-            if (!p1.getFileName().startsWith("v") || !p2.getFileName().startsWith("v")) {
+            if (!p1.getFileName().toString().startsWith("v") || !p2.getFileName().toString().startsWith("v")) {
                 throw new IllegalArgumentException("Version directory names should start with 'v'");
             }
             try {
