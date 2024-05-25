@@ -15,11 +15,13 @@
  */
 package nl.knaw.dans.datavault.core;
 
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Builder.Default;
 import lombok.Data;
 import lombok.Getter;
-import lombok.SneakyThrows;
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
@@ -42,6 +44,7 @@ import java.util.regex.Pattern;
  * batch directory).
  */
 @Builder(builderClassName = "Builder")
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Slf4j
 public class ImportJob implements Runnable {
     public enum Status {
@@ -50,15 +53,18 @@ public class ImportJob implements Runnable {
         SUCCESS,
         FAILED
     }
-
+    
     @Data
     private static class ObjectValidationResult {
         private boolean objectImportDirNameIsValid;
         private final List<Path> invalidVersionDirectories = new ArrayList<>();
     }
 
-    private final Pattern validObjectIdentifierPattern;
+    @Default
+    private final Pattern validObjectIdentifierPattern = Pattern.compile(".+");
+    @NonNull
     private final ExecutorService executorService;
+    @NonNull
     private final RepositoryProvider repositoryProvider;
     private final boolean acceptTimestampVersionDirectories;
 
@@ -67,8 +73,10 @@ public class ImportJob implements Runnable {
     private final UUID id = UUID.randomUUID();
 
     @Getter
+    @NonNull
     private final Path path;
 
+    @NonNull
     private final Path batchOutbox;
 
     @Getter
@@ -92,6 +100,10 @@ public class ImportJob implements Runnable {
         }
         catch (IOException | InterruptedException | ExecutionException e) {
             log.error("Error processing import job for {}", path, e);
+            status = Status.FAILED;
+        }
+        catch (IllegalArgumentException e) {
+            log.error("Invalid batch layout for batch directory {}", path, e);
             status = Status.FAILED;
         }
         finally {
@@ -153,8 +165,7 @@ public class ImportJob implements Runnable {
         log.debug("Batch layout for batch directory {} is valid", path);
     }
 
-    @SneakyThrows
-    private ObjectValidationResult validateObjectImportDirectoryLayout(Path objectDir) {
+    private ObjectValidationResult validateObjectImportDirectoryLayout(Path objectDir) throws IOException {
         var result = new ObjectValidationResult();
         String objectDirName = objectDir.getFileName().toString();
 

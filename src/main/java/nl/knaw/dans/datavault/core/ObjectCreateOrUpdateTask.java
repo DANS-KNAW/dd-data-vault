@@ -64,8 +64,13 @@ public class ObjectCreateOrUpdateTask implements Runnable {
         }
         catch (Exception e) {
             log.error("Error processing object directory {}", objectDirectory, e);
-            moveDirectoryToOutbox("failed");
-            status = Status.FAILED;
+            try {
+                status = Status.FAILED;
+                moveDirectoryToOutbox("failed");
+            }
+            catch (IOException ex) {
+                throw new RuntimeException(ex);
+            }
         }
     }
 
@@ -90,8 +95,9 @@ public class ObjectCreateOrUpdateTask implements Runnable {
         }
     }
 
-    private void moveDirectoryToOutbox(String subdir) {
+    private void moveDirectoryToOutbox(String subdir) throws IOException {
         var outboxSubdir = batchOutbox.resolve(subdir);
+        Files.createDirectories(outboxSubdir);
         try {
             Files.move(objectDirectory, outboxSubdir.resolve(objectDirectory.getFileName()));
         }

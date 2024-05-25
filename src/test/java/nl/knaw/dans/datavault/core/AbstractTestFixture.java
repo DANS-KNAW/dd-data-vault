@@ -36,8 +36,13 @@ public abstract class AbstractTestFixture {
     }
 
     protected Path copyToTestDir(String source) throws Exception {
+        return copyToTestDir(source, "");
+    }
+
+    protected Path copyToTestDir(String source, String outDir) throws Exception {
         var sourcePath = getTestInput(source);
-        Path target = testDir.resolve(sourcePath.getFileName());
+        Files.createDirectories(testDir.resolve(outDir));
+        Path target = testDir.resolve(outDir).resolve(sourcePath.getFileName());
         FileUtils.copyDirectory(sourcePath.toFile(), target.toFile());
         return target;
     }
