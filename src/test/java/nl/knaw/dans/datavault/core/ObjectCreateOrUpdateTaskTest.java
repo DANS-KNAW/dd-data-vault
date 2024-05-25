@@ -22,6 +22,7 @@ import org.mockito.Mockito;
 import java.nio.file.Files;
 
 import static nl.knaw.dans.lib.util.TestUtils.assertDirectoriesEqual;
+import static org.assertj.core.api.Assertions.assertThat;
 
 public class ObjectCreateOrUpdateTaskTest extends AbstractTestFixture {
     private final RepositoryProvider repositoryProvider = Mockito.mock(RepositoryProvider.class);
@@ -35,7 +36,7 @@ public class ObjectCreateOrUpdateTaskTest extends AbstractTestFixture {
     }
 
     @Test
-    public void simple_object_should_be_added_and_moved_to_processed_folder() throws Exception {
+    public void simple_object_should_be_added() throws Exception {
         String objectName = "simple-object";
         var simpleObject = copyToTestDir(objectName);
         var task = new ObjectCreateOrUpdateTask(simpleObject, testDir.resolve("out"), repositoryProvider, false);
@@ -46,10 +47,11 @@ public class ObjectCreateOrUpdateTaskTest extends AbstractTestFixture {
             simpleObject.resolve("v1")
         );
         assertDirectoriesEqual(getTestInput(objectName), testDir.resolve("out/processed/" + objectName));
+        assertThat(task.getStatus()).isEqualTo(ObjectCreateOrUpdateTask.Status.SUCCESS);
     }
 
     @Test
-    public void multi_version_object_should_add_multiple_versions_and_be_moved_to_processed_folder() throws Exception {
+    public void multi_version_object_should_add_multiple_versions() throws Exception {
         String objectName = "multi-version-object";
         var multiVersionObject = copyToTestDir(objectName);
         var task = new ObjectCreateOrUpdateTask(multiVersionObject, testDir.resolve("out"), repositoryProvider, false);
@@ -65,10 +67,11 @@ public class ObjectCreateOrUpdateTaskTest extends AbstractTestFixture {
             multiVersionObject.resolve("v2")
         );
         assertDirectoriesEqual(getTestInput(objectName), testDir.resolve("out/processed/" + objectName));
+        assertThat(task.getStatus()).isEqualTo(ObjectCreateOrUpdateTask.Status.SUCCESS);
     }
 
     @Test
-    public void invalid_version_directories_because_of_non_number_version_should_result_in_object_being_moved_to_failed_folder() throws Exception {
+    public void invalid_version_directories_because_of_non_number_version_should_fail() throws Exception {
         // Note that this will NOT result in a failure if there is only one version, because then the comparison will not be made. However, the layout is
         // also checked at a higher level, so this is not a problem.
         var objectName = "invalid-version-object-NaN";
@@ -76,10 +79,11 @@ public class ObjectCreateOrUpdateTaskTest extends AbstractTestFixture {
         var task = new ObjectCreateOrUpdateTask(invalidVersionObject, testDir.resolve("out"), repositoryProvider, false);
         task.run();
         assertDirectoriesEqual(getTestInput(objectName), testDir.resolve("out/failed/").resolve(objectName));
+        assertThat(task.getStatus()).isEqualTo(ObjectCreateOrUpdateTask.Status.FAILED);
     }
 
     @Test
-    public void invalid_version_directories_because_of_mission_v_prefix_should_result_in_object_being_moved_to_failed_folder() throws Exception {
+    public void invalid_version_directories_because_of_mission_v_prefix_should_fail() throws Exception {
         // Note that this will NOT result in a failure if there is only one version, because then the comparison will not be made. However, the layout is
         // also checked at a higher level, so this is not a problem.
         var objectName = "invalid-version-object-no-v";
@@ -87,5 +91,6 @@ public class ObjectCreateOrUpdateTaskTest extends AbstractTestFixture {
         var task = new ObjectCreateOrUpdateTask(invalidVersionObject, testDir.resolve("out"), repositoryProvider, false);
         task.run();
         assertDirectoriesEqual(getTestInput(objectName), testDir.resolve("out/failed/").resolve(objectName));
+        assertThat(task.getStatus()).isEqualTo(ObjectCreateOrUpdateTask.Status.FAILED);
     }
 }

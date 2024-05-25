@@ -35,7 +35,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 @Slf4j
-@RequiredArgsConstructor(access = AccessLevel.PRIVATE)
+@RequiredArgsConstructor(access = AccessLevel.PRIVATE) // Builder should be used to create instances
 public class OcflRepositoryProvider implements RepositoryProvider, Managed {
     @NonNull
     private ItemStore itemStore;

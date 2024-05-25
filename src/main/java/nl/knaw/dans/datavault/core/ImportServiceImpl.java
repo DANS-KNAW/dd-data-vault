@@ -51,7 +51,7 @@ public class ImportServiceImpl implements ImportService, Managed {
     @NonNull
     private final RepositoryProvider repositoryProvider;
 
-    private final List<ImportJob> importTasks = new ArrayList<>();
+    private final List<ImportJob> importJobs = new ArrayList<>();
 
     @Builder
     public static ImportServiceImpl create(
@@ -84,7 +84,7 @@ public class ImportServiceImpl implements ImportService, Managed {
             .repositoryProvider(repositoryProvider)
             .build();
         jobExecutor.execute(importJob);
-        importTasks.add(importJob);
+        importJobs.add(importJob);
         return importJob;
     }
 
@@ -115,7 +115,7 @@ public class ImportServiceImpl implements ImportService, Managed {
 
     @Override
     public ImportJob getImport(UUID id) {
-        return importTasks.stream()
+        return importJobs.stream()
             .filter(job -> job.getId().equals(id))
             .findFirst()
             .orElse(null);

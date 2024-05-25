@@ -15,26 +15,23 @@
  */
 package nl.knaw.dans.datavault.core;
 
-import nl.knaw.dans.datavault.api.ImportCommandDto;
+import org.junit.jupiter.api.Test;
 
-import java.util.UUID;
+public class ImportJobTest extends AbstractTestFixture {
 
-public interface ImportService {
-
-    /**
-     * Add an import job to the queue.
-     *
-     * @param command the import command
-     * @return the resulting import job
-     * @throws InvalidImportException if the import is invalid
-     */
-    ImportJob addImport(ImportCommandDto command) throws InvalidImportException;
-
-    /**
-     * Get an import job by its id. The object returned provides information about the status of the import job.
-     *
-     * @param id the id of the import job
-     * @return the import job
-     */
-    ImportJob getImport(UUID id);
+    @Test
+    public void test() {
+        var importJob = ImportJob.builder()
+                .validObjectIdentifierPattern(null)
+                .executorService(null)
+                .repositoryProvider(null)
+                .acceptTimestampVersionDirectories(false)
+                .path(null)
+                .batchOutbox(null)
+                .build();
+        
+        
+        
+        
+    }
 }

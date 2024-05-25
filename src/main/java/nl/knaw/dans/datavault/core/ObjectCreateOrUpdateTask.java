@@ -15,82 +15,64 @@
  */
 package nl.knaw.dans.datavault.core;
 
-import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NonNull;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import nl.knaw.dans.datavault.core.util.TimestampDirectoryComparator;
+import nl.knaw.dans.datavault.core.util.VersionDirectoryComparator;
 
 import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Comparator;
 import java.util.List;
 import java.util.stream.StreamSupport;
 
+/**
+ * Task that processes an object import directory by adding its versions to the repository and moving the directory to the outbox. 
+ */
 @Slf4j
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class ObjectCreateOrUpdateTask implements Runnable {
+    public enum Status {
+        PENDING,
+        RUNNING,
+        SUCCESS,
+        FAILED
+    }
+
+    @NonNull
     private final Path objectDirectory;
+    @NonNull
     private final Path batchOutbox;
+    @NonNull
     private final RepositoryProvider repositoryProvider;
+
     private final boolean acceptTimestampVersionDirectories;
 
-    private static class VersionDirectoryComparator implements Comparator<Path> {
-        @Override
-        public int compare(Path p1, Path p2) {
-            if (!p1.getFileName().toString().startsWith("v") || !p2.getFileName().toString().startsWith("v")) {
-                throw new IllegalArgumentException("Version directory names should start with 'v'");
-            }
-            try {
-                Long l1 = Long.parseLong(p1.getFileName().toString().substring(1));
-                Long l2 = Long.parseLong(p2.getFileName().toString().substring(1));
-                return l1.compareTo(l2);
-            }
-            catch (NumberFormatException e) {
-                throw new IllegalArgumentException("Version directory names should start with 'v' followed by a number");
-            }
-        }
-    }
-
-    private static class TimestampDirectoryComparator implements Comparator<Path> {
-        @Override
-        public int compare(Path p1, Path p2) {
-            try {
-                Long l1 = Long.parseLong(p1.getFileName().toString());
-                Long l2 = Long.parseLong(p2.getFileName().toString());
-                return l1.compareTo(l2);
-            }
-            catch (NumberFormatException e) {
-                throw new IllegalArgumentException("Timestamp directory names should be numbers");
-            }
-        }
-    }
+    @Getter
+    private Status status = Status.PENDING;
 
     @Override
     public void run() {
+        status = Status.RUNNING;
         try {
             addVersionsToRepository(getVersionDirectoriesInOrder());
             moveDirectoryToOutbox("processed");
+            status = Status.SUCCESS;
         }
         catch (Exception e) {
             log.error("Error processing object directory {}", objectDirectory, e);
             moveDirectoryToOutbox("failed");
-        }
-    }
-
-    private void moveDirectoryToOutbox(String subdir) {
-        var outboxSubdir = batchOutbox.resolve(subdir);
-        try {
-            Files.move(objectDirectory, outboxSubdir.resolve(objectDirectory.getFileName()));
-        }
-        catch (IOException e) {
-            log.error("Failed to move object directory {} to outbox {}", objectDirectory, outboxSubdir, e);
+            status = Status.FAILED;
         }
     }
 
     private List<Path> getVersionDirectoriesInOrder() throws IOException {
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(objectDirectory)) {
             return StreamSupport.stream(stream.spliterator(), false)
-                .sorted(acceptTimestampVersionDirectories ? new TimestampDirectoryComparator() : new VersionDirectoryComparator())
+                .sorted(acceptTimestampVersionDirectories ? TimestampDirectoryComparator.INSTANCE : VersionDirectoryComparator.INSTANCE)
                 .toList();
         }
     }
@@ -105,6 +87,16 @@ public class ObjectCreateOrUpdateTask implements Runnable {
             for (var version : versions) {
                 repositoryProvider.addVersion(objectDirectory.getFileName().toString(), Integer.parseInt(version.getFileName().toString().substring(1)), version);
             }
+        }
+    }
+
+    private void moveDirectoryToOutbox(String subdir) {
+        var outboxSubdir = batchOutbox.resolve(subdir);
+        try {
+            Files.move(objectDirectory, outboxSubdir.resolve(objectDirectory.getFileName()));
+        }
+        catch (IOException e) {
+            log.error("Failed to move object directory {} to outbox {}", objectDirectory, outboxSubdir, e);
         }
     }
 }

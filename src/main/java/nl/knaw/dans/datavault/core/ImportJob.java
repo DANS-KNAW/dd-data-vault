@@ -22,6 +22,7 @@ import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 
+import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -30,11 +31,16 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.regex.Pattern;
 
+/**
+ * Represents an import job that processes a batch directory containing object import directories. It is also possible to process a single object import directory (which must then still be placed in a
+ * batch directory).
+ */
 @Builder(builderClassName = "Builder")
 @Slf4j
 public class ImportJob implements Runnable {
@@ -73,7 +79,6 @@ public class ImportJob implements Runnable {
     private Status status = Status.PENDING;
 
     @Override
-    @SneakyThrows
     public void run() {
         try {
             log.debug("Starting job for {}", path);
@@ -85,27 +90,22 @@ public class ImportJob implements Runnable {
                 createOrUpdateObjects();
             }
         }
-        catch (Exception e) {
-            log.error("Job for {} failed", path, e);
+        catch (IOException | InterruptedException | ExecutionException e) {
+            log.error("Error processing import job for {}", path, e);
             status = Status.FAILED;
-            throw e;
+        }
+        finally {
+            log.debug("Job for {} finished with status {}", path, status);
         }
     }
 
-    private void createOrUpdateObject() {
-        try {
-            checkBatchLayout(path.getParent());
-            new ObjectCreateOrUpdateTask(path, batchOutbox, repositoryProvider, acceptTimestampVersionDirectories).run();
-            status = Status.SUCCESS;
-        }
-        catch (Exception e) {
-            status = Status.FAILED;
-            throw e;
-        }
+    private void createOrUpdateObject() throws IOException, ExecutionException, InterruptedException {
+        checkBatchLayout(path.getParent());
+        var future = executorService.submit(new ObjectCreateOrUpdateTask(path, batchOutbox, repositoryProvider, acceptTimestampVersionDirectories));
+        status = checkFuture(future) ? Status.SUCCESS : Status.FAILED;
     }
 
-    @SneakyThrows
-    private void createOrUpdateObjects() {
+    private void createOrUpdateObjects() throws IOException, InterruptedException {
         checkBatchLayout(path);
         List<Callable<Object>> tasks = new LinkedList<>();
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(path)) {
@@ -118,7 +118,7 @@ public class ImportJob implements Runnable {
         status = futures.stream().allMatch(this::checkFuture) ? Status.SUCCESS : Status.FAILED;
     }
 
-    private boolean checkFuture(Future<Object> future) {
+    private boolean checkFuture(Future<?> future) {
         try {
             future.get();
             return true;
@@ -128,9 +128,7 @@ public class ImportJob implements Runnable {
         }
     }
 
-    
-    @SneakyThrows
-    private void checkBatchLayout(Path path) {
+    private void checkBatchLayout(Path path) throws IOException {
         log.debug("Validating batch layout for batch directory {}", path);
         List<Path> invalidObjectDirectories = new LinkedList<>();
         List<Path> invalidVersionDirectories = new LinkedList<>();
@@ -149,8 +147,8 @@ public class ImportJob implements Runnable {
 
         if (!invalidObjectDirectories.isEmpty() || !invalidVersionDirectories.isEmpty()) {
             throw new IllegalArgumentException("Invalid batch layout: " +
-                "invalid object directories: " + invalidObjectDirectories +
-                ", invalid version directories: " + invalidVersionDirectories);
+                "invalid object directories (name must match configured pattern): " + invalidObjectDirectories +
+                ", invalid version directories (name must follow vN pattern or be a number, depending on configuration): " + invalidVersionDirectories);
         }
         log.debug("Batch layout for batch directory {} is valid", path);
     }
