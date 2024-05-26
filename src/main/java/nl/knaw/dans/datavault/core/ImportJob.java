@@ -136,7 +136,7 @@ public class ImportJob implements Runnable {
             }
             else {
                 status = Status.FAILED;
-                message = "One or more tasks failed. Check error log in outbox.";
+                message = String.format("One or more tasks failed. Check error documents in '%s'.", batchOutbox);
             }
         }
         else {

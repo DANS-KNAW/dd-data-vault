@@ -26,6 +26,7 @@ import java.util.regex.Pattern;
 import static nl.knaw.dans.lib.util.TestUtils.assertDirectoriesEqual;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 
 public class ImportJobTest extends AbstractTestFixture {
     private final RepositoryProvider repositoryProvider = Mockito.mock(RepositoryProvider.class);
@@ -99,4 +100,33 @@ public class ImportJobTest extends AbstractTestFixture {
         // Then
         assertThat(importJob.getStatus()).isEqualTo(ImportJob.Status.FAILED);
     }
+
+    @Test
+    public void run_should_make_import_job_failed_when_one_task_fails() throws Exception {
+        // Given
+        copyToTestDir("simple-object", "batch4");
+        var multiVersionObject = copyToTestDir("multi-version-object", "batch4");
+        var outbox = testDir.resolve("outbox");
+        Files.createDirectories(outbox);
+
+        // When
+        // Make the second version of the multi-version-object fail
+        doThrow(new RuntimeException("Failed to add version"))
+            .when(repositoryProvider)
+            .addVersion(eq("multi-version-object"), eq(2), eq(multiVersionObject.resolve("v2")));
+        var importJob = ImportJob.builder()
+            .executorService(executorService)
+            .repositoryProvider(repositoryProvider)
+            .path(testDir.resolve("batch4"))
+            .batchOutbox(outbox)
+            .build();
+        importJob.run();
+
+        // Then
+        assertThat(importJob.getStatus()).isEqualTo(ImportJob.Status.FAILED);
+        assertThat(importJob.getMessage()).isEqualTo(String.format("One or more tasks failed. Check error documents in '%s'.", outbox));
+        assertDirectoriesEqual(getTestInput("simple-object"), outbox.resolve("processed/simple-object"));
+        assertDirectoriesEqual(getTestInput("multi-version-object"), outbox.resolve("failed/multi-version-object"));
+    }
+
 }
