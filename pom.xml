@@ -35,6 +35,8 @@
 
     <properties>
         <main-class>nl.knaw.dans.datavault.DdDataVaultApplication</main-class>
+        <!-- TODO: move to parent -->
+        <dans-java-utils.version>0.13.0</dans-java-utils.version>
     </properties>
 
     <scm>
@@ -82,7 +84,6 @@
         <dependency>
             <groupId>nl.knaw.dans</groupId>
             <artifactId>dans-java-utils</artifactId>
-            <version>0.12.1-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
