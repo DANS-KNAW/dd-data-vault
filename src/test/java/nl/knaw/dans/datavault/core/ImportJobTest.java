@@ -25,7 +25,6 @@ import java.util.regex.Pattern;
 
 import static nl.knaw.dans.lib.util.TestUtils.assertDirectoriesEqual;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.eq;
 
 public class ImportJobTest extends AbstractTestFixture {

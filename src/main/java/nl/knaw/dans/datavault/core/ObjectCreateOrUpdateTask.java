@@ -23,6 +23,7 @@ import nl.knaw.dans.datavault.core.util.TimestampDirectoryComparator;
 import nl.knaw.dans.datavault.core.util.VersionDirectoryComparator;
 
 import java.io.IOException;
+import java.io.PrintStream;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -30,7 +31,7 @@ import java.util.List;
 import java.util.stream.StreamSupport;
 
 /**
- * Task that processes an object import directory by adding its versions to the repository and moving the directory to the outbox. 
+ * Task that processes an object import directory by adding its versions to the repository and moving the directory to the outbox.
  */
 @Slf4j
 @RequiredArgsConstructor
@@ -59,14 +60,14 @@ public class ObjectCreateOrUpdateTask implements Runnable {
         status = Status.RUNNING;
         try {
             addVersionsToRepository(getVersionDirectoriesInOrder());
-            moveDirectoryToOutbox("processed");
+            moveDirectoryToOutbox("processed", null);
             status = Status.SUCCESS;
         }
         catch (Exception e) {
             log.error("Error processing object directory {}", objectDirectory, e);
             try {
                 status = Status.FAILED;
-                moveDirectoryToOutbox("failed");
+                moveDirectoryToOutbox("failed", e);
             }
             catch (IOException ex) {
                 throw new RuntimeException(ex);
@@ -95,11 +96,14 @@ public class ObjectCreateOrUpdateTask implements Runnable {
         }
     }
 
-    private void moveDirectoryToOutbox(String subdir) throws IOException {
+    private void moveDirectoryToOutbox(String subdir, Exception exception) throws IOException {
         var outboxSubdir = batchOutbox.resolve(subdir);
         Files.createDirectories(outboxSubdir);
         try {
             Files.move(objectDirectory, outboxSubdir.resolve(objectDirectory.getFileName()));
+            if (exception != null) {
+                exception.printStackTrace(new PrintStream(outboxSubdir.resolve(objectDirectory.getFileName() + "-error.txt").toFile()));
+            }
         }
         catch (IOException e) {
             log.error("Failed to move object directory {} to outbox {}", objectDirectory, outboxSubdir, e);

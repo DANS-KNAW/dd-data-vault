@@ -32,7 +32,6 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -53,7 +52,7 @@ public class ImportJob implements Runnable {
         SUCCESS,
         FAILED
     }
-    
+
     @Data
     private static class ObjectValidationResult {
         private boolean objectImportDirNameIsValid;
@@ -85,6 +84,9 @@ public class ImportJob implements Runnable {
     @Default
     @Getter
     private Status status = Status.PENDING;
+
+    @Getter
+    private String message;
 
     @Override
     public void run() {
@@ -119,15 +121,28 @@ public class ImportJob implements Runnable {
 
     private void createOrUpdateObjects() throws IOException, InterruptedException {
         checkBatchLayout(path);
-        List<Callable<Object>> tasks = new LinkedList<>();
+        List<ObjectCreateOrUpdateTask> tasks = new LinkedList<>();
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(path)) {
             for (Path path : stream) {
-                tasks.add(Executors.callable(new ObjectCreateOrUpdateTask(path, batchOutbox, repositoryProvider, acceptTimestampVersionDirectories)));
+                tasks.add(new ObjectCreateOrUpdateTask(path, batchOutbox, repositoryProvider, acceptTimestampVersionDirectories));
             }
         }
         log.info("Starting {} tasks for batch directory {}", tasks.size(), path);
-        var futures = executorService.invokeAll(tasks);
-        status = futures.stream().allMatch(this::checkFuture) ? Status.SUCCESS : Status.FAILED;
+        var futures = executorService.invokeAll(tasks.stream().map(Executors::callable).toList());
+
+        if (futures.stream().allMatch(this::checkFuture)) {
+            if (tasks.stream().allMatch(task -> task.getStatus() == ObjectCreateOrUpdateTask.Status.SUCCESS)) {
+                status = Status.SUCCESS;
+            }
+            else {
+                status = Status.FAILED;
+                message = "One or more tasks failed. Check error log in outbox.";
+            }
+        }
+        else {
+            status = Status.FAILED;
+            message = "One or more tasks threw an exception. Check the logs for more information.";
+        }
     }
 
     private boolean checkFuture(Future<?> future) {

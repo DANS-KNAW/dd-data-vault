@@ -20,6 +20,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import java.nio.file.Files;
+import java.util.stream.Stream;
 
 import static nl.knaw.dans.lib.util.TestUtils.assertDirectoriesEqual;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -80,6 +81,12 @@ public class ObjectCreateOrUpdateTaskTest extends AbstractTestFixture {
         task.run();
         assertDirectoriesEqual(getTestInput(objectName), testDir.resolve("out/failed/").resolve(objectName));
         assertThat(task.getStatus()).isEqualTo(ObjectCreateOrUpdateTask.Status.FAILED);
+        assertThat(Files.exists(testDir.resolve("out/failed/").resolve(objectName + "-error.txt"))).isTrue();
+        try (Stream<String> lines = Files.lines(testDir.resolve("out/failed/").resolve(objectName + "-error.txt"))) {
+            var allLines = lines.toList();
+            assertThat(allLines).isNotEmpty();
+            assertThat(allLines.get(0)).contains("java.lang.IllegalArgumentException");
+        }
     }
 
     @Test
@@ -92,5 +99,11 @@ public class ObjectCreateOrUpdateTaskTest extends AbstractTestFixture {
         task.run();
         assertDirectoriesEqual(getTestInput(objectName), testDir.resolve("out/failed/").resolve(objectName));
         assertThat(task.getStatus()).isEqualTo(ObjectCreateOrUpdateTask.Status.FAILED);
+        assertThat(Files.exists(testDir.resolve("out/failed/").resolve(objectName + "-error.txt"))).isTrue();
+        try (Stream<String> lines = Files.lines(testDir.resolve("out/failed/").resolve(objectName + "-error.txt"))) {
+            var allLines = lines.toList();
+            assertThat(allLines).isNotEmpty();
+            assertThat(allLines.get(0)).contains("IllegalArgumentException");
+        }
     }
 }
