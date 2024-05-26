@@ -23,6 +23,7 @@ import io.dropwizard.core.setup.Bootstrap;
 import io.dropwizard.core.setup.Environment;
 import io.dropwizard.hibernate.HibernateBundle;
 import io.dropwizard.hibernate.UnitOfWorkAwareProxyFactory;
+import lombok.extern.slf4j.Slf4j;
 import nl.knaw.dans.datavault.config.DdDataVaultConfig;
 import nl.knaw.dans.datavault.core.ImportServiceImpl;
 import nl.knaw.dans.datavault.core.OcflRepositoryProvider;
@@ -30,13 +31,17 @@ import nl.knaw.dans.datavault.core.RepositoryProvider;
 import nl.knaw.dans.datavault.core.UnitOfWorkDeclaringRepositoryProviderAdapter;
 import nl.knaw.dans.datavault.resources.ImportsApiResource;
 import nl.knaw.dans.datavault.resources.LayersApiResource;
+import nl.knaw.dans.layerstore.ItemRecord;
 import nl.knaw.dans.layerstore.LayerDatabaseImpl;
 import nl.knaw.dans.layerstore.LayerManagerImpl;
 import nl.knaw.dans.layerstore.LayeredItemStore;
 import nl.knaw.dans.lib.ocflext.StoreInventoryDbBackedContentManager;
+import nl.knaw.dans.lib.util.PersistenceProviderImpl;
 
+import java.io.IOException;
 import java.util.regex.Pattern;
 
+@Slf4j
 public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
 
     private final HibernateBundle<DdDataVaultConfig> hibernateBundle = new DdDataVautHibernateBundle();
@@ -62,26 +67,32 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
     public void run(final DdDataVaultConfig configuration, final Environment environment) {
         var validObjectIdentifierPattern = Pattern.compile(configuration.getDataVault().getValidObjectIdentifierPattern());
 
-        var dao = new LayerDatabaseImpl(hibernateBundle.getSessionFactory());
-        var layerManager = new LayerManagerImpl(
-            configuration.getDataVault().getLayerStore().getStagingRoot(),
-            configuration.getDataVault().getLayerStore().getArchiveProvider().build(),
-            environment.lifecycle().executorService("archiver-worker").build());
-        var itemStore = new LayeredItemStore(dao, layerManager, new StoreInventoryDbBackedContentManager());
-        var ocflRepositoryProvider = createUnitOfWorkAwareProxy(OcflRepositoryProvider.builder()
-            .itemStore(itemStore)
-            .workDir(configuration.getDataVault().getOcflRepository().getWorkDir())
-            .build());
-        environment.lifecycle().manage(ocflRepositoryProvider);
-        var jobService = ImportServiceImpl.builder()
-            .repositoryProvider(createUnitOfWorkAwareProxy(ocflRepositoryProvider))
-            .inboxDir(configuration.getDataVault().getIngest().getInbox())
-            .outboxDir(configuration.getDataVault().getIngest().getOutbox())
-            .validObjectIdentifierPattern(validObjectIdentifierPattern)
-            .createOrUpdateExecutor(configuration.getExecutorService().build(environment))
-            .build();
-        environment.jersey().register(new ImportsApiResource(jobService));
-        environment.jersey().register(new LayersApiResource(layerManager));
+        var dao = new LayerDatabaseImpl(new PersistenceProviderImpl<>(hibernateBundle.getSessionFactory(), ItemRecord.class));
+        try {
+            var layerManager = new LayerManagerImpl(
+                configuration.getDataVault().getLayerStore().getStagingRoot(),
+                configuration.getDataVault().getLayerStore().getArchiveProvider().build(),
+                environment.lifecycle().executorService("archiver-worker").build());
+            var itemStore = new LayeredItemStore(dao, layerManager, new StoreInventoryDbBackedContentManager());
+            var ocflRepositoryProvider = createUnitOfWorkAwareProxy(OcflRepositoryProvider.builder()
+                .itemStore(itemStore)
+                .workDir(configuration.getDataVault().getOcflRepository().getWorkDir())
+                .build());
+            environment.lifecycle().manage(ocflRepositoryProvider);
+            var jobService = ImportServiceImpl.builder()
+                .repositoryProvider(createUnitOfWorkAwareProxy(ocflRepositoryProvider))
+                .inboxDir(configuration.getDataVault().getIngest().getInbox())
+                .outboxDir(configuration.getDataVault().getIngest().getOutbox())
+                .validObjectIdentifierPattern(validObjectIdentifierPattern)
+                .createOrUpdateExecutor(configuration.getExecutorService().build(environment))
+                .build();
+            environment.jersey().register(new ImportsApiResource(jobService));
+            environment.jersey().register(new LayersApiResource(layerManager));
+        }
+        catch (IOException e) {
+            log.error("Error creating LayerManager", e);
+            throw new RuntimeException(e);
+        }
     }
 
     private RepositoryProvider createUnitOfWorkAwareProxy(RepositoryProvider repositoryProvider) {
