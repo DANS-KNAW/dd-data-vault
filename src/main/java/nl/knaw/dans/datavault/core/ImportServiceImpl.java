@@ -109,7 +109,7 @@ public class ImportServiceImpl implements ImportService, Managed {
             throw new InvalidImportException(String.format("Path '%s' does not exist or is not a directory", path));
         }
         if (!Path.of(path).normalize().startsWith(inboxDir)) {
-            throw new InvalidImportException(String.format("Path '%s' is not a subdirectory of the inbox directory", path));
+            throw new InvalidImportException(String.format("Path '%s' is not a subdirectory of the inbox directory %s", path, inboxDir));
         }
     }
 
