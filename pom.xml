@@ -22,7 +22,7 @@
     <parent>
         <groupId>nl.knaw.dans</groupId>
         <artifactId>dd-parent</artifactId>
-        <version>1.5.1</version>
+        <version>1.9.0</version>
     </parent>
 
     <artifactId>dd-data-vault</artifactId>
@@ -35,9 +35,6 @@
 
     <properties>
         <main-class>nl.knaw.dans.datavault.DdDataVaultApplication</main-class>
-        <!-- TODO: move to parent -->
-        <dans-java-utils.version>0.14.0</dans-java-utils.version>
-        <dans-ocfl-java-extensions-lib.version>0.3.0</dans-ocfl-java-extensions-lib.version>
     </properties>
 
     <scm>
@@ -73,7 +70,6 @@
         <dependency>
             <groupId>nl.knaw.dans</groupId>
             <artifactId>dans-ocfl-java-extensions-lib</artifactId>
-            <version>${dans-ocfl-java-extensions-lib.version}</version>
         </dependency>
         <dependency>
             <groupId>io.ocfl</groupId>
