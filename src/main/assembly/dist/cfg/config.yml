@@ -16,7 +16,6 @@ server:
         archive: false
         timeZone: system
         currentLogFilename: /var/opt/dans.knaw.nl/log/dd-data-vault/request.log
-        logFormat: "%-5p [%d{ISO8601}] %c{0}: %m%n%dwREx"
 
 database:
   driverClass: org.postgresql.Driver
