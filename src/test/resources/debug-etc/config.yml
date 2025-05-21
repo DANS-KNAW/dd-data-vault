@@ -64,10 +64,10 @@ dataVault:
     #
     archiveProvider:
       type: TAR
-      archiveRoot: /var/opt/dans.knaw.nl/tmp/dd-data-vault/archive
+      archiveRoot: data/vault/archive
 
     #   type: ZIP
-    #   archiveRoot: /var/opt/dans.knaw.nl/tmp/dd-data-vault/archive
+    #   archiveRoot: data/vault/archive
 
     #   type: DMFTAR
     #   dmfTarExecutable: /usr/local/bin/dmftar # path to the dmftar executable
