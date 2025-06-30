@@ -26,7 +26,6 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import nl.knaw.dans.datavault.api.OcflObjectVersionDto;
 import nl.knaw.dans.layerstore.ItemStore;
@@ -78,14 +77,6 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
             .versionNumber(version).created(versionInfo.getCreated());
     }
 
-    public Object getVersion(String objectId, int version) {
-        log.debug("Retrieving version v{} of object {}", version, objectId);
-        if (ocflRepository == null) {
-            throw new IllegalStateException("OCFL repository is not yet started");
-        }
-        return ocflRepository.getObject(ObjectVersionId.version(objectId, version));
-    }
-
     private VersionInfo createVersionInfo(String message) {
         return new VersionInfo()
             .setMessage(message)
@@ -96,15 +87,19 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
     }
 
     @Override
-    @SneakyThrows
     public void start() {
         log.info("Starting OCFL repository provider");
         var layeredStorage = new LayeredStorage(itemStore);
         var layoutConfig = new NTupleOmitPrefixStorageLayoutConfig().setDelimiter(":").setTupleSize(3); // TODO: make configurable
-        ocflRepository = new OcflRepositoryBuilder()
-            .defaultLayoutConfig(layoutConfig)
-            .inventoryCache(null)
-            .storage(ocflStorageBuilder -> ocflStorageBuilder.storage(layeredStorage))
-            .workDir(Files.createDirectories(workDir)).build();
+        try {
+            ocflRepository = new OcflRepositoryBuilder()
+                .defaultLayoutConfig(layoutConfig)
+                .inventoryCache(null)
+                .storage(ocflStorageBuilder -> ocflStorageBuilder.storage(layeredStorage))
+                .workDir(Files.createDirectories(workDir)).build();
+        }
+        catch (Exception e) {
+            throw new RuntimeException("Failed to create OCFL repository", e);
+        }
     }
 }
