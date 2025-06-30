@@ -71,6 +71,16 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
         ocflRepository.putObject(ObjectVersionId.head(objectId), objectVersionDirectory, createVersionInfo("default message"));
     }
 
+    public Object getVersion(String objectId, int version) {
+        log.debug("Retrieving version v{} of object {}", version, objectId);
+        if (ocflRepository == null) {
+            throw new IllegalStateException("OCFL repository is not yet started");
+        }
+        return ocflRepository.getObject(ObjectVersionId.version(objectId, version));
+    }
+
+
+
     private VersionInfo createVersionInfo(String message) {
         return new VersionInfo()
             .setMessage(message)
