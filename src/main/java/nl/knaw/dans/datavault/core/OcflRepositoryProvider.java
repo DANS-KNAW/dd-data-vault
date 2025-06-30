@@ -17,6 +17,7 @@ package nl.knaw.dans.datavault.core;
 
 import io.dropwizard.lifecycle.Managed;
 import io.ocfl.api.OcflRepository;
+import io.ocfl.api.model.ObjectVersionId;
 import io.ocfl.api.model.User;
 import io.ocfl.api.model.VersionInfo;
 import io.ocfl.core.OcflRepositoryBuilder;
@@ -27,9 +28,9 @@ import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import nl.knaw.dans.datavault.api.OcflObjectVersionDto;
 import nl.knaw.dans.layerstore.ItemStore;
 import nl.knaw.dans.lib.ocflext.LayeredStorage;
-import io.ocfl.api.model.ObjectVersionId;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -44,7 +45,6 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
     private Path workDir;
 
     private OcflRepository ocflRepository;
-
 
     @Builder
     public static OcflRepositoryProvider create(ItemStore itemStore, Path workDir) {
@@ -71,6 +71,13 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
         ocflRepository.putObject(ObjectVersionId.head(objectId), objectVersionDirectory, createVersionInfo("default message"));
     }
 
+    @Override
+    public OcflObjectVersionDto getOcflObjectVersion(String objectId, int version) {
+        var versionInfo = ocflRepository.getObject(ObjectVersionId.version(objectId, version));
+        return new OcflObjectVersionDto()
+            .versionNumber(version).created(versionInfo.getCreated());
+    }
+
     public Object getVersion(String objectId, int version) {
         log.debug("Retrieving version v{} of object {}", version, objectId);
         if (ocflRepository == null) {
@@ -78,8 +85,6 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
         }
         return ocflRepository.getObject(ObjectVersionId.version(objectId, version));
     }
-
-
 
     private VersionInfo createVersionInfo(String message) {
         return new VersionInfo()

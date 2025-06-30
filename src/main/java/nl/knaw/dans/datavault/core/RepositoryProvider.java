@@ -16,6 +16,7 @@
 package nl.knaw.dans.datavault.core;
 
 import io.dropwizard.lifecycle.Managed;
+import nl.knaw.dans.datavault.api.OcflObjectVersionDto;
 
 import java.nio.file.Path;
 
@@ -41,5 +42,14 @@ public interface RepositoryProvider extends Managed {
      * @param objectVersionDirectory The directory containing the new head version of the object
      */
     void addHeadVersion(String objectId, Path objectVersionDirectory);
+
+    /**
+     * Retrieves the version information for the object identified by the given object id and version number.
+     *
+     * @param objectId The identifier of the object
+     * @param version  The version number of the object
+     * @return the version information for the object
+     */
+    OcflObjectVersionDto getOcflObjectVersion(String objectId, int version);
 
 }
