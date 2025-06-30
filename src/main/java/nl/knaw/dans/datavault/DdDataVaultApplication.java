@@ -16,6 +16,8 @@
 
 package nl.knaw.dans.datavault;
 
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
 import io.dropwizard.configuration.SubstitutingSourceProvider;
 import io.dropwizard.core.Application;
@@ -29,8 +31,10 @@ import nl.knaw.dans.datavault.core.ImportServiceImpl;
 import nl.knaw.dans.datavault.core.OcflRepositoryProvider;
 import nl.knaw.dans.datavault.core.RepositoryProvider;
 import nl.knaw.dans.datavault.core.UnitOfWorkDeclaringRepositoryProviderAdapter;
+import nl.knaw.dans.datavault.resources.DefaultApiResource;
 import nl.knaw.dans.datavault.resources.ImportsApiResource;
 import nl.knaw.dans.datavault.resources.LayersApiResource;
+import nl.knaw.dans.datavault.resources.ObjectsApiResource;
 import nl.knaw.dans.layerstore.ItemRecord;
 import nl.knaw.dans.layerstore.LayerDatabaseImpl;
 import nl.knaw.dans.layerstore.LayerManagerImpl;
@@ -66,6 +70,8 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
     @Override
     public void run(final DdDataVaultConfig configuration, final Environment environment) {
         var validObjectIdentifierPattern = Pattern.compile(configuration.getDataVault().getValidObjectIdentifierPattern());
+        environment.getObjectMapper().registerModule(new JavaTimeModule());
+        environment.getObjectMapper().disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
         var dao = new LayerDatabaseImpl(new PersistenceProviderImpl<>(hibernateBundle.getSessionFactory(), ItemRecord.class));
         try {
@@ -88,6 +94,8 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
                 .build();
             environment.jersey().register(new ImportsApiResource(jobService));
             environment.jersey().register(new LayersApiResource(layerManager));
+            environment.jersey().register(new ObjectsApiResource(ocflRepositoryProvider));
+            environment.jersey().register(new DefaultApiResource());
         }
         catch (IOException e) {
             log.error("Error creating LayerManager", e);

@@ -17,7 +17,6 @@ package nl.knaw.dans.datavault.config;
 
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import com.fasterxml.jackson.annotation.JsonTypeInfo.As;
 import com.fasterxml.jackson.annotation.JsonTypeInfo.Id;
 import io.dropwizard.jackson.Discoverable;
 import nl.knaw.dans.layerstore.ArchiveProvider;

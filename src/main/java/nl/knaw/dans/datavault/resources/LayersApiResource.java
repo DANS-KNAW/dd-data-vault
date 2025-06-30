@@ -29,7 +29,7 @@ public class LayersApiResource implements LayersApi {
     private final LayerManager layerManager;
 
     @Override
-    public Response layersLayerIdGet(Long layerId) {
+    public Response layersIdGet(Long layerId) {
         try {
             var layer = layerManager.getLayer(layerId);
             return Response.ok(new LayerStatusDto()

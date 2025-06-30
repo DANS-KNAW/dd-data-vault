@@ -17,6 +17,7 @@ package nl.knaw.dans.datavault.core;
 
 import io.dropwizard.hibernate.UnitOfWork;
 import lombok.AllArgsConstructor;
+import nl.knaw.dans.datavault.api.OcflObjectVersionDto;
 
 import java.nio.file.Path;
 
@@ -34,6 +35,12 @@ public class UnitOfWorkDeclaringRepositoryProviderAdapter implements RepositoryP
     @UnitOfWork
     public void addHeadVersion(String objectId, Path objectVersionDirectory) {
         delegate.addHeadVersion(objectId, objectVersionDirectory);
+    }
+
+    @Override
+    @UnitOfWork
+    public OcflObjectVersionDto getOcflObjectVersion(String objectId, int version) {
+        return delegate.getOcflObjectVersion(objectId, version);
     }
 
     @Override
