@@ -36,6 +36,7 @@
     <properties>
         <main-class>nl.knaw.dans.datavault.DdDataVaultApplication</main-class>
         <dd-data-vault-api.version>0.4.0</dd-data-vault-api.version>
+        <dans-build-resources-maven-plugin.version>1.7.0</dans-build-resources-maven-plugin.version>
     </properties>
 
     <scm>
