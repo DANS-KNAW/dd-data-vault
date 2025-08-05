@@ -28,7 +28,7 @@ import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import nl.knaw.dans.datavault.api.OcflObjectVersionDto;
-import nl.knaw.dans.datavault.config.DefaultUserInfoConfig;
+import nl.knaw.dans.datavault.config.DefaultVersionInfoConfig;
 import nl.knaw.dans.layerstore.ItemStore;
 import nl.knaw.dans.lib.ocflext.LayeredStorage;
 
@@ -45,13 +45,13 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
     private Path workDir;
 
     @NonNull
-    private DefaultUserInfoConfig defaultUserInfoConfig;
+    private DefaultVersionInfoConfig defaultVersionInfoConfig;
 
     private OcflRepository ocflRepository;
 
     @Builder
-    public static OcflRepositoryProvider create(ItemStore itemStore, Path workDir, DefaultUserInfoConfig defaultUserInfoConfig) {
-        return new OcflRepositoryProvider(itemStore, workDir, defaultUserInfoConfig);
+    public static OcflRepositoryProvider create(ItemStore itemStore, Path workDir, DefaultVersionInfoConfig defaultVersionInfoConfig) {
+        return new OcflRepositoryProvider(itemStore, workDir, defaultVersionInfoConfig);
     }
 
     // TODO: add user name and email and message to the method
@@ -83,10 +83,10 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
 
     private VersionInfo createVersionInfo() {
         return new VersionInfo()
-            .setMessage(defaultUserInfoConfig.getMessage())
+            .setMessage(defaultVersionInfoConfig.getMessage())
             .setUser(new User()
-                .setName(defaultUserInfoConfig.getUsername())
-                .setAddress(defaultUserInfoConfig.getEmail().toString())
+                .setName(defaultVersionInfoConfig.getUsername())
+                .setAddress(defaultVersionInfoConfig.getEmail().toString())
             );
     }
 

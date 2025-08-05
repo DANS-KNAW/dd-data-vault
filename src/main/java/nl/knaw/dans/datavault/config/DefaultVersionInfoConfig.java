@@ -22,7 +22,7 @@ import javax.validation.constraints.NotNull;
 import java.net.URI;
 
 @Data
-public class DefaultUserInfoConfig {
+public class DefaultVersionInfoConfig {
     @NotNull
     private String username;
     @NotNull

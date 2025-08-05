@@ -82,7 +82,7 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
             var itemStore = new LayeredItemStore(dao, layerManager, new StoreInventoryDbBackedContentManager());
             var ocflRepositoryProvider = createUnitOfWorkAwareProxy(OcflRepositoryProvider.builder()
                 .itemStore(itemStore)
-                .defaultUserInfoConfig(configuration.getDataVault().getDefaultUserInfo())
+                .defaultVersionInfoConfig(configuration.getDataVault().getDefaultVersionInfo())
                 .workDir(configuration.getDataVault().getOcflRepository().getWorkDir())
                 .build());
             environment.lifecycle().manage(ocflRepositoryProvider);
