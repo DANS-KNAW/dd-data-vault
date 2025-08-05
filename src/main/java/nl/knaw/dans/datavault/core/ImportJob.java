@@ -105,7 +105,7 @@ public class ImportJob implements Runnable {
             status = Status.FAILED;
         }
         catch (IllegalArgumentException e) {
-            log.error("Invalid batch layout for batch directory {}", path, e);
+            log.error("Invalid batch layout for batch directory {}. Leaving input in place.", path, e);
             status = Status.FAILED;
         }
         finally {
@@ -174,7 +174,7 @@ public class ImportJob implements Runnable {
 
         if (!invalidObjectDirectories.isEmpty() || !invalidVersionDirectories.isEmpty()) {
             throw new IllegalArgumentException("Invalid batch layout: " +
-                "invalid object directories (name must match configured pattern): " + invalidObjectDirectories +
+                "invalid object directories (name must match configured pattern '" + validObjectIdentifierPattern + "'): " + invalidObjectDirectories +
                 ", invalid version directories (name must follow vN pattern or be a number, depending on configuration): " + invalidVersionDirectories);
         }
         log.debug("Batch layout for batch directory {} is valid", path);

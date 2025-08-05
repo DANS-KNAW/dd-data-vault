@@ -67,6 +67,15 @@ dataVault:
   ocflRepository:
     workDir: /data/vault/tmp
 
+  defaultUserInfo:
+    #
+    # Default user information to be used when no user information is provided when adding an object version. Currently, there is no way to
+    # provide user information when adding an object version, so this is the only way to set user information.
+    #
+    username: changeme
+    email: changeme@example.com
+    message: change me
+
   #
   # Settings for the layer store in which the data vault stores its data.
   #
