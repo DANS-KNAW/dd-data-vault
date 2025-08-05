@@ -16,23 +16,18 @@
 package nl.knaw.dans.datavault.config;
 
 import lombok.Data;
+import nl.knaw.dans.validation.AllowedUriSchemes;
 
-import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
+import java.net.URI;
 
 @Data
-public class DataVaultConfig {
+public class DefaultVersionInfoConfig {
     @NotNull
-    private String validObjectIdentifierPattern;
+    private String username;
     @NotNull
-    @Valid
-    private IngestConfig ingest;
-
+    @AllowedUriSchemes(schemes = "mailto")
+    private URI email;
     @NotNull
-    private OcflRepositoryConfig ocflRepository;
-    @NotNull
-    @Valid
-    private DefaultVersionInfoConfig defaultVersionInfo;
-    @NotNull
-    private LayerStoreConfig layerStore;
+    private String message;
 }

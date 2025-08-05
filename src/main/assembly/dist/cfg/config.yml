@@ -68,6 +68,15 @@ dataVault:
     workDir: /data/vault/tmp
 
   #
+  # Default version information to be used when no version information is provided when adding an object version. Currently, there is no way to
+  # provide version information when adding an object version, so this is the only way to set user information.
+  #
+  defaultVersionInfo:
+    username: changeme
+    email: changeme@example.com
+    message: change me
+
+  #
   # Settings for the layer store in which the data vault stores its data.
   #
   layerStore:

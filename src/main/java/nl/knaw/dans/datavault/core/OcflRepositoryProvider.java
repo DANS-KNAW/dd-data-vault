@@ -28,6 +28,7 @@ import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import nl.knaw.dans.datavault.api.OcflObjectVersionDto;
+import nl.knaw.dans.datavault.config.DefaultVersionInfoConfig;
 import nl.knaw.dans.layerstore.ItemStore;
 import nl.knaw.dans.lib.ocflext.LayeredStorage;
 
@@ -43,11 +44,14 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
     @NonNull
     private Path workDir;
 
+    @NonNull
+    private DefaultVersionInfoConfig defaultVersionInfoConfig;
+
     private OcflRepository ocflRepository;
 
     @Builder
-    public static OcflRepositoryProvider create(ItemStore itemStore, Path workDir) {
-        return new OcflRepositoryProvider(itemStore, workDir);
+    public static OcflRepositoryProvider create(ItemStore itemStore, Path workDir, DefaultVersionInfoConfig defaultVersionInfoConfig) {
+        return new OcflRepositoryProvider(itemStore, workDir, defaultVersionInfoConfig);
     }
 
     // TODO: add user name and email and message to the method
@@ -58,7 +62,7 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
             throw new IllegalStateException("OCFL repository is not yet started");
         }
         // putObject wants the version number of HEAD, so we need to subtract 1 from the version number
-        ocflRepository.putObject(ObjectVersionId.version(objectId, version - 1), objectVersionDirectory, createVersionInfo("default message"));
+        ocflRepository.putObject(ObjectVersionId.version(objectId, version - 1), objectVersionDirectory, createVersionInfo());
     }
 
     @Override
@@ -67,7 +71,7 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
         if (ocflRepository == null) {
             throw new IllegalStateException("OCFL repository is not yet started");
         }
-        ocflRepository.putObject(ObjectVersionId.head(objectId), objectVersionDirectory, createVersionInfo("default message"));
+        ocflRepository.putObject(ObjectVersionId.head(objectId), objectVersionDirectory, createVersionInfo());
     }
 
     @Override
@@ -77,12 +81,12 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
             .versionNumber(version).created(versionInfo.getCreated());
     }
 
-    private VersionInfo createVersionInfo(String message) {
+    private VersionInfo createVersionInfo() {
         return new VersionInfo()
-            .setMessage(message)
+            .setMessage(defaultVersionInfoConfig.getMessage())
             .setUser(new User()
-                .setName("test-user")
-                .setAddress("mailto:somebody@dans.knaw.nl")
+                .setName(defaultVersionInfoConfig.getUsername())
+                .setAddress(defaultVersionInfoConfig.getEmail().toString())
             );
     }
 
