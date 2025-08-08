@@ -40,11 +40,13 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
-import java.util.Set;
 
 @Slf4j
 @RequiredArgsConstructor(access = AccessLevel.PRIVATE) // Builder should be used to create instances
 public class OcflRepositoryProvider implements RepositoryProvider, Managed {
+    public static final String PACKAGING_FORMAT_KEY = "packaging-format";
+    public static final String DANS_RDA_BAG_PACK_PROFILE_0_1_0 = "DANS RDA BagPack Profile/0.1.0";
+
     @NonNull
     private ItemStore itemStore;
 
@@ -72,7 +74,7 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
         // putObject wants the version number of HEAD, so we need to subtract 1 from the version number
         ocflRepository.putObject(ObjectVersionId.version(objectId, version - 1), objectVersionDirectory, createVersionInfo());
 
-        updateObjectVersionProperties(objectId, version, "packaging-format", "DANS RDA BagPack Profile/0.1.0");
+        updateObjectVersionProperties(objectId, version, PACKAGING_FORMAT_KEY, DANS_RDA_BAG_PACK_PROFILE_0_1_0);
     }
 
     @Override
@@ -84,15 +86,16 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
         ocflRepository.putObject(ObjectVersionId.head(objectId), objectVersionDirectory, createVersionInfo());
         long headVersion = Optional.ofNullable(ObjectVersionId.head(objectId).getVersionNum()).map(VersionNum::getVersionNum).orElse(1L);
 
-        updateObjectVersionProperties(objectId, headVersion, "packaging-format", "DANS RDA BagPack Profile/0.1.0");
+        updateObjectVersionProperties(objectId, headVersion, PACKAGING_FORMAT_KEY, DANS_RDA_BAG_PACK_PROFILE_0_1_0);
     }
 
     private void updateObjectVersionProperties(String objectId, long version, String key, Object value) {
-        var ovp = new ObjectVersionProperties(itemStore, ocflStorage, objectId);
+        var ovp = new ObjectVersionProperties(itemStore, ocflStorage.objectRootPath(objectId));
         try {
             ovp.load();
             ovp.putProperty(version, key, value);
             ovp.save();
+            ovp.validate();
         }
         catch (IOException e) {
             throw new RuntimeException("Failed to update object version properties", e);
@@ -124,7 +127,6 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
         try {
             ocflRepository = new OcflRepositoryBuilder()
                 .unsupportedExtensionBehavior(UnsupportedExtensionBehavior.WARN)
-                .ignoreUnsupportedExtensions(Set.of("packaging-format-registry", "property-registry", "object-version-properties"))
                 .defaultLayoutConfig(layoutConfig)
                 .inventoryCache(null)
                 .storage(ocflStorage)

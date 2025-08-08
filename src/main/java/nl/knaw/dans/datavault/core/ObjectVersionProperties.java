@@ -43,28 +43,26 @@ public class ObjectVersionProperties {
     private static final ObjectMapper mapper = new ObjectMapper();
 
     private final ItemStore itemStore;
-    private final OcflStorage ocflStorage;
-    private final String objectId;
+    private final String objectRootPath;
 
     private Map<String, Map<String, Object>> properties = new HashMap<>();
 
     public void load() throws IOException {
         var propertiesJsonFile = getExtensionDir().resolve(VERSION_PROPERTIES_FILE);
         itemStore.createDirectory(propertiesJsonFile.getParent().toString());
-        if (!Files.exists(propertiesJsonFile)) {
+        if (!itemStore.existsPathLike(propertiesJsonFile.toString())) {
             properties = new HashMap<>();
         }
         else {
             try (var is = itemStore.readFile(propertiesJsonFile.toString())) {
                 properties = mapper.readValue(is,
-                    mapper.getTypeFactory().constructParametricType(String.class,
-                        mapper.getTypeFactory().constructParametricType(Map.class, String.class, Object.class)));
+                    mapper.getTypeFactory().constructMapType(Map.class, String.class, Map.class));
             }
         }
     }
 
     private Path getExtensionDir() {
-        return Path.of(ocflStorage.objectRootPath(objectId)).resolve("extensions").resolve(EXTENSION_DIR);
+        return Path.of(objectRootPath).resolve("extensions").resolve(EXTENSION_DIR);
     }
 
     public void validate() throws IOException {
@@ -73,11 +71,12 @@ public class ObjectVersionProperties {
         }
 
         var versionKeys = properties.keySet();
-        var versionDirs = itemStore.listDirectory(ocflStorage.objectRootPath(objectId)).stream()
-            .filter(p -> p.toString().startsWith("v")).collect(Collectors.toSet());
+        var versionSubDirs = itemStore.listDirectory(objectRootPath).stream()
+            .map(p -> Path.of(p.getPath()).getFileName().toString())
+            .filter(n -> n.startsWith("v")).collect(Collectors.toSet());
 
-        var keysWithoutVersionDirs = Sets.difference(versionKeys, versionDirs);
-        var versionDirsWithoutKeys = Sets.difference(versionDirs, versionKeys);
+        var keysWithoutVersionDirs = Sets.difference(versionKeys, versionSubDirs);
+        var versionDirsWithoutKeys = Sets.difference(versionSubDirs, versionKeys);
 
         if (!keysWithoutVersionDirs.isEmpty()) {
             throw new IllegalStateException("Properties contain keys that do not match version directories: " + keysWithoutVersionDirs);
@@ -88,7 +87,7 @@ public class ObjectVersionProperties {
 
         // Check that sidecar file exists
         var sidecarFile = getExtensionDir().resolve(SIDE_CAR_FILE);
-        if (!Files.exists(sidecarFile)) {
+        if (!itemStore.existsPathLike(sidecarFile.toString())) {
             throw new IllegalStateException("Sidecar file does not exist: " + sidecarFile);
         }
 

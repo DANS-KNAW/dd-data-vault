@@ -15,6 +15,7 @@
  */
 package nl.knaw.dans.datavault.core;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.dropwizard.testing.junit5.DAOTestExtension;
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
 import nl.knaw.dans.datavault.config.DefaultVersionInfoConfig;
@@ -32,12 +33,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 import java.net.URI;
-import java.nio.file.Path;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 @ExtendWith(DropwizardExtensionsSupport.class)
-public class OcflStorageProviderTest extends AbstractTestFixture {
+public class OcflRepositoryProviderTest extends AbstractTestFixture {
+    private static final ObjectMapper mapper = new ObjectMapper();
+
     /**
      * The subdirectory under the test directory where the layered OCFL repository keeps its staged layers.
      */
@@ -114,6 +117,66 @@ public class OcflStorageProviderTest extends AbstractTestFixture {
             .exists()
             .isRegularFile();
 
+        // Verify that the object version properties are set correctly
+        Map<String, Map<String, Object>> objectVersionProperties = mapper.readValue(
+            objectRoot.resolve("extensions/object-version-properties/object_version_properties.json").toFile(),
+            mapper.getTypeFactory().constructMapType(Map.class, String.class, Map.class)
+        );
+
+        assertThat(objectVersionProperties.keySet()).hasSize(1);
+        assertThat(objectVersionProperties).containsKey("v1");
+        assertThat(objectVersionProperties.get("v1").keySet()).hasSize(1);
+        assertThat(objectVersionProperties.get("v1")).containsEntry(OcflRepositoryProvider.PACKAGING_FORMAT_KEY,
+            OcflRepositoryProvider.DANS_RDA_BAG_PACK_PROFILE_0_1_0);
+
     }
 
+
+    @Test
+    public void addVersion_should_add_version_to_existing_object() throws Exception {
+        // Given
+        copyToTestDir("simple-object/v1", TEST_INPUT);
+        ocflRepositoryProvider.addHeadVersion("urn:nbn:o1", testDir.resolve(TEST_INPUT + "/v1"));
+        copyToTestDir("simple-object/v2", TEST_INPUT);
+
+        // When
+        ocflRepositoryProvider.addVersion("urn:nbn:o1", 2, testDir.resolve(TEST_INPUT + "/v2"));
+
+        // Then
+        long layerId = layerManager.getTopLayer().getId();
+        var objectRoot = testDir.resolve(LAYER_STAGING_ROOT).resolve(Long.toString(layerId)).resolve("000/000/0o1/o1");
+        assertThat(objectRoot.resolve("v2"))
+            .exists()
+            .isDirectory();
+        // file1.txt should not be present in v2, as it was unchanged and therefore referenced from v1
+        assertThat(objectRoot.resolve("v2").resolve("content/file3.txt"))
+            .exists()
+            .isRegularFile();
+        assertThat(objectRoot.resolve("extensions/object-version-properties/object_version_properties.json"))
+            .exists()
+            .isRegularFile();
+        assertThat(objectRoot.resolve("extensions/object-version-properties/object_version_properties.json.sha512"))
+            .exists()
+            .isRegularFile();
+
+        // Verify that the object version properties are set correctly
+        Map<String, Map<String, Object>> objectVersionProperties = mapper.readValue(
+            objectRoot.resolve("extensions/object-version-properties/object_version_properties.json").toFile(),
+            mapper.getTypeFactory().constructMapType(Map.class, String.class, Map.class)
+        );
+
+        assertThat(objectVersionProperties.keySet()).hasSize(2);
+        assertThat(objectVersionProperties).containsKey("v1");
+        assertThat(objectVersionProperties.get("v1").keySet()).hasSize(1);
+        assertThat(objectVersionProperties.get("v1")).containsEntry(OcflRepositoryProvider.PACKAGING_FORMAT_KEY,
+            OcflRepositoryProvider.DANS_RDA_BAG_PACK_PROFILE_0_1_0);
+        assertThat(objectVersionProperties).containsKey("v2");
+        assertThat(objectVersionProperties.get("v2").keySet()).hasSize(1);
+        assertThat(objectVersionProperties.get("v2")).containsEntry(OcflRepositoryProvider.PACKAGING_FORMAT_KEY,
+            OcflRepositoryProvider.DANS_RDA_BAG_PACK_PROFILE_0_1_0);
+    }
+
+
+
+    // TODO: sidecar file must have the algorithm as inventory sidecar file (this must then first be made configurable in OcflRepositoryProvider)
 }
