@@ -20,8 +20,12 @@ import io.ocfl.api.OcflRepository;
 import io.ocfl.api.model.ObjectVersionId;
 import io.ocfl.api.model.User;
 import io.ocfl.api.model.VersionInfo;
+import io.ocfl.api.model.VersionNum;
 import io.ocfl.core.OcflRepositoryBuilder;
+import io.ocfl.core.extension.UnsupportedExtensionBehavior;
 import io.ocfl.core.extension.storage.layout.config.NTupleOmitPrefixStorageLayoutConfig;
+import io.ocfl.core.storage.OcflStorage;
+import io.ocfl.core.storage.OcflStorageBuilder;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.NonNull;
@@ -32,12 +36,17 @@ import nl.knaw.dans.datavault.config.DefaultVersionInfoConfig;
 import nl.knaw.dans.layerstore.ItemStore;
 import nl.knaw.dans.lib.ocflext.LayeredStorage;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Optional;
 
 @Slf4j
 @RequiredArgsConstructor(access = AccessLevel.PRIVATE) // Builder should be used to create instances
 public class OcflRepositoryProvider implements RepositoryProvider, Managed {
+    public static final String PACKAGING_FORMAT_KEY = "packaging-format";
+    public static final String DANS_RDA_BAG_PACK_PROFILE_0_1_0 = "DANS RDA BagPack Profile/0.1.0";
+
     @NonNull
     private ItemStore itemStore;
 
@@ -48,6 +57,7 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
     private DefaultVersionInfoConfig defaultVersionInfoConfig;
 
     private OcflRepository ocflRepository;
+    private OcflStorage ocflStorage;
 
     @Builder
     public static OcflRepositoryProvider create(ItemStore itemStore, Path workDir, DefaultVersionInfoConfig defaultVersionInfoConfig) {
@@ -63,6 +73,8 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
         }
         // putObject wants the version number of HEAD, so we need to subtract 1 from the version number
         ocflRepository.putObject(ObjectVersionId.version(objectId, version - 1), objectVersionDirectory, createVersionInfo());
+
+        updateObjectVersionProperties(objectId, version, PACKAGING_FORMAT_KEY, DANS_RDA_BAG_PACK_PROFILE_0_1_0);
     }
 
     @Override
@@ -72,6 +84,22 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
             throw new IllegalStateException("OCFL repository is not yet started");
         }
         ocflRepository.putObject(ObjectVersionId.head(objectId), objectVersionDirectory, createVersionInfo());
+        long headVersion = Optional.ofNullable(ObjectVersionId.head(objectId).getVersionNum()).map(VersionNum::getVersionNum).orElse(1L);
+
+        updateObjectVersionProperties(objectId, headVersion, PACKAGING_FORMAT_KEY, DANS_RDA_BAG_PACK_PROFILE_0_1_0);
+    }
+
+    private void updateObjectVersionProperties(String objectId, long version, String key, Object value) {
+        var ovp = new ObjectVersionProperties(itemStore, ocflStorage.objectRootPath(objectId));
+        try {
+            ovp.load();
+            ovp.putProperty(version, key, value);
+            ovp.save();
+            ovp.validate();
+        }
+        catch (IOException e) {
+            throw new RuntimeException("Failed to update object version properties", e);
+        }
     }
 
     @Override
@@ -94,12 +122,14 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
     public void start() {
         log.info("Starting OCFL repository provider");
         var layeredStorage = new LayeredStorage(itemStore);
+        ocflStorage = new OcflStorageBuilder().storage(layeredStorage).build();
         var layoutConfig = new NTupleOmitPrefixStorageLayoutConfig().setDelimiter(":").setTupleSize(3); // TODO: make configurable
         try {
             ocflRepository = new OcflRepositoryBuilder()
+                .unsupportedExtensionBehavior(UnsupportedExtensionBehavior.WARN)
                 .defaultLayoutConfig(layoutConfig)
                 .inventoryCache(null)
-                .storage(ocflStorageBuilder -> ocflStorageBuilder.storage(layeredStorage))
+                .storage(ocflStorage)
                 .workDir(Files.createDirectories(workDir)).build();
         }
         catch (Exception e) {
