@@ -52,9 +52,4 @@ public interface RepositoryProvider extends Managed {
      */
     OcflObjectVersionDto getOcflObjectVersion(String objectId, int version);
 
-
-
-
-
-
 }
