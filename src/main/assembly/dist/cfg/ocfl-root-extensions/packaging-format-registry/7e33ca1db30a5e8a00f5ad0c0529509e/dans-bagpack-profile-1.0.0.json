@@ -1,0 +1,64 @@
+{
+
+  "BagIt-Profile-Info": {
+    "BagIt-Profile-Identifier": "https://doi.org/10.17026/e948-0r32",
+    "Source-Organization": "dans.knaw.nl",
+    "Contact-Name": "DANS-KNAW",
+    "Contact-Email": "info@dans.knaw.nl",
+    "External-Description": "DANS BagPack Profile",
+    "Version": "1.0.0"
+  },
+  "Bag-Info": {
+    "Bagging-Date": {
+      "required": true
+    },
+    "Source-Organization": {
+      "required": false
+    },
+    "Contact-Name": {
+      "required": true
+    },
+    "Contact-Phone": {
+      "required": false
+    },
+    "Contact-Email": {
+      "required": true
+    },
+    "External-Identifier": {
+      "required": true
+    },
+    "External-Description": {
+      "required": false
+    },
+    "Bag-Size": {
+      "required": true
+    },
+    "Payload-Oxum": {
+      "required": true
+    },
+    "Source-Identifier": {
+      "required": false
+    }
+  },
+  "Manifests-Required": [
+    "sha1"
+  ],
+  "Allow-Fetch.txt": false,
+  "Serialization": "optional",
+  "Accept-Serialization": [
+    "application/zip",
+    "application/tar",
+    "application/tar+gzip"
+  ],
+  "Accept-BagIt-Version": [
+    "1.0"
+  ],
+  "Tag-Manifests-Required": [
+    "sha1"
+  ],
+  "Tag-Files-Required": [
+    "metadata/datacite.xml",
+    "metadata/pid-mapping.txt",
+    "metadata/oai-ore.jsonld"
+  ]
+}

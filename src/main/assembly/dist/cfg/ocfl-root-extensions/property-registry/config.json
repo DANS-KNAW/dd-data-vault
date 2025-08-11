@@ -1,0 +1,10 @@
+{
+  "extensionName": "property-registry",
+  "propertyRegistry": {
+    "packaging-format": {
+      "description": "The packaging format of the current object version, as defined in the packaging-format-registry extension.",
+      "type": "string",
+      "required": true
+    }
+  }
+}

@@ -48,6 +48,7 @@ dataVault:
   #
   ocflRepository:
     workDir: data/ocfl-work
+    rootExtensionsSourcePath: src/main/assembly/dist/cfg/ocfl-root-extensions
 
   #
   # Default version information to be used when no version information is provided when adding an object version. Currently, there is no way to

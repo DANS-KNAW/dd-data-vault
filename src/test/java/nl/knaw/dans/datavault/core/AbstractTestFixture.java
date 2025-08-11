@@ -47,4 +47,10 @@ public abstract class AbstractTestFixture {
         return target;
     }
 
+    protected Path createSubdir(String subdir) throws Exception {
+        var subdirPath = testDir.resolve(subdir);
+        Files.createDirectories(subdirPath);
+        return subdirPath;
+    }
+
 }

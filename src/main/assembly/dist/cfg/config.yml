@@ -66,6 +66,7 @@ dataVault:
   #
   ocflRepository:
     workDir: /data/vault/tmp
+    rootExtensionsSourcePath: /etc/opt/dans.knaw.nl/dd-data-vault/ocfl-root-extensions
 
   #
   # Default version information to be used when no version information is provided when adding an object version. Currently, there is no way to
