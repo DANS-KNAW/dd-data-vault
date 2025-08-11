@@ -110,12 +110,14 @@ public class ObjectVersionProperties {
 
         var sidecarFile = getExtensionDir().resolve(SIDE_CAR_FILE);
         try (var propertiesIs = itemStore.readFile(propertiesJsonFile.toString())) {
+            // TODO: refactor to use inputStream directly instead of reading all bytes
             MessageDigest digest = MessageDigest.getInstance("SHA-512");
             byte[] fileBytes = propertiesIs.readAllBytes();
             byte[] checksumBytes = digest.digest(fileBytes);
             String checksum = Hex.encodeHexString(checksumBytes);
+            String checksumWithFilename = checksum + "  " + propertiesJsonFile.getFileName().toString() + "\n";
             // Write the checksum to the sidecar file
-            itemStore.writeFile(sidecarFile.toString(), new ByteArrayInputStream(checksum.getBytes(StandardCharsets.UTF_8)));
+            itemStore.writeFile(sidecarFile.toString(), new ByteArrayInputStream(checksumWithFilename.getBytes(StandardCharsets.UTF_8)));
         }
         catch (Exception e) {
             throw new RuntimeException("Failed to write sidecar file: " + sidecarFile, e);

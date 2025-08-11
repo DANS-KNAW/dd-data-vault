@@ -157,7 +157,7 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
                                     log.info("Extension {} already exists in the OCFL repository, skipping", extensionPath);
                                 }
                                 else {
-                                    itemStore.moveDirectoryInto(tempExtensionsPath, extensionPath);
+                                    itemStore.moveDirectoryInto(path, extensionPath);
                                 }
                             }
                         }
