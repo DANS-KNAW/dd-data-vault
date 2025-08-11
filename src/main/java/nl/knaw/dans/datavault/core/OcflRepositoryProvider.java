@@ -35,6 +35,7 @@ import nl.knaw.dans.datavault.api.OcflObjectVersionDto;
 import nl.knaw.dans.datavault.config.DefaultVersionInfoConfig;
 import nl.knaw.dans.layerstore.ItemStore;
 import nl.knaw.dans.lib.ocflext.LayeredStorage;
+import org.apache.commons.io.FileUtils;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -48,20 +49,22 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
     public static final String DANS_RDA_BAG_PACK_PROFILE_0_1_0 = "DANS RDA BagPack Profile/0.1.0";
 
     @NonNull
-    private ItemStore itemStore;
+    private final ItemStore itemStore;
 
     @NonNull
-    private Path workDir;
+    private final Path workDir;
 
     @NonNull
-    private DefaultVersionInfoConfig defaultVersionInfoConfig;
+    private final DefaultVersionInfoConfig defaultVersionInfoConfig;
+
+    private final Path rootExtensionsSourcePath;
 
     private OcflRepository ocflRepository;
     private OcflStorage ocflStorage;
 
     @Builder
-    public static OcflRepositoryProvider create(ItemStore itemStore, Path workDir, DefaultVersionInfoConfig defaultVersionInfoConfig) {
-        return new OcflRepositoryProvider(itemStore, workDir, defaultVersionInfoConfig);
+    public static OcflRepositoryProvider create(ItemStore itemStore, Path workDir, DefaultVersionInfoConfig defaultVersionInfoConfig, Path rootExtensionsSourcePath) {
+        return new OcflRepositoryProvider(itemStore, workDir, defaultVersionInfoConfig, rootExtensionsSourcePath);
     }
 
     // TODO: add user name and email and message to the method
@@ -131,9 +134,45 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
                 .inventoryCache(null)
                 .storage(ocflStorage)
                 .workDir(Files.createDirectories(workDir)).build();
+
+            addExtensions();
         }
         catch (Exception e) {
             throw new RuntimeException("Failed to create OCFL repository", e);
+        }
+    }
+
+    private void addExtensions() throws IOException {
+        Path tempExtensionsPath = workDir.resolve("extensions");
+        if (rootExtensionsSourcePath != null) {
+            if (Files.exists(rootExtensionsSourcePath)) {
+                log.info("Copying storage root extensions from {} to the extensions directory", rootExtensionsSourcePath);
+                FileUtils.copyDirectory(rootExtensionsSourcePath.toFile(), tempExtensionsPath.toFile());
+                try (var stream = Files.list(tempExtensionsPath)) {
+                    stream.forEach(path -> {
+                        try {
+                            if (Files.isDirectory(path)) {
+                                var extensionPath = "extensions/" + path.getFileName().toString();
+                                if (itemStore.existsPathLike(extensionPath)) {
+                                    log.info("Extension {} already exists in the OCFL repository, skipping", extensionPath);
+                                }
+                                else {
+                                    itemStore.moveDirectoryInto(tempExtensionsPath, extensionPath);
+                                }
+                            }
+                        }
+                        catch (IOException e) {
+                            throw new RuntimeException("Failed to move directory " + path + " into extensions directory", e);
+                        }
+                    });
+                }
+            }
+            else {
+                throw new RuntimeException("Root extensions source path " + rootExtensionsSourcePath + " does not exist");
+            }
+        }
+        else {
+            log.info("Root extensions source path is not set, no extensions will be copied to the OCFL repository");
         }
     }
 }

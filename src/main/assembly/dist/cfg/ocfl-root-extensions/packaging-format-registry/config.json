@@ -1,0 +1,5 @@
+{
+  "extensionName": "packaging-format-registry",
+  "packagingFormatDigestAlgorithm": "md5",
+  "digestAlgorithm": "sha512"
+}

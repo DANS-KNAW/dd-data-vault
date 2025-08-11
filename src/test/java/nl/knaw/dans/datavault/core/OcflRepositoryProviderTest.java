@@ -33,6 +33,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 import java.net.URI;
+import java.nio.file.Path;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -82,6 +83,7 @@ public class OcflRepositoryProviderTest extends AbstractTestFixture {
 
         ocflRepositoryProvider = OcflRepositoryProvider.builder()
             .itemStore(itemStore)
+            .rootExtensionsSourcePath(Path.of("src/main/assembly/dist/cfg/ocfl-root-extensions"))
             .defaultVersionInfoConfig(defaultVersionInfoConfig)
             .workDir(testDir.resolve(WORK_DIR))
             .build();

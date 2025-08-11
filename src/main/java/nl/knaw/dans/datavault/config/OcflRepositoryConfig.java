@@ -24,4 +24,6 @@ import java.nio.file.Path;
 public class OcflRepositoryConfig {
     @NotNull
     private Path workDir;
+
+    private Path rootExtensionsSourcePath;
 }
