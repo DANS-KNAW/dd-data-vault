@@ -38,9 +38,15 @@ import nl.knaw.dans.lib.ocflext.LayeredStorage;
 import org.apache.commons.io.FileUtils;
 
 import java.io.IOException;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Optional;
+
+import static java.nio.file.StandardCopyOption.COPY_ATTRIBUTES;
+import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
 @Slf4j
 @RequiredArgsConstructor(access = AccessLevel.PRIVATE) // Builder should be used to create instances
@@ -147,7 +153,7 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
         if (rootExtensionsSourcePath != null) {
             if (Files.exists(rootExtensionsSourcePath)) {
                 log.info("Copying storage root extensions from {} to the extensions directory", rootExtensionsSourcePath);
-                FileUtils.copyDirectory(rootExtensionsSourcePath.toFile(), tempExtensionsPath.toFile());
+                copyDirectoryAndPermissions(rootExtensionsSourcePath, tempExtensionsPath);
                 try (var stream = Files.list(tempExtensionsPath)) {
                     stream.forEach(path -> {
                         try {
@@ -174,5 +180,30 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
         else {
             log.info("Root extensions source path is not set, no extensions will be copied to the OCFL repository");
         }
+    }
+
+    private void copyDirectoryAndPermissions(Path source, Path target) throws IOException {
+        if (Files.exists(target)) {
+            FileUtils.deleteDirectory(target.toFile());
+        }
+        Files.walkFileTree(source, new SimpleFileVisitor<>() {
+
+            @Override
+            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+                Path targetDir = target.resolve(source.relativize(dir));
+                if (!Files.exists(targetDir)) {
+                    Files.createDirectory(targetDir);
+                    Files.setPosixFilePermissions(targetDir, Files.getPosixFilePermissions(dir));
+                }
+                return FileVisitResult.CONTINUE;
+            }
+
+            @Override
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                Path targetFile = target.resolve(source.relativize(file));
+                Files.copy(file, targetFile, REPLACE_EXISTING, COPY_ATTRIBUTES);
+                return FileVisitResult.CONTINUE;
+            }
+        });
     }
 }
