@@ -19,6 +19,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.dropwizard.testing.junit5.DAOTestExtension;
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
 import nl.knaw.dans.datavault.config.DefaultVersionInfoConfig;
+import nl.knaw.dans.layerstore.DirectLayerArchiver;
 import nl.knaw.dans.layerstore.ItemRecord;
 import nl.knaw.dans.layerstore.LayerDatabase;
 import nl.knaw.dans.layerstore.LayerDatabaseImpl;
@@ -74,7 +75,7 @@ public class OcflRepositoryProviderTest extends AbstractTestFixture {
         super.setUp();
         var stagingRoot = createSubdir(LAYER_STAGING_ROOT);
         var archiveRoot = createSubdir(LAYER_ARCHIVE_ROOT);
-        layerManager = new LayerManagerImpl(stagingRoot, new ZipArchiveProvider(archiveRoot));
+        layerManager = new LayerManagerImpl(stagingRoot, new ZipArchiveProvider(archiveRoot), new DirectLayerArchiver());
         var itemStore = new LayeredItemStore(dao, layerManager, new StoreInventoryDbBackedContentManager());
         var defaultVersionInfoConfig = new DefaultVersionInfoConfig();
         defaultVersionInfoConfig.setUsername("test-user");

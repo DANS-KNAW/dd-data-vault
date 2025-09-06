@@ -37,7 +37,7 @@
         <main-class>nl.knaw.dans.datavault.DdDataVaultApplication</main-class>
         <dd-data-vault-api.version>0.4.0</dd-data-vault-api.version>
         <dans-build-resources-maven-plugin.version>0.7.0</dans-build-resources-maven-plugin.version>
-        <dans-ocfl-java-extensions-lib.version>0.6.0</dans-ocfl-java-extensions-lib.version>
+        <dans-ocfl-java-extensions-lib.version>0.6.1-SNAPSHOT</dans-ocfl-java-extensions-lib.version>
     </properties>
 
     <scm>

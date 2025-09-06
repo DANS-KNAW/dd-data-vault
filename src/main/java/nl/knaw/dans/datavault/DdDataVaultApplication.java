@@ -35,6 +35,7 @@ import nl.knaw.dans.datavault.resources.DefaultApiResource;
 import nl.knaw.dans.datavault.resources.ImportsApiResource;
 import nl.knaw.dans.datavault.resources.LayersApiResource;
 import nl.knaw.dans.datavault.resources.ObjectsApiResource;
+import nl.knaw.dans.layerstore.ConsistencyCheckingAsyncLayerArchiver;
 import nl.knaw.dans.layerstore.ItemRecord;
 import nl.knaw.dans.layerstore.LayerDatabaseImpl;
 import nl.knaw.dans.layerstore.LayerManagerImpl;
@@ -78,7 +79,7 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
             var layerManager = new LayerManagerImpl(
                 configuration.getDataVault().getLayerStore().getStagingRoot(),
                 configuration.getDataVault().getLayerStore().getArchiveProvider().build(),
-                environment.lifecycle().executorService("archiver-worker").build());
+                new ConsistencyCheckingAsyncLayerArchiver(dao, environment.lifecycle().executorService("archiver-worker").build()));
             var itemStore = new LayeredItemStore(dao, layerManager, new StoreInventoryDbBackedContentManager());
             var ocflRepositoryProvider = createUnitOfWorkAwareProxy(OcflRepositoryProvider.builder()
                 .itemStore(itemStore)
