@@ -17,7 +17,7 @@ package nl.knaw.dans.datavault.resources;
 
 import lombok.AllArgsConstructor;
 import nl.knaw.dans.datavault.api.LayerStatusDto;
-import nl.knaw.dans.layerstore.LayerManager;
+import nl.knaw.dans.layerstore.LayeredItemStore;
 
 import javax.ws.rs.core.Response;
 import java.io.IOException;
@@ -26,12 +26,12 @@ import static javax.ws.rs.core.Response.Status.CREATED;
 
 @AllArgsConstructor
 public class LayersApiResource implements LayersApi {
-    private final LayerManager layerManager;
+    private final LayeredItemStore layeredItemStore;
 
     @Override
     public Response layersIdGet(Long layerId) {
         try {
-            var layer = layerManager.getLayer(layerId);
+            var layer = layeredItemStore.getLayer(layerId);
             return Response.ok(new LayerStatusDto()
                     .layerId(layer.getId())
                     .sizeInBytes(layer.getSizeInBytes()))
@@ -47,15 +47,18 @@ public class LayersApiResource implements LayersApi {
 
     @Override
     public Response layersPost() {
-        layerManager.newTopLayer();
-        return Response.status(CREATED).entity(new LayerStatusDto().layerId(layerManager.getTopLayer().getId())).build();
-        // TODO: error handling
+        try {
+            return Response.status(CREATED).entity(new LayerStatusDto().layerId(layeredItemStore.newTopLayer().getId())).build();
+        }
+        catch (IOException e) {
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+        }
     }
 
     @Override
     public Response layersTopGet() {
-        var topLayer = layerManager.getTopLayer();
         try {
+            var topLayer = layeredItemStore.getTopLayer();
             return Response.ok(new LayerStatusDto()
                     .layerId(topLayer.getId())
                     .sizeInBytes(topLayer.getSizeInBytes()))

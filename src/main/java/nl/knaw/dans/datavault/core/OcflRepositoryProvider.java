@@ -34,6 +34,7 @@ import lombok.extern.slf4j.Slf4j;
 import nl.knaw.dans.datavault.api.OcflObjectVersionDto;
 import nl.knaw.dans.datavault.config.DefaultVersionInfoConfig;
 import nl.knaw.dans.layerstore.ItemStore;
+import nl.knaw.dans.layerstore.LayeredItemStore;
 import nl.knaw.dans.lib.ocflext.LayeredStorage;
 import org.apache.commons.io.FileUtils;
 
@@ -55,7 +56,7 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
     public static final String DANS_RDA_BAG_PACK_PROFILE_0_1_0 = "DANS RDA BagPack Profile/0.1.0";
 
     @NonNull
-    private final ItemStore itemStore;
+    private final LayeredItemStore itemStore;
 
     @NonNull
     private final Path workDir;
@@ -69,7 +70,7 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
     private OcflStorage ocflStorage;
 
     @Builder
-    public static OcflRepositoryProvider create(ItemStore itemStore, Path workDir, DefaultVersionInfoConfig defaultVersionInfoConfig, Path rootExtensionsSourcePath) {
+    public static OcflRepositoryProvider create(LayeredItemStore itemStore, Path workDir, DefaultVersionInfoConfig defaultVersionInfoConfig, Path rootExtensionsSourcePath) {
         return new OcflRepositoryProvider(itemStore, workDir, defaultVersionInfoConfig, rootExtensionsSourcePath);
     }
 
@@ -130,7 +131,7 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
     @Override
     public void start() {
         log.info("Starting OCFL repository provider");
-        var layeredStorage = new LayeredStorage(itemStore);
+        var layeredStorage = new LayeredStorage(initTopLayerIfNecessary(itemStore));
         ocflStorage = new OcflStorageBuilder().storage(layeredStorage).build();
         var layoutConfig = new NTupleOmitPrefixStorageLayoutConfig().setDelimiter(":").setTupleSize(3); // TODO: make configurable
         try {
@@ -145,6 +146,18 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
         }
         catch (Exception e) {
             throw new RuntimeException("Failed to create OCFL repository", e);
+        }
+    }
+
+    private LayeredItemStore initTopLayerIfNecessary(LayeredItemStore layeredItemStore) {
+        try {
+            if (layeredItemStore.getTopLayer() == null) {
+                layeredItemStore.newTopLayer();
+            }
+            return layeredItemStore;
+        }
+        catch (IOException e) {
+            throw new RuntimeException("Failed to initialize top layer", e);
         }
     }
 
