@@ -15,6 +15,7 @@
  */
 package nl.knaw.dans.datavault.core;
 
+import io.dropwizard.hibernate.UnitOfWork;
 import io.dropwizard.lifecycle.Managed;
 import io.ocfl.api.OcflRepository;
 import io.ocfl.api.model.ObjectVersionId;
@@ -33,10 +34,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import nl.knaw.dans.datavault.api.OcflObjectVersionDto;
 import nl.knaw.dans.datavault.config.DefaultVersionInfoConfig;
-import nl.knaw.dans.layerstore.ItemStore;
+import nl.knaw.dans.layerstore.LayerConsistencyChecker;
 import nl.knaw.dans.layerstore.LayeredItemStore;
 import nl.knaw.dans.lib.ocflext.LayeredStorage;
 import org.apache.commons.io.FileUtils;
+import org.hibernate.FlushMode;
 
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
@@ -64,14 +66,17 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
     @NonNull
     private final DefaultVersionInfoConfig defaultVersionInfoConfig;
 
+    @NonNull
+    private final LayerConsistencyChecker layerConsistencyChecker;
+
     private final Path rootExtensionsSourcePath;
 
     private OcflRepository ocflRepository;
     private OcflStorage ocflStorage;
 
     @Builder
-    public static OcflRepositoryProvider create(LayeredItemStore itemStore, Path workDir, DefaultVersionInfoConfig defaultVersionInfoConfig, Path rootExtensionsSourcePath) {
-        return new OcflRepositoryProvider(itemStore, workDir, defaultVersionInfoConfig, rootExtensionsSourcePath);
+    public static OcflRepositoryProvider create(LayeredItemStore itemStore, Path workDir, DefaultVersionInfoConfig defaultVersionInfoConfig, LayerConsistencyChecker layerConsistencyChecker, Path rootExtensionsSourcePath) {
+        return new OcflRepositoryProvider(itemStore, workDir, defaultVersionInfoConfig, layerConsistencyChecker, rootExtensionsSourcePath);
     }
 
     // TODO: add user name and email and message to the method
@@ -131,7 +136,7 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
     @Override
     public void start() {
         log.info("Starting OCFL repository provider");
-        var layeredStorage = new LayeredStorage(initTopLayerIfNecessary(itemStore));
+        var layeredStorage = new LayeredStorage(initAndCheckTopLayer(itemStore));
         ocflStorage = new OcflStorageBuilder().storage(layeredStorage).build();
         var layoutConfig = new NTupleOmitPrefixStorageLayoutConfig().setDelimiter(":").setTupleSize(3); // TODO: make configurable
         try {
@@ -149,11 +154,12 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
         }
     }
 
-    private LayeredItemStore initTopLayerIfNecessary(LayeredItemStore layeredItemStore) {
+    private LayeredItemStore initAndCheckTopLayer(LayeredItemStore layeredItemStore) {
         try {
             if (layeredItemStore.getTopLayer() == null) {
                 layeredItemStore.newTopLayer();
             }
+            layerConsistencyChecker.check(layeredItemStore.getTopLayer());
             return layeredItemStore;
         }
         catch (IOException e) {

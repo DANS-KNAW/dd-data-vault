@@ -30,7 +30,6 @@ import nl.knaw.dans.datavault.config.DdDataVaultConfig;
 import nl.knaw.dans.datavault.core.ImportServiceImpl;
 import nl.knaw.dans.datavault.core.OcflRepositoryProvider;
 import nl.knaw.dans.datavault.core.RepositoryProvider;
-import nl.knaw.dans.datavault.core.UnitOfWorkAwareLayerConsistencyChecker;
 import nl.knaw.dans.datavault.core.UnitOfWorkDeclaringRepositoryProviderAdapter;
 import nl.knaw.dans.datavault.resources.DefaultApiResource;
 import nl.knaw.dans.datavault.resources.ImportsApiResource;
@@ -39,7 +38,6 @@ import nl.knaw.dans.datavault.resources.ObjectsApiResource;
 import nl.knaw.dans.layerstore.ConsistencyCheckingAsyncLayerArchiver;
 import nl.knaw.dans.layerstore.ItemRecord;
 import nl.knaw.dans.layerstore.ItemsMatchDbConsistencyChecker;
-import nl.knaw.dans.layerstore.LayerConsistencyChecker;
 import nl.knaw.dans.layerstore.LayerDatabaseImpl;
 import nl.knaw.dans.layerstore.LayerManagerImpl;
 import nl.knaw.dans.layerstore.LayeredItemStore;
@@ -79,7 +77,7 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
 
         var dao = new LayerDatabaseImpl(new PersistenceProviderImpl<>(hibernateBundle.getSessionFactory(), ItemRecord.class));
         try {
-            var layerConsistencyChecker = createUnitOfWorkAwareProxy(new ItemsMatchDbConsistencyChecker(dao));
+            var layerConsistencyChecker = new ItemsMatchDbConsistencyChecker(dao);
             var layerManager = new LayerManagerImpl(
                 configuration.getDataVault().getLayerStore().getStagingRoot(),
                 configuration.getDataVault().getLayerStore().getArchiveProvider().build(),
@@ -88,6 +86,7 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
             var layeredItemStore = new LayeredItemStore(dao, layerManager, new StoreInventoryDbBackedContentManager());
             var ocflRepositoryProvider = createUnitOfWorkAwareProxy(OcflRepositoryProvider.builder()
                 .itemStore(layeredItemStore)
+                .layerConsistencyChecker(layerConsistencyChecker)
                 .rootExtensionsSourcePath(configuration.getDataVault().getOcflRepository().getRootExtensionsSourcePath())
                 .defaultVersionInfoConfig(configuration.getDataVault().getDefaultVersionInfo())
                 .workDir(configuration.getDataVault().getOcflRepository().getWorkDir())
@@ -114,10 +113,5 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
     private RepositoryProvider createUnitOfWorkAwareProxy(RepositoryProvider repositoryProvider) {
         return new UnitOfWorkAwareProxyFactory(hibernateBundle)
             .create(UnitOfWorkDeclaringRepositoryProviderAdapter.class, new Class<?>[] { RepositoryProvider.class }, new Object[] { repositoryProvider });
-    }
-
-    private LayerConsistencyChecker createUnitOfWorkAwareProxy(LayerConsistencyChecker layerConsistencyChecker) {
-        return new UnitOfWorkAwareProxyFactory(hibernateBundle)
-            .create(UnitOfWorkAwareLayerConsistencyChecker.class, new Class<?>[] { LayerConsistencyChecker.class }, new Object[] { layerConsistencyChecker });
     }
 }

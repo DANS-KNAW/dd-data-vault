@@ -21,6 +21,8 @@ import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
 import nl.knaw.dans.datavault.config.DefaultVersionInfoConfig;
 import nl.knaw.dans.layerstore.DirectLayerArchiver;
 import nl.knaw.dans.layerstore.ItemRecord;
+import nl.knaw.dans.layerstore.ItemsMatchDbConsistencyChecker;
+import nl.knaw.dans.layerstore.LayerConsistencyChecker;
 import nl.knaw.dans.layerstore.LayerDatabase;
 import nl.knaw.dans.layerstore.LayerDatabaseImpl;
 import nl.knaw.dans.layerstore.LayerManager;
@@ -84,6 +86,7 @@ public class OcflRepositoryProviderTest extends AbstractTestFixture {
 
         ocflRepositoryProvider = OcflRepositoryProvider.builder()
             .itemStore(itemStore)
+            .layerConsistencyChecker(new ItemsMatchDbConsistencyChecker(dao))
             .rootExtensionsSourcePath(Path.of("src/main/assembly/dist/cfg/ocfl-root-extensions"))
             .defaultVersionInfoConfig(defaultVersionInfoConfig)
             .workDir(testDir.resolve(WORK_DIR))
