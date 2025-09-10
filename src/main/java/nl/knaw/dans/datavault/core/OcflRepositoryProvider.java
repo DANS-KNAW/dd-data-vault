@@ -15,7 +15,6 @@
  */
 package nl.knaw.dans.datavault.core;
 
-import io.dropwizard.hibernate.UnitOfWork;
 import io.dropwizard.lifecycle.Managed;
 import io.ocfl.api.OcflRepository;
 import io.ocfl.api.model.ObjectVersionId;
@@ -38,7 +37,6 @@ import nl.knaw.dans.layerstore.LayerConsistencyChecker;
 import nl.knaw.dans.layerstore.LayeredItemStore;
 import nl.knaw.dans.lib.ocflext.LayeredStorage;
 import org.apache.commons.io.FileUtils;
-import org.hibernate.FlushMode;
 
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
@@ -58,7 +56,7 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
     public static final String DANS_RDA_BAG_PACK_PROFILE_0_1_0 = "DANS RDA BagPack Profile/0.1.0";
 
     @NonNull
-    private final LayeredItemStore itemStore;
+    private final LayeredItemStore layeredItemStore;
 
     @NonNull
     private final Path workDir;
@@ -105,7 +103,7 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
     }
 
     private void updateObjectVersionProperties(String objectId, long version, String key, Object value) {
-        var ovp = new ObjectVersionProperties(itemStore, ocflStorage.objectRootPath(objectId));
+        var ovp = new ObjectVersionProperties(layeredItemStore, ocflStorage.objectRootPath(objectId));
         try {
             ovp.load();
             ovp.putProperty(version, key, value);
@@ -136,7 +134,7 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
     @Override
     public void start() {
         log.info("Starting OCFL repository provider");
-        var layeredStorage = new LayeredStorage(initAndCheckTopLayer(itemStore));
+        var layeredStorage = new LayeredStorage(initAndCheckTopLayer(layeredItemStore));
         ocflStorage = new OcflStorageBuilder().storage(layeredStorage).build();
         var layoutConfig = new NTupleOmitPrefixStorageLayoutConfig().setDelimiter(":").setTupleSize(3); // TODO: make configurable
         try {
@@ -178,11 +176,11 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
                         try {
                             if (Files.isDirectory(path)) {
                                 var extensionPath = "extensions/" + path.getFileName().toString();
-                                if (itemStore.existsPathLike(extensionPath)) {
+                                if (layeredItemStore.existsPathLike(extensionPath)) {
                                     log.info("Extension {} already exists in the OCFL repository, skipping", extensionPath);
                                 }
                                 else {
-                                    itemStore.moveDirectoryInto(path, extensionPath);
+                                    layeredItemStore.moveDirectoryInto(path, extensionPath);
                                 }
                             }
                         }

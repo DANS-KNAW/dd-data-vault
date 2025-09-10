@@ -17,7 +17,6 @@ package nl.knaw.dans.datavault.core;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Sets;
-import io.ocfl.core.storage.OcflStorage;
 import lombok.RequiredArgsConstructor;
 import nl.knaw.dans.layerstore.ItemStore;
 import org.apache.commons.codec.binary.Hex;
@@ -25,7 +24,6 @@ import org.apache.commons.codec.binary.Hex;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.util.HashMap;
