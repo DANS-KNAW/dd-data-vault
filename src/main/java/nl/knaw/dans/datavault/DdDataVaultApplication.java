@@ -28,11 +28,14 @@ import io.dropwizard.hibernate.UnitOfWorkAwareProxyFactory;
 import lombok.extern.slf4j.Slf4j;
 import nl.knaw.dans.datavault.config.DdDataVaultConfig;
 import nl.knaw.dans.datavault.core.ImportServiceImpl;
+import nl.knaw.dans.datavault.core.LayerIdsCheck;
+import nl.knaw.dans.datavault.core.LayerIdsCheckManager;
 import nl.knaw.dans.datavault.core.OcflRepositoryProvider;
 import nl.knaw.dans.datavault.core.RepositoryProvider;
 import nl.knaw.dans.datavault.core.UnitOfWorkDeclaringRepositoryProviderAdapter;
 import nl.knaw.dans.datavault.resources.DefaultApiResource;
 import nl.knaw.dans.datavault.resources.ImportsApiResource;
+import nl.knaw.dans.datavault.resources.LayeridsCheckApiResource;
 import nl.knaw.dans.datavault.resources.LayersApiResource;
 import nl.knaw.dans.datavault.resources.ObjectsApiResource;
 import nl.knaw.dans.layerstore.ConsistencyCheckingAsyncLayerArchiver;
@@ -99,10 +102,17 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
                 .validObjectIdentifierPattern(validObjectIdentifierPattern)
                 .createOrUpdateExecutor(configuration.getExecutorService().build(environment))
                 .build();
+            var layerIdsCheckManager = createUnitOfWorkAwareProxy(new LayerIdsCheckManager(environment.lifecycle()
+                .executorService("layer-ids-check-worker")
+                .minThreads(1)
+                .maxThreads(1)
+                .build(), new LayerIdsCheck(layeredItemStore)));
+
             environment.jersey().register(new ImportsApiResource(jobService));
             environment.jersey().register(new LayersApiResource(layeredItemStore));
             environment.jersey().register(new ObjectsApiResource(ocflRepositoryProvider));
             environment.jersey().register(new DefaultApiResource());
+            environment.jersey().register(new LayeridsCheckApiResource(layerIdsCheckManager));
         }
         catch (IOException e) {
             log.error("Error creating LayerManager", e);
@@ -113,5 +123,10 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
     private RepositoryProvider createUnitOfWorkAwareProxy(RepositoryProvider repositoryProvider) {
         return new UnitOfWorkAwareProxyFactory(hibernateBundle)
             .create(UnitOfWorkDeclaringRepositoryProviderAdapter.class, new Class<?>[] { RepositoryProvider.class }, new Object[] { repositoryProvider });
+    }
+
+    private LayerIdsCheckManager createUnitOfWorkAwareProxy(LayerIdsCheckManager layerIdsCheckManager) {
+        return new UnitOfWorkAwareProxyFactory(hibernateBundle)
+            .create(LayerIdsCheckManager.class, new Class<?>[] { LayerIdsCheckManager.class }, new Object[] { layerIdsCheckManager });
     }
 }
