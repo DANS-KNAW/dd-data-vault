@@ -18,12 +18,13 @@ package nl.knaw.dans.datavault;
 import io.dropwizard.db.PooledDataSourceFactory;
 import io.dropwizard.hibernate.HibernateBundle;
 import nl.knaw.dans.datavault.config.DdDataVaultConfig;
+import nl.knaw.dans.datavault.core.ConsistencyCheck;
 import nl.knaw.dans.layerstore.ItemRecord;
 
 public class DdDataVautHibernateBundle extends HibernateBundle<DdDataVaultConfig> {
 
     public DdDataVautHibernateBundle() {
-        super(ItemRecord.class);
+        super(ItemRecord.class, ConsistencyCheck.class);
     }
 
     @Override

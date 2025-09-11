@@ -15,8 +15,11 @@
  */
 package nl.knaw.dans.datavault;
 
+import nl.knaw.dans.datavault.api.ConsistencyCheckRequestDto;
+import nl.knaw.dans.datavault.api.ConsistencyCheckResultDto;
 import nl.knaw.dans.datavault.api.ImportJobStatusDto;
 import nl.knaw.dans.datavault.api.ImportJobStatusDto.StatusEnum;
+import nl.knaw.dans.datavault.core.ConsistencyCheck;
 import nl.knaw.dans.datavault.core.ImportJob;
 import org.mapstruct.Mapper;
 
@@ -25,6 +28,10 @@ import java.nio.file.Path;
 @Mapper
 public interface Conversions {
     ImportJobStatusDto convert(ImportJob importJob);
+
+    ConsistencyCheck.Type convert(ConsistencyCheckRequestDto.TypeEnum type);
+
+    ConsistencyCheckResultDto convert(ConsistencyCheck check);
 
     default String convert(Path path) {
         return path.toString();

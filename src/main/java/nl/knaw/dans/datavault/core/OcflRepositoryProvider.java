@@ -33,6 +33,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import nl.knaw.dans.datavault.api.OcflObjectVersionDto;
 import nl.knaw.dans.datavault.config.DefaultVersionInfoConfig;
+import nl.knaw.dans.layerstore.ItemsMismatchException;
 import nl.knaw.dans.layerstore.LayerConsistencyChecker;
 import nl.knaw.dans.layerstore.LayeredItemStore;
 import nl.knaw.dans.lib.ocflext.LayeredStorage;
@@ -73,7 +74,8 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
     private OcflStorage ocflStorage;
 
     @Builder
-    public static OcflRepositoryProvider create(LayeredItemStore itemStore, Path workDir, DefaultVersionInfoConfig defaultVersionInfoConfig, LayerConsistencyChecker layerConsistencyChecker, Path rootExtensionsSourcePath) {
+    public static OcflRepositoryProvider create(LayeredItemStore itemStore, Path workDir, DefaultVersionInfoConfig defaultVersionInfoConfig, LayerConsistencyChecker layerConsistencyChecker,
+        Path rootExtensionsSourcePath) {
         return new OcflRepositoryProvider(itemStore, workDir, defaultVersionInfoConfig, layerConsistencyChecker, rootExtensionsSourcePath);
     }
 
@@ -160,7 +162,7 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
             layerConsistencyChecker.check(layeredItemStore.getTopLayer());
             return layeredItemStore;
         }
-        catch (IOException e) {
+        catch (IOException | ItemsMismatchException e) {
             throw new RuntimeException("Failed to initialize top layer", e);
         }
     }
