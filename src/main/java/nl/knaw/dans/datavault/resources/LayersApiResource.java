@@ -46,6 +46,17 @@ public class LayersApiResource implements LayersApi {
     }
 
     @Override
+    public Response layersIdsGet() {
+        try {
+            return Response.ok(layeredItemStore.listLayerIds())
+                .build();
+        }
+        catch (IOException e) {
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @Override
     public Response layersPost() {
         try {
             return Response.status(CREATED).entity(new LayerStatusDto().layerId(layeredItemStore.newTopLayer().getId())).build();

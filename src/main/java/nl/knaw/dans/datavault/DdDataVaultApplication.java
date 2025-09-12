@@ -41,6 +41,7 @@ import nl.knaw.dans.datavault.resources.ObjectsApiResource;
 import nl.knaw.dans.layerstore.ConsistencyCheckingAsyncLayerArchiver;
 import nl.knaw.dans.layerstore.ItemRecord;
 import nl.knaw.dans.layerstore.ItemsMatchDbConsistencyChecker;
+import nl.knaw.dans.layerstore.LayerConsistencyChecker;
 import nl.knaw.dans.layerstore.LayerDatabaseImpl;
 import nl.knaw.dans.layerstore.LayerManagerImpl;
 import nl.knaw.dans.layerstore.LayeredItemStore;
@@ -48,6 +49,8 @@ import nl.knaw.dans.lib.ocflext.StoreInventoryDbBackedContentManager;
 import nl.knaw.dans.lib.util.PersistenceProviderImpl;
 
 import java.io.IOException;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.regex.Pattern;
 
@@ -85,7 +88,7 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
             var layerManager = new LayerManagerImpl(
                 configuration.getDataVault().getLayerStore().getStagingRoot(),
                 configuration.getDataVault().getLayerStore().getArchiveProvider().build(),
-                new ConsistencyCheckingAsyncLayerArchiver(layerConsistencyChecker, environment.lifecycle().executorService("archiver-worker").build())
+                createUnitOfWorkAwareAsyncLayerArchiver(layerConsistencyChecker, environment.lifecycle().executorService("archiver-worker").build())
             );
             var layeredItemStore = new LayeredItemStore(dao, layerManager, new StoreInventoryDbBackedContentManager());
             var ocflRepositoryProvider = createUnitOfWorkAwareProxy(OcflRepositoryProvider.builder()
@@ -111,7 +114,7 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
             var consistencyCheckDao = new ConsistencyCheckDao(hibernateBundle.getSessionFactory());
             environment.jersey().register(new ConsistencyChecksApiResource(consistencyCheckDao));
             UnitOfWorkAwareProxyFactory uowFactory = new UnitOfWorkAwareProxyFactory(hibernateBundle);
-            environment.lifecycle().manage(createUnitOfWorkAwareConsistencyCheckScheduler(
+            environment.lifecycle().manage(createUnitOfWorkAwareConsistencyCheckExecutor(
                 environment.lifecycle().scheduledExecutorService("ConsistencyCheckScheduler").build(),
                 consistencyCheckDao,
                 layeredItemStore,
@@ -128,10 +131,17 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
             .create(UnitOfWorkDeclaringRepositoryProviderAdapter.class, new Class<?>[] { RepositoryProvider.class }, new Object[] { repositoryProvider });
     }
 
-    private ConsistencyCheckExecutor createUnitOfWorkAwareConsistencyCheckScheduler(ScheduledExecutorService scheduler, ConsistencyCheckDao consistencyCheckDao, LayeredItemStore layeredItemStore,
+    private ConsistencyCheckExecutor createUnitOfWorkAwareConsistencyCheckExecutor(ScheduledExecutorService scheduler, ConsistencyCheckDao consistencyCheckDao, LayeredItemStore layeredItemStore,
         long pollIntervalSeconds) {
         return new UnitOfWorkAwareProxyFactory(hibernateBundle)
             .create(ConsistencyCheckExecutor.class, new Class<?>[] { ScheduledExecutorService.class, ConsistencyCheckDao.class, LayeredItemStore.class, long.class },
                 new Object[] { scheduler, consistencyCheckDao, layeredItemStore, pollIntervalSeconds });
     }
+
+    private ConsistencyCheckingAsyncLayerArchiver createUnitOfWorkAwareAsyncLayerArchiver(LayerConsistencyChecker layerConsistencyChecker, Executor executor) {
+        return new UnitOfWorkAwareProxyFactory(hibernateBundle)
+            .create(ConsistencyCheckingAsyncLayerArchiver.class, new Class<?>[] { LayerConsistencyChecker.class, Executor.class },
+                new Object[] { layerConsistencyChecker, executor });
+    }
+
 }
