@@ -27,7 +27,7 @@ import io.dropwizard.hibernate.HibernateBundle;
 import io.dropwizard.hibernate.UnitOfWorkAwareProxyFactory;
 import lombok.extern.slf4j.Slf4j;
 import nl.knaw.dans.datavault.config.DdDataVaultConfig;
-import nl.knaw.dans.datavault.core.ConsistencyCheckScheduler;
+import nl.knaw.dans.datavault.core.ConsistencyCheckExecutor;
 import nl.knaw.dans.datavault.core.ImportServiceImpl;
 import nl.knaw.dans.datavault.core.OcflRepositoryProvider;
 import nl.knaw.dans.datavault.core.RepositoryProvider;
@@ -115,7 +115,7 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
                 environment.lifecycle().scheduledExecutorService("ConsistencyCheckScheduler").build(),
                 consistencyCheckDao,
                 layeredItemStore,
-                2));
+                configuration.getDataVault().getLayerStore().getConsistencyCheckExecutor().getPollingInterval().toSeconds()));
         }
         catch (IOException e) {
             log.error("Error creating LayerManager", e);
@@ -128,10 +128,10 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
             .create(UnitOfWorkDeclaringRepositoryProviderAdapter.class, new Class<?>[] { RepositoryProvider.class }, new Object[] { repositoryProvider });
     }
 
-    private ConsistencyCheckScheduler createUnitOfWorkAwareConsistencyCheckScheduler(ScheduledExecutorService scheduler, ConsistencyCheckDao consistencyCheckDao, LayeredItemStore layeredItemStore,
-        int pollIntervalSeconds) {
+    private ConsistencyCheckExecutor createUnitOfWorkAwareConsistencyCheckScheduler(ScheduledExecutorService scheduler, ConsistencyCheckDao consistencyCheckDao, LayeredItemStore layeredItemStore,
+        long pollIntervalSeconds) {
         return new UnitOfWorkAwareProxyFactory(hibernateBundle)
-            .create(ConsistencyCheckScheduler.class, new Class<?>[] { ScheduledExecutorService.class, ConsistencyCheckDao.class, LayeredItemStore.class, long.class },
+            .create(ConsistencyCheckExecutor.class, new Class<?>[] { ScheduledExecutorService.class, ConsistencyCheckDao.class, LayeredItemStore.class, long.class },
                 new Object[] { scheduler, consistencyCheckDao, layeredItemStore, pollIntervalSeconds });
     }
 }

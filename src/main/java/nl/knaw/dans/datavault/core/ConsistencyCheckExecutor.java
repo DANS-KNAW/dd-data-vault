@@ -16,7 +16,6 @@
 package nl.knaw.dans.datavault.core;
 
 import io.dropwizard.hibernate.UnitOfWork;
-import io.dropwizard.hibernate.UnitOfWorkAwareProxyFactory;
 import io.dropwizard.lifecycle.Managed;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,7 +29,7 @@ import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @RequiredArgsConstructor
-public class ConsistencyCheckScheduler implements Managed {
+public class ConsistencyCheckExecutor implements Managed {
     private final ScheduledExecutorService scheduler;
     private final ConsistencyCheckDao consistencyCheckDao;
     private final LayeredItemStore layeredItemStore;

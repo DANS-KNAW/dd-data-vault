@@ -86,6 +86,17 @@ dataVault:
     #   user: <user to log in to DMF host>
     #   archiveRoot: <directory on DMF host where the archive files are stored>
 
+    #
+    # The service can do the following consistency checks on the layered store:
+    #
+    # - LAYER_IDS: check that the layer IDs found in the database are the same as the ones found on storage
+    # - LISTING_RECORDS: check that the listing records found in the database correspond one-to-one with entries in a given layer
+    #
+    # These checks can be requested via the /consistency-checks endpoint. The LISTING_RECORDS check will also be performed automatically when a layer is archived.
+    #
+    consistencyCheckExecutor:
+      # How often to poll for scheduled consistency checks. The oldest unfinished check will be executed.
+      pollingInterval: 10 seconds
 
 executorService:
   nameFormat: "create-or-update-object-worker-%d"

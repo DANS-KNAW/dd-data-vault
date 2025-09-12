@@ -36,7 +36,11 @@ public class ConsistencyChecksApiResource implements ConsistencyChecksApi {
     @Override
     @UnitOfWork
     public Response consistencyChecksIdGet(UUID id) {
-        return null;
+        var consistencyCheck = consistencyCheckDao.get(id);
+        if (consistencyCheck == null) {
+            return Response.status(Response.Status.NOT_FOUND).build();
+        }
+        return Response.ok(conversions.convert(consistencyCheck)).build();
     }
 
     @Override

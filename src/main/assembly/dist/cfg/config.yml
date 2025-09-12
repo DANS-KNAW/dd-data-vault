@@ -51,7 +51,7 @@ dataVault:
     #
     # Object import directories must be located under the inbox directory, possibly in a batch subdirectory.
     #
-    inbox: /var/opt/dans.knaw.nl/tmp/data-vault/inbox
+    inbox: /var/opt/dans.knaw.nl/tmp/dd-data-vault/inbox
     #
     # Object import directories that have been processed are moved to the outbox directory, under the same relative path as in the inbox, 
     # with an additional 'processed' or 'failed' subdirectory.
@@ -59,7 +59,7 @@ dataVault:
     # For example, if an object import directory is located at /var/opt/dans.knaw.nl/tmp/data-vault/inbox/batch-1, then after processing it is moved to
     # /var/opt/dans.knaw.nl/tmp/data-vault/outbox/batch-1/processed or /var/opt/dans.knaw.nl/tmp/data-vault/outbox/batch-1/failed.
     #
-    outbox: /var/opt/dans.knaw.nl/tmp/data-vault/outbox
+    outbox: /var/opt/dans.knaw.nl/tmp/dd-data-vault/outbox
 
   #
   #
@@ -103,6 +103,19 @@ dataVault:
     #   host: <host where DMF runs>
     #   user: <user to log in to DMF host>
     #   archiveRoot: <directory on DMF host where the archive files are stored>
+
+    #
+    # The service can do the following consistency checks on the layered store:
+    #
+    # - LAYER_IDS: check that the layer IDs found in the database are the same as the ones found on storage
+    # - LISTING_RECORDS: check that the listing records found in the database correspond one-to-one with entries in a given layer
+    #
+    # These checks can be requested via the /consistency-checks endpoint. The LISTING_RECORDS check will also be performed automatically when a layer is archived.
+    #
+    consistencyCheckExecutor:
+      # How often to poll for scheduled consistency checks. The oldest unfinished check will be executed.
+      pollingInterval: 10 seconds
+
 
 #
 # See https://www.dropwizard.io/en/latest/manual/configuration.html#logging

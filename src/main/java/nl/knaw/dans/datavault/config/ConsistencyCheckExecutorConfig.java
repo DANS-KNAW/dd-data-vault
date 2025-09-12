@@ -15,20 +15,10 @@
  */
 package nl.knaw.dans.datavault.config;
 
+import io.dropwizard.util.Duration;
 import lombok.Data;
-import lombok.NonNull;
-
-import javax.validation.Valid;
-import javax.validation.constraints.NotNull;
-import java.nio.file.Path;
 
 @Data
-public class LayerStoreConfig {
-    @NotNull
-    private Path stagingRoot;
-    @Valid
-    @NotNull
-    private ArchiveProviderFactory archiveProvider;
-    @NotNull
-    private ConsistencyCheckExecutorConfig consistencyCheckExecutor;
+public class ConsistencyCheckExecutorConfig {
+    private Duration pollingInterval = Duration.seconds(10);
 }
