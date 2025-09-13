@@ -92,6 +92,7 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
                     createUnitOfWorkAwareProxy(uowFactory, layerConsistencyChecker), environment.lifecycle().executorService("archiver-worker").build())
             );
             var layeredItemStore = new LayeredItemStore(dao, layerManager, new StoreInventoryDbBackedContentManager());
+            layeredItemStore.setAllowReadingContentFromArchives(false);
             var ocflRepositoryProvider = createUnitOfWorkAwareProxy(uowFactory, OcflRepositoryProvider.builder()
                 .itemStore(layeredItemStore)
                 .layerConsistencyChecker(layerConsistencyChecker)
