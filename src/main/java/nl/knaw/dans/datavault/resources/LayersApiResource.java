@@ -15,6 +15,7 @@
  */
 package nl.knaw.dans.datavault.resources;
 
+import io.dropwizard.hibernate.UnitOfWork;
 import lombok.AllArgsConstructor;
 import nl.knaw.dans.datavault.api.LayerStatusDto;
 import nl.knaw.dans.layerstore.LayeredItemStore;
@@ -29,6 +30,7 @@ public class LayersApiResource implements LayersApi {
     private final LayeredItemStore layeredItemStore;
 
     @Override
+    @UnitOfWork
     public Response layersIdGet(Long layerId) {
         try {
             var layer = layeredItemStore.getLayer(layerId);
@@ -46,6 +48,7 @@ public class LayersApiResource implements LayersApi {
     }
 
     @Override
+    @UnitOfWork
     public Response layersIdsGet() {
         try {
             return Response.ok(layeredItemStore.listLayerIds())
@@ -57,6 +60,7 @@ public class LayersApiResource implements LayersApi {
     }
 
     @Override
+    @UnitOfWork
     public Response layersPost() {
         try {
             return Response.status(CREATED).entity(new LayerStatusDto().layerId(layeredItemStore.newTopLayer().getId())).build();
@@ -67,6 +71,7 @@ public class LayersApiResource implements LayersApi {
     }
 
     @Override
+    @UnitOfWork
     public Response layersTopGet() {
         try {
             var topLayer = layeredItemStore.getTopLayer();

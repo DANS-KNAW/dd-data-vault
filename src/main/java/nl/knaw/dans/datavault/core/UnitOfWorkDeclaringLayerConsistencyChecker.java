@@ -13,21 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package nl.knaw.dans.datavault.resources;
+package nl.knaw.dans.datavault.core;
 
 import io.dropwizard.hibernate.UnitOfWork;
-import lombok.AllArgsConstructor;
-import nl.knaw.dans.datavault.core.RepositoryProvider;
+import lombok.RequiredArgsConstructor;
+import nl.knaw.dans.layerstore.ItemsMismatchException;
+import nl.knaw.dans.layerstore.Layer;
+import nl.knaw.dans.layerstore.LayerConsistencyChecker;
 
-import javax.ws.rs.core.Response;
+import java.io.IOException;
 
-@AllArgsConstructor
-public class ObjectsApiResource implements ObjectsApi {
-    private final RepositoryProvider ocflRepositoryProvider;
+@RequiredArgsConstructor
+public class UnitOfWorkDeclaringLayerConsistencyChecker implements LayerConsistencyChecker {
+    private final LayerConsistencyChecker delegate;
 
     @UnitOfWork
     @Override
-    public Response objectsIdVersionsNrGet(String id, Integer nr) {
-        return Response.ok(ocflRepositoryProvider.getOcflObjectVersion(id, nr)).build();
+    public void check(Layer layer) throws IOException, ItemsMismatchException {
+        delegate.check(layer);
     }
 }

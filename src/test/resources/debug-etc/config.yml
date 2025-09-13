@@ -10,14 +10,25 @@ server:
       port: 20366
 
 database:
-  driverClass: org.hsqldb.jdbcDriver
-  url: jdbc:hsqldb:hsql://localhost:9004/dd-data-vault
+  driverClass: org.postgresql.Driver
   logValidationErrors: true
-  # See: https://stackoverflow.com/questions/10684244/dbcp-validationquery-for-different-databases
-  validationQuery: SELECT * FROM INFORMATION_SCHEMA.SYSTEM_TABLES
   properties:
-    hibernate.dialect: 'org.hibernate.dialect.HSQLDialect'
+    hibernate.dialect: org.hibernate.dialect.PostgreSQL95Dialect
     hibernate.hbm2ddl.auto: update
+  url: jdbc:postgresql://<devbox>:5432/dd_data_vault_local_test
+  user: dd_data_vault_local_test
+  password: dd_data_vault_local_test
+
+
+#database:
+#  driverClass: org.hsqldb.jdbcDriver
+#  url: jdbc:hsqldb:hsql://localhost:9004/dd-data-vault
+#  logValidationErrors: true
+#  # See: https://stackoverflow.com/questions/10684244/dbcp-validationquery-for-different-databases
+#  validationQuery: SELECT * FROM INFORMATION_SCHEMA.SYSTEM_TABLES
+#  properties:
+#    hibernate.dialect: 'org.hibernate.dialect.HSQLDialect'
+#    hibernate.hbm2ddl.auto: update
 
 dataVault:
   #
