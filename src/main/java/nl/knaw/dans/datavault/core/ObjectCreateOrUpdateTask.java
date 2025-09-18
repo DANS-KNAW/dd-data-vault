@@ -59,9 +59,11 @@ public class ObjectCreateOrUpdateTask implements Runnable {
     public void run() {
         status = Status.RUNNING;
         try {
+            log.debug("Processing object directory {}", objectDirectory);
             addVersionsToRepository(getVersionDirectoriesInOrder());
             moveDirectoryToOutbox("processed", null);
             status = Status.SUCCESS;
+            log.debug("Object directory {} processed successfully", objectDirectory);
         }
         catch (Exception e) {
             log.error("Error processing object directory {}", objectDirectory, e);
@@ -84,16 +86,19 @@ public class ObjectCreateOrUpdateTask implements Runnable {
     }
 
     private void addVersionsToRepository(List<Path> versions) throws IOException {
-        if (acceptTimestampVersionDirectories) {
-            for (var version : versions) {
-                repositoryProvider.addVersion(objectDirectory.getFileName().toString(), Integer.parseInt(version.getFileName().toString()), version);
-            }
+        for (var version : versions) {
+            var versionName = version.getFileName().toString();
+            var objectId = objectDirectory.getFileName().toString();
+            var versionNumber = parseVersionNumber(versionName);
+            log.debug("Adding version {} to repository for object directory {}", versionName, objectDirectory);
+            repositoryProvider.addVersion(objectId, versionNumber, version);
         }
-        else {
-            for (var version : versions) {
-                repositoryProvider.addVersion(objectDirectory.getFileName().toString(), Integer.parseInt(version.getFileName().toString().substring(1)), version);
-            }
-        }
+    }
+
+    private int parseVersionNumber(String name) {
+        return acceptTimestampVersionDirectories
+            ? Integer.parseInt(name)
+            : Integer.parseInt(name.substring(1));
     }
 
     private void moveDirectoryToOutbox(String subdir, Exception exception) throws IOException {

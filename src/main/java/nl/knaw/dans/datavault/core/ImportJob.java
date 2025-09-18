@@ -133,6 +133,7 @@ public class ImportJob implements Runnable {
         if (futures.stream().allMatch(this::checkFuture)) {
             if (tasks.stream().allMatch(task -> task.getStatus() == ObjectCreateOrUpdateTask.Status.SUCCESS)) {
                 status = Status.SUCCESS;
+                log.info("All tasks for batch directory {} finished successfully", path);
             }
             else {
                 status = Status.FAILED;
