@@ -29,6 +29,7 @@ import lombok.extern.slf4j.Slf4j;
 import nl.knaw.dans.datavault.config.DdDataVaultConfig;
 import nl.knaw.dans.datavault.core.ConsistencyCheckExecutor;
 import nl.knaw.dans.datavault.core.ImportServiceImpl;
+import nl.knaw.dans.datavault.core.LayerThresholdHandler;
 import nl.knaw.dans.datavault.core.OcflRepositoryProvider;
 import nl.knaw.dans.datavault.core.RepositoryProvider;
 import nl.knaw.dans.datavault.core.UnitOfWorkDeclaringLayerConsistencyChecker;
@@ -107,6 +108,7 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
                 .outboxDir(configuration.getDataVault().getIngest().getOutbox())
                 .validObjectIdentifierPattern(validObjectIdentifierPattern)
                 .createOrUpdateExecutor(configuration.getExecutorService().build(environment))
+                .layerThresholdHandler(createUnitOfWorkAwareProxy(uowFactory, layeredItemStore, configuration.getDataVault().getLayerStore().getLayerArchivingThreshold().toBytes()))
                 .build();
             environment.jersey().register(new ImportsApiResource(jobService));
             environment.jersey().register(new LayersApiResource(layeredItemStore));
@@ -144,6 +146,12 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
         return uowFactory
             .create(UnitOfWorkDeclaringLayerConsistencyChecker.class, new Class<?>[] { LayerConsistencyChecker.class },
                 new Object[] { delegate });
+    }
+
+    private LayerThresholdHandler createUnitOfWorkAwareProxy(UnitOfWorkAwareProxyFactory uowFactory, LayeredItemStore layeredItemStore, long threshold) {
+        return uowFactory
+            .create(LayerThresholdHandler.class, new Class<?>[] { LayeredItemStore.class, long.class },
+                new Object[] { layeredItemStore, threshold });
     }
 
 }

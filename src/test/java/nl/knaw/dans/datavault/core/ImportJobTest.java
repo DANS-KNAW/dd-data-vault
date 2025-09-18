@@ -15,6 +15,8 @@
  */
 package nl.knaw.dans.datavault.core;
 
+import nl.knaw.dans.layerstore.Layer;
+import nl.knaw.dans.layerstore.LayeredItemStore;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
@@ -30,6 +32,7 @@ import static org.mockito.Mockito.doThrow;
 
 public class ImportJobTest extends AbstractTestFixture {
     private final RepositoryProvider repositoryProvider = Mockito.mock(RepositoryProvider.class);
+    private final LayerThresholdHandler layerThresholdHandler = Mockito.mock(LayerThresholdHandler.class, invocation -> null);
     private final ExecutorService executorService = Executors.newFixedThreadPool(4);
 
     @Test
@@ -38,11 +41,13 @@ public class ImportJobTest extends AbstractTestFixture {
         var simpleObject = copyToTestDir("simple-object", "batch1");
         var outbox = testDir.resolve("outbox");
         Files.createDirectories(outbox);
+        
 
         // When
         var importJob = ImportJob.builder()
             .executorService(executorService)
             .repositoryProvider(repositoryProvider)
+            .layerThresholdHandler(layerThresholdHandler)
             .path(simpleObject.getParent())
             .batchOutbox(outbox)
             .build();
@@ -66,6 +71,7 @@ public class ImportJobTest extends AbstractTestFixture {
         var importJob = ImportJob.builder()
             .executorService(executorService)
             .repositoryProvider(repositoryProvider)
+            .layerThresholdHandler(layerThresholdHandler)
             .path(simpleObject.getParent())
             .batchOutbox(outbox)
             .build();
@@ -92,6 +98,7 @@ public class ImportJobTest extends AbstractTestFixture {
             .validObjectIdentifierPattern(Pattern.compile("urn:nbn:nl:ui:13-.*"))
             .executorService(executorService)
             .repositoryProvider(repositoryProvider)
+            .layerThresholdHandler(layerThresholdHandler)
             .path(invalidObject.getParent())
             .batchOutbox(outbox)
             .build();
@@ -117,6 +124,7 @@ public class ImportJobTest extends AbstractTestFixture {
         var importJob = ImportJob.builder()
             .executorService(executorService)
             .repositoryProvider(repositoryProvider)
+            .layerThresholdHandler(layerThresholdHandler)
             .path(testDir.resolve("batch4"))
             .batchOutbox(outbox)
             .build();

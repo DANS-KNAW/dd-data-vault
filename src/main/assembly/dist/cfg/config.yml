@@ -94,6 +94,13 @@ dataVault:
       type: TAR
       archiveRoot: /data/vault/archive
 
+    #
+    # The threshold at which a layer is archived. Note that this means the layer can be substantially larger than the threshold, namely when a large batch is
+    # offered when the layer is nearly full. This is not a problem because the threshold is intended to ensure a minimum size of the archive file rather than
+    # a maximum size.
+    #
+    layerArchivingThreshold: 1G
+
     #   type: ZIP
     #   archiveRoot: /var/opt/dans.knaw.nl/tmp/dd-data-vault/archive
 
@@ -127,9 +134,9 @@ logging:
       archive: false
       timeZone: system
       currentLogFilename: /var/opt/dans.knaw.nl/log/dd-data-vault/dd-data-vault.log
-      logFormat: "%-5p [%d{ISO8601}] %c{0}: %m%n%dwREx"
+      logFormat: "%-5p [%d{ISO8601}] [%t] %c{0}: %m%n%dwREx"
     - type: console
       # Used in combination with journald, which already adds the timestamp
-      logFormat: "%-5p %c{0}: %m%n%dwREx"
+      logFormat: "%-5p [%t] %c{0}: %m%n%dwREx"
   loggers:
     'org.hibernate.engine.internal.StatisticalLoggingSessionEventListener': 'OFF'

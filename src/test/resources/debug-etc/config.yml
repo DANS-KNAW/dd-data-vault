@@ -87,6 +87,14 @@ dataVault:
       type: TAR
       archiveRoot: data/vault/archive
 
+    #
+    # The threshold at which a layer is archived. Note that this means the layer can be substantially larger than the threshold, namely when a large batch is
+    # offered when the layer is nearly full. This is not a problem because the threshold is intended to ensure a minimum size of the archive file rather than
+    # a maximum size.
+    #
+    layerArchivingThreshold: 1G
+
+
     #   type: ZIP
     #   archiveRoot: data/vault/archive
 

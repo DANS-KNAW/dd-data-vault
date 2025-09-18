@@ -5,7 +5,7 @@ Manages a DANS Data Vault Storage Root.
 
 Purpose
 -------
-A DANS Data Vault Storage Root is an OCFL storage root that is used to store a collection of long term preservation objects. 
+A DANS Data Vault Storage Root is an OCFL storage root that is used to store a collection of long term preservation objects.
 
 Interfaces
 ----------
@@ -38,8 +38,26 @@ batch-dir
   When updating an existing object, the first version directory must be named after the next version to be created in the OCFL object.
 * The service can also be configured to accept timestamps as version directories. In that case, the version directories are expected to be numbers,
   representing the timestamp of the version in milliseconds since the epoch. This timestamp is only used for ordering the versions in the OCFL object, so
-  any number can be used as long as it is unique for the object. This option is mainly used for testing purposes. 
+  any number can be used as long as it is unique for the object. This option is mainly used for testing purposes.
 
 Processing
------------
+----------
+
+### Order of batches
+
+To ensure that updates for one object are processed in the correct order, the service will process all batches in the inbox in the order they were received.
+Otherwise, it would be possible that a later batch would overtake an earlier batch. If these two batches contain updates for the same object, this would lead to
+an error because the version directory would not coincide with the next expected version in the OCFL object.
+
+### Parallelization of object import directory processing
+
+Per batch the object import directory processing can be parallelized because there can be only one object import directory per object in a batch. The task that
+processes the object import directory ensures that the version directories are processed in the correct order.
+
+### Automatic layer creation
+
+After processing a batch, the service will check if the maximum size of the layer has been reached. If this is the case, the service will create a new layer
+and start the archiving process of the old layer. Since object import directories are processed in parallel, it is not possible to do a more fine-grained
+check for the maximum size of the layer.
+
 

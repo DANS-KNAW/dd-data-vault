@@ -15,6 +15,7 @@
  */
 package nl.knaw.dans.datavault.config;
 
+import io.dropwizard.util.DataSize;
 import lombok.Data;
 import lombok.NonNull;
 
@@ -31,4 +32,6 @@ public class LayerStoreConfig {
     private ArchiveProviderFactory archiveProvider;
     @NotNull
     private ConsistencyCheckExecutorConfig consistencyCheckExecutor;
+    @NotNull
+    private DataSize layerArchivingThreshold;
 }

@@ -34,7 +34,11 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
 public class ImportServiceImpl implements ImportService, Managed {
     // Must be a single thread executor to ensure that jobs are executed in the order they are submitted.
-    private final ExecutorService jobExecutor = Executors.newSingleThreadExecutor();
+    private final ExecutorService jobExecutor = Executors.newSingleThreadExecutor(r -> {
+        Thread thread = new Thread(r);
+        thread.setName("import-job-executor");
+        return thread;
+    });
 
     @NonNull
     private final ExecutorService createOrUpdateExecutor;
@@ -51,6 +55,9 @@ public class ImportServiceImpl implements ImportService, Managed {
     @NonNull
     private final RepositoryProvider repositoryProvider;
 
+    @NonNull
+    private final LayerThresholdHandler layerThresholdHandler;
+
     private final List<ImportJob> importJobs = new ArrayList<>();
 
     @Builder
@@ -59,7 +66,9 @@ public class ImportServiceImpl implements ImportService, Managed {
         Pattern validObjectIdentifierPattern,
         Path inboxDir,
         Path outboxDir,
-        RepositoryProvider repositoryProvider) {
+        RepositoryProvider repositoryProvider,
+        LayerThresholdHandler layerThresholdHandler
+    ) {
         return new ImportServiceImpl(
             createOrUpdateExecutor,
             validObjectIdentifierPattern,
@@ -67,7 +76,9 @@ public class ImportServiceImpl implements ImportService, Managed {
             // they are provided as paths relative to the project root for convenience.
             inboxDir.toAbsolutePath(),
             outboxDir.toAbsolutePath(),
-            repositoryProvider);
+            repositoryProvider,
+            layerThresholdHandler);
+
     }
 
     @Override
@@ -82,6 +93,7 @@ public class ImportServiceImpl implements ImportService, Managed {
             .validObjectIdentifierPattern(validObjectIdentifierPattern)
             .executorService(createOrUpdateExecutor)
             .repositoryProvider(repositoryProvider)
+            .layerThresholdHandler(layerThresholdHandler)
             .build();
         jobExecutor.execute(importJob);
         importJobs.add(importJob);

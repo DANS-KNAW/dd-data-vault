@@ -65,6 +65,10 @@ public class ImportJob implements Runnable {
     private final ExecutorService executorService;
     @NonNull
     private final RepositoryProvider repositoryProvider;
+
+    @NonNull
+    private final LayerThresholdHandler layerThresholdHandler;
+
     private final boolean acceptTimestampVersionDirectories;
 
     @Default
@@ -134,6 +138,7 @@ public class ImportJob implements Runnable {
             if (tasks.stream().allMatch(task -> task.getStatus() == ObjectCreateOrUpdateTask.Status.SUCCESS)) {
                 status = Status.SUCCESS;
                 log.info("All tasks for batch directory {} finished successfully", path);
+                layerThresholdHandler.newTopLayerIfThresholdReached();
             }
             else {
                 status = Status.FAILED;
