@@ -17,9 +17,13 @@ package nl.knaw.dans.datavault.db;
 
 import io.dropwizard.hibernate.AbstractDAO;
 import nl.knaw.dans.datavault.core.ImportBatch;
+import nl.knaw.dans.datavault.core.ImportBatchTask.Status;
 import org.hibernate.SessionFactory;
 
-public class ImportBatchDao extends AbstractDAO<ImportBatch> {
+import java.util.Optional;
+import java.util.UUID;
+
+public class ImportBatchDao extends AbstractDAO<ImportBatch> implements TaskSource<ImportBatch> {
     /**
      * Creates a new DAO with a given session provider.
      *
@@ -31,5 +35,29 @@ public class ImportBatchDao extends AbstractDAO<ImportBatch> {
 
     public ImportBatch create(ImportBatch batch) {
         return super.persist(batch);
+    }
+
+    public ImportBatch get(UUID id) {
+        return super.get(id);
+    }
+
+    @Override
+    public Optional<ImportBatch> nextTask() {
+        var criteria = currentSession().getCriteriaBuilder();
+        var query = criteria.createQuery(ImportBatch.class);
+        var root = query.from(ImportBatch.class);
+        var statusPath = root.get("status");
+        query.where(criteria.equal(statusPath, ImportBatch.Status.PENDING));
+        query.orderBy(criteria.asc(root.get("created")));
+
+        return currentSession()
+            .createQuery(query)
+            .setMaxResults(1)
+            .getResultStream()
+            .findFirst();
+    }
+
+    public void update(ImportBatch batch) {
+        currentSession().update(batch);
     }
 }

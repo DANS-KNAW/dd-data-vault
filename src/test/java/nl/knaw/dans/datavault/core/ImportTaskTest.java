@@ -42,7 +42,7 @@ public class ImportTaskTest extends AbstractTestFixture {
         
 
         // When
-        var importJob = ImportTask.builder()
+        var importJob = ImportBatchTask.builder()
             .executorService(executorService)
             .repositoryProvider(repositoryProvider)
             .layerThresholdHandler(layerThresholdHandler)
@@ -53,7 +53,7 @@ public class ImportTaskTest extends AbstractTestFixture {
 
         // Then
         Mockito.verify(repositoryProvider).addVersion(Mockito.anyString(), eq(1), eq(simpleObject.resolve("v1")));
-        assertThat(importJob.getStatus()).isEqualTo(ImportTask.Status.SUCCESS);
+        assertThat(importJob.getStatus()).isEqualTo(ImportBatchTask.Status.SUCCESS);
         assertDirectoriesEqual(getTestInput("simple-object"), outbox.resolve("processed/simple-object"));
     }
 
@@ -66,7 +66,7 @@ public class ImportTaskTest extends AbstractTestFixture {
         Files.createDirectories(outbox);
 
         // When
-        var importJob = ImportTask.builder()
+        var importJob = ImportBatchTask.builder()
             .executorService(executorService)
             .repositoryProvider(repositoryProvider)
             .layerThresholdHandler(layerThresholdHandler)
@@ -79,7 +79,7 @@ public class ImportTaskTest extends AbstractTestFixture {
         Mockito.verify(repositoryProvider).addVersion(Mockito.anyString(), eq(1), eq(simpleObject.resolve("v1")));
         Mockito.verify(repositoryProvider).addVersion(Mockito.anyString(), eq(1), eq(multiVersionObject.resolve("v1")));
         Mockito.verify(repositoryProvider).addVersion(Mockito.anyString(), eq(2), eq(multiVersionObject.resolve("v2")));
-        assertThat(importJob.getStatus()).isEqualTo(ImportTask.Status.SUCCESS);
+        assertThat(importJob.getStatus()).isEqualTo(ImportBatchTask.Status.SUCCESS);
         assertDirectoriesEqual(getTestInput("simple-object"), outbox.resolve("processed/simple-object"));
         assertDirectoriesEqual(getTestInput("multi-version-object"), outbox.resolve("processed/multi-version-object"));
     }
@@ -92,7 +92,7 @@ public class ImportTaskTest extends AbstractTestFixture {
         Files.createDirectories(outbox);
 
         // When
-        var importJob = ImportTask.builder()
+        var importJob = ImportBatchTask.builder()
             .validObjectIdentifierPattern(Pattern.compile("urn:nbn:nl:ui:13-.*"))
             .executorService(executorService)
             .repositoryProvider(repositoryProvider)
@@ -103,7 +103,7 @@ public class ImportTaskTest extends AbstractTestFixture {
         importJob.run();
 
         // Then
-        assertThat(importJob.getStatus()).isEqualTo(ImportTask.Status.FAILED);
+        assertThat(importJob.getStatus()).isEqualTo(ImportBatchTask.Status.FAILED);
     }
 
     @Test
@@ -119,7 +119,7 @@ public class ImportTaskTest extends AbstractTestFixture {
         doThrow(new RuntimeException("Failed to add version"))
             .when(repositoryProvider)
             .addVersion(eq("multi-version-object"), eq(2), eq(multiVersionObject.resolve("v2")));
-        var importJob = ImportTask.builder()
+        var importJob = ImportBatchTask.builder()
             .executorService(executorService)
             .repositoryProvider(repositoryProvider)
             .layerThresholdHandler(layerThresholdHandler)
@@ -129,7 +129,7 @@ public class ImportTaskTest extends AbstractTestFixture {
         importJob.run();
 
         // Then
-        assertThat(importJob.getStatus()).isEqualTo(ImportTask.Status.FAILED);
+        assertThat(importJob.getStatus()).isEqualTo(ImportBatchTask.Status.FAILED);
         assertThat(importJob.getMessage()).isEqualTo(String.format("One or more tasks failed. Check error documents in '%s'.", outbox));
         assertDirectoriesEqual(getTestInput("simple-object"), outbox.resolve("processed/simple-object"));
         assertDirectoriesEqual(getTestInput("multi-version-object"), outbox.resolve("failed/multi-version-object"));

@@ -28,7 +28,7 @@ public interface ImportService {
      * @return the resulting import job
      * @throws InvalidImportException if the import is invalid
      */
-    ImportTask addImport(ImportCommandDto command) throws InvalidImportException;
+    ImportBatchTask addImport(ImportCommandDto command) throws InvalidImportException;
 
     /**
      * Get an import job by its id. The object returned provides information about the status of the import job.
@@ -36,5 +36,5 @@ public interface ImportService {
      * @param id the id of the import job
      * @return the import job
      */
-    ImportTask getImport(UUID id);
+    ImportBatchTask getImport(UUID id);
 }

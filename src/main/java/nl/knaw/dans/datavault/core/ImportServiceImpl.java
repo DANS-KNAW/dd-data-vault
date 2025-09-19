@@ -58,7 +58,7 @@ public class ImportServiceImpl implements ImportService, Managed {
     @NonNull
     private final LayerThresholdHandler layerThresholdHandler;
 
-    private final List<ImportTask> importTasks = new ArrayList<>();
+    private final List<ImportBatchTask> importBatchTasks = new ArrayList<>();
 
     @Builder
     public static ImportServiceImpl create(
@@ -82,11 +82,11 @@ public class ImportServiceImpl implements ImportService, Managed {
     }
 
     @Override
-    public ImportTask addImport(ImportCommandDto command) throws InvalidImportException {
+    public ImportBatchTask addImport(ImportCommandDto command) throws InvalidImportException {
         validateImportCommandDto(command);
         var batchOutbox = outboxDir.resolve(inboxDir.relativize(Path.of(command.getPath())));
         initializeBatchOutbox(batchOutbox);
-        var importJob = ImportTask.builder()
+        var importJob = ImportBatchTask.builder()
             .path(Path.of(command.getPath()))
             .batchOutbox(batchOutbox)
             .singleObject(command.getSingleObject())
@@ -96,7 +96,7 @@ public class ImportServiceImpl implements ImportService, Managed {
             .layerThresholdHandler(layerThresholdHandler)
             .build();
         jobExecutor.execute(importJob);
-        importTasks.add(importJob);
+        importBatchTasks.add(importJob);
         return importJob;
     }
 
@@ -126,8 +126,8 @@ public class ImportServiceImpl implements ImportService, Managed {
     }
 
     @Override
-    public ImportTask getImport(UUID id) {
-        return importTasks.stream()
+    public ImportBatchTask getImport(UUID id) {
+        return importBatchTasks.stream()
             .filter(job -> job.getId().equals(id))
             .findFirst()
             .orElse(null);

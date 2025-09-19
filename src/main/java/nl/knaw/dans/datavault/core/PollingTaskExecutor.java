@@ -19,7 +19,7 @@ import io.dropwizard.hibernate.UnitOfWork;
 import io.dropwizard.lifecycle.Managed;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import nl.knaw.dans.datavault.db.TaskRecordDao;
+import nl.knaw.dans.datavault.db.TaskSource;
 
 import java.time.Duration;
 import java.util.Optional;
@@ -28,35 +28,43 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 /**
- * <p>Generic serial background executor that:</p>
- * <ul>
- * <li>periodically polls for the next task record via <code>TaskRecordDao#nextTask()</code></li>
- * <li>creates a <code>Runnable</code> via <code>TaskFactory#create(record)</code></li>
- * <li>runs the task synchronously (one at a time)</li>
- * </ul>
+ *
  *
  * @param <R> record type
  */
 @Slf4j
 @RequiredArgsConstructor
-public class SerialBackgroundExecutor<R> implements Managed {
+public class PollingTaskExecutor<R> implements Managed {
+    private final String name;
     private final ScheduledExecutorService scheduler;
-    private final TaskRecordDao<R> taskRecordDao;
-    private final TaskFactory<R> taskFactory;
     private final Duration pollingInterval;
-    private final String executorName;
+    private final TaskSource<R> taskSource;
+    private final TaskFactory<R> taskFactory;
 
     private ScheduledFuture<?> future;
 
-    public SerialBackgroundExecutor(SerialBackgroundExecutor other) {
-        this(other.scheduler, other.taskRecordDao, other.taskFactory, other.pollingInterval, other.executorName);
+    /**
+     * Copy constructor. The source executor must not be running.
+     *
+     * @param other the source executor
+     */
+    @SuppressWarnings("CopyConstructorMissesField") // future is not copied on purpose
+    public PollingTaskExecutor(PollingTaskExecutor<R> other) {
+        if (other.future != null) {
+            throw new IllegalArgumentException("Cannot copy a running executor");
+        }
+        this.name = other.name;
+        this.scheduler = other.scheduler;
+        this.pollingInterval = other.pollingInterval;
+        this.taskSource = other.taskSource;
+        this.taskFactory = other.taskFactory;
     }
 
     @Override
     public void start() {
         long delayMs = Math.max(0, pollingInterval.toMillis());
         future = scheduler.scheduleWithFixedDelay(this::tick, 0, delayMs, TimeUnit.MILLISECONDS);
-        log.info("{} started; polling every {}", executorName, pollingInterval);
+        log.info("{} started; polling every {}", name, pollingInterval);
     }
 
     @Override
@@ -65,23 +73,23 @@ public class SerialBackgroundExecutor<R> implements Managed {
             future.cancel(false);
         }
         scheduler.shutdown();
-        log.info("{} stopped", executorName);
+        log.info("{} stopped", name);
     }
 
     @UnitOfWork
     public void tick() {
         try {
-            Optional<R> next = taskRecordDao.nextTask();
+            Optional<R> next = taskSource.nextTask();
             if (next.isEmpty()) {
                 return;
             }
             R record = next.get();
-            log.debug("{}: found next task record: {}", executorName, record);
+            log.debug("{}: found next task record: {}", name, record);
             Runnable task = taskFactory.create(record);
             task.run();
         }
         catch (Exception e) {
-            log.error("{}: error while polling or running task", executorName, e);
+            log.error("{}: error while polling or running task", name, e);
         }
     }
 }

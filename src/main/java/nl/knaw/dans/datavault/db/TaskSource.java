@@ -17,6 +17,6 @@ package nl.knaw.dans.datavault.db;
 
 import java.util.Optional;
 
-public interface TaskRecordDao<R> {
+public interface TaskSource<R> {
     Optional<R> nextTask();
 }

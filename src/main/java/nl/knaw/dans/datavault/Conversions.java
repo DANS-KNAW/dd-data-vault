@@ -22,14 +22,14 @@ import nl.knaw.dans.datavault.api.ImportJobStatusDto;
 import nl.knaw.dans.datavault.api.ImportJobStatusDto.StatusEnum;
 import nl.knaw.dans.datavault.core.ConsistencyCheck;
 import nl.knaw.dans.datavault.core.ImportBatch;
-import nl.knaw.dans.datavault.core.ImportTask;
+import nl.knaw.dans.datavault.core.ImportBatchTask;
 import org.mapstruct.Mapper;
 
 import java.nio.file.Path;
 
 @Mapper
 public interface Conversions {
-    ImportJobStatusDto convert(ImportTask importTask);
+    ImportJobStatusDto convert(ImportBatchTask importBatchTask);
 
     ConsistencyCheck.Type convert(ConsistencyCheckRequestDto.TypeEnum type);
 
@@ -43,7 +43,7 @@ public interface Conversions {
         return path.toString();
     }
 
-    default StatusEnum convert(ImportTask.Status status) {
+    default StatusEnum convert(ImportBatchTask.Status status) {
         return StatusEnum.fromValue(status.name());
     }
 

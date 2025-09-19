@@ -23,7 +23,7 @@ import java.time.OffsetDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
-public class ConsistencyCheckDao extends AbstractDAO<ConsistencyCheck> implements TaskRecordDao<ConsistencyCheck>{
+public class ConsistencyCheckDao extends AbstractDAO<ConsistencyCheck> implements TaskSource<ConsistencyCheck> {
     /**
      * Creates a new DAO with a given session provider.
      *

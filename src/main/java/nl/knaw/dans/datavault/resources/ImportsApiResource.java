@@ -19,6 +19,7 @@ import io.dropwizard.hibernate.UnitOfWork;
 import lombok.AllArgsConstructor;
 import nl.knaw.dans.datavault.Conversions;
 import nl.knaw.dans.datavault.api.ImportCommandDto;
+import nl.knaw.dans.datavault.core.ImportBatch;
 import nl.knaw.dans.datavault.db.ImportBatchDao;
 import org.mapstruct.factory.Mappers;
 
@@ -44,7 +45,11 @@ public class ImportsApiResource implements ImportsApi {
     @Override
     @UnitOfWork
     public Response importsIdGet(UUID id) {
-        return null;
+        var batch = importBatchDao.get(id);
+        if (batch == null) {
+            return Response.status(Response.Status.NOT_FOUND).build();
+        }
+        return Response.ok(conversions.convert(batch)).build();
     }
 
     @Override
@@ -54,6 +59,7 @@ public class ImportsApiResource implements ImportsApi {
             var importBatch = conversions.convert(importJobDto);
             importBatch.setPath(getInboxRelativePath(Path.of(importBatch.getPath())));
             importBatch.setCreated(OffsetDateTime.now());
+            importBatch.setStatus(ImportBatch.Status.PENDING);
             return Response
                 .status(CREATED)
                 .entity(conversions.convert(importBatchDao.create(importBatch)))

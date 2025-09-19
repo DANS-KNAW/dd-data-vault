@@ -15,6 +15,7 @@
  */
 package nl.knaw.dans.datavault.config;
 
+import io.dropwizard.util.Duration;
 import lombok.Data;
 
 import javax.validation.constraints.NotNull;
@@ -26,4 +27,6 @@ public class IngestConfig {
     private Path inbox;
     @NotNull
     private Path outbox;
+
+    private Duration pollingInterval = Duration.seconds(10);
 }
