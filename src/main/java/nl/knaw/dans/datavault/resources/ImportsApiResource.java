@@ -15,47 +15,63 @@
  */
 package nl.knaw.dans.datavault.resources;
 
+import io.dropwizard.hibernate.UnitOfWork;
 import lombok.AllArgsConstructor;
 import nl.knaw.dans.datavault.Conversions;
 import nl.knaw.dans.datavault.api.ImportCommandDto;
-import nl.knaw.dans.datavault.core.ImportService;
-import nl.knaw.dans.datavault.core.InvalidImportException;
+import nl.knaw.dans.datavault.db.ImportBatchDao;
 import org.mapstruct.factory.Mappers;
 
 import javax.ws.rs.core.Response;
+import java.nio.file.Path;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 import static javax.ws.rs.core.Response.Status.CREATED;
-import static javax.ws.rs.core.Response.Status.OK;
 
 @AllArgsConstructor
 public class ImportsApiResource implements ImportsApi {
     private final Conversions conversions = Mappers.getMapper(Conversions.class);
-    private final ImportService importService;
+    private final ImportBatchDao importBatchDao;
+    private final Path inbox;
 
     @Override
+    @UnitOfWork
     public Response importsGet() {
         return null;
     }
 
     @Override
+    @UnitOfWork
     public Response importsIdGet(UUID id) {
-        return Response
-            .status(OK)
-            .entity(conversions.convert(importService.getImport(id)))
-            .build();
+        return null;
     }
 
     @Override
+    @UnitOfWork
     public Response importsPost(ImportCommandDto importJobDto) {
         try {
+            var importBatch = conversions.convert(importJobDto);
+            importBatch.setPath(getInboxRelativePath(Path.of(importBatch.getPath())));
+            importBatch.setCreated(OffsetDateTime.now());
             return Response
                 .status(CREATED)
-                .entity(conversions.convert(importService.addImport(importJobDto)))
+                .entity(conversions.convert(importBatchDao.create(importBatch)))
                 .build();
         }
-        catch (InvalidImportException e) {
+        catch (IllegalArgumentException e) {
             return Response.status(Response.Status.BAD_REQUEST).entity(e.getMessage()).build();
         }
+    }
+
+    private String getInboxRelativePath(Path path) {
+        Path normalizedPath = path.toAbsolutePath().normalize();
+        Path normalizedInbox = inbox.toAbsolutePath().normalize();
+        var relativePath = normalizedInbox.relativize(normalizedPath).toString();
+
+        if (normalizedPath.startsWith(normalizedInbox)) {
+            return relativePath;
+        }
+        throw new IllegalArgumentException("Path traverses outside of inbox directory");
     }
 }

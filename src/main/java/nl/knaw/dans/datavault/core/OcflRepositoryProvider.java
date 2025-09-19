@@ -50,6 +50,9 @@ import java.util.Optional;
 import static java.nio.file.StandardCopyOption.COPY_ATTRIBUTES;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
+/**
+ * An implementation of {@link RepositoryProvider} that uses the OCFL library to store object versions.
+ */
 @Slf4j
 @RequiredArgsConstructor(access = AccessLevel.PRIVATE) // Builder should be used to create instances
 public class OcflRepositoryProvider implements RepositoryProvider, Managed {

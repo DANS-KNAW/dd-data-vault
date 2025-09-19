@@ -31,7 +31,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- *
+ * Implements the DANS-defined object version properties OCFL extension.
  */
 @RequiredArgsConstructor
 public class ObjectVersionProperties {
@@ -45,6 +45,11 @@ public class ObjectVersionProperties {
 
     private Map<String, Map<String, Object>> properties = new HashMap<>();
 
+    /**
+     * Loads the properties from the object version properties extension.
+     *
+     * @throws IOException if the properties file cannot be read
+     */
     public void load() throws IOException {
         var propertiesJsonFile = getExtensionDir().resolve(VERSION_PROPERTIES_FILE);
         itemStore.createDirectory(propertiesJsonFile.getParent().toString());
@@ -63,6 +68,11 @@ public class ObjectVersionProperties {
         return Path.of(objectRootPath).resolve("extensions").resolve(EXTENSION_DIR);
     }
 
+    /**
+     * Validates the loaded properties.
+     *
+     * @throws IOException if the properties file cannot be read
+     */
     public void validate() throws IOException {
         if (properties == null) {
             throw new IllegalStateException("Properties have not been loaded");
@@ -83,7 +93,7 @@ public class ObjectVersionProperties {
             throw new IllegalStateException("Version directories that do not have corresponding properties: " + versionDirsWithoutKeys);
         }
 
-        // Check that sidecar file exists
+        // Check that a sidecar file exists
         var sidecarFile = getExtensionDir().resolve(SIDE_CAR_FILE);
         if (!itemStore.existsPathLike(sidecarFile.toString())) {
             throw new IllegalStateException("Sidecar file does not exist: " + sidecarFile);
@@ -92,6 +102,9 @@ public class ObjectVersionProperties {
         // TODO: Validate the content of the sidecar file.
     }
 
+    /**
+     * Saves the properties to the object version properties extension.
+     */
     public void save() {
         if (properties == null) {
             throw new IllegalStateException("Properties have not been loaded");
@@ -122,6 +135,13 @@ public class ObjectVersionProperties {
         }
     }
 
+    /**
+     * Adds or updates a property for the given version.
+     *
+     * @param version the version number
+     * @param key     the property key
+     * @param value   the property value
+     */
     public void putProperty(long version, String key, Object value) {
         if (properties == null) {
             throw new IllegalStateException("Properties have not been loaded");

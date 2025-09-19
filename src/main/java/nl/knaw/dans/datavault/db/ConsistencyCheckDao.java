@@ -23,7 +23,7 @@ import java.time.OffsetDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
-public class ConsistencyCheckDao extends AbstractDAO<ConsistencyCheck> {
+public class ConsistencyCheckDao extends AbstractDAO<ConsistencyCheck> implements TaskRecordDao<ConsistencyCheck>{
     /**
      * Creates a new DAO with a given session provider.
      *
@@ -53,7 +53,7 @@ public class ConsistencyCheckDao extends AbstractDAO<ConsistencyCheck> {
         return super.persist(check);
     }
 
-    public Optional<ConsistencyCheck> findOldestUnfinished() {
+    public Optional<ConsistencyCheck> nextTask() {
         var criteriaBuilder = currentSession().getCriteriaBuilder();
         var criteriaQuery = criteriaBuilder.createQuery(ConsistencyCheck.class);
         var root = criteriaQuery.from(ConsistencyCheck.class);
@@ -61,7 +61,7 @@ public class ConsistencyCheckDao extends AbstractDAO<ConsistencyCheck> {
             .where(
                 criteriaBuilder.and(
                     criteriaBuilder.isNull(root.get("finished")),
-                    criteriaBuilder.lessThan(root.get("created"), OffsetDateTime.now().minusMinutes(1))
+                    criteriaBuilder.lessThan(root.get("created"), OffsetDateTime.now())
                 )
             )
             .orderBy(criteriaBuilder.asc(root.get("created")));

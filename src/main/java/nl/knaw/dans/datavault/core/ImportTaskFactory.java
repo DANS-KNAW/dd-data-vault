@@ -15,29 +15,21 @@
  */
 package nl.knaw.dans.datavault.core;
 
-import io.dropwizard.hibernate.UnitOfWork;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import nl.knaw.dans.layerstore.LayeredItemStore;
 
-import java.io.IOException;
+import java.nio.file.Path;
 
-/**
- * Defines a UnitOfWork to handle the archiving of layers when the threshold is reached.
- */
 @RequiredArgsConstructor
-@Slf4j
-public class LayerThresholdHandler {
-    private final LayeredItemStore layeredItemStore;
-    private final long layerArchivingThreshold;
+public class ImportTaskFactory implements TaskFactory<ImportBatch> {
+    private final Path inbox;
 
-    @UnitOfWork
-    public void newTopLayerIfThresholdReached() throws IOException {
-        if (layeredItemStore.getTopLayer().getSizeInBytes() >= layerArchivingThreshold) {
-            log.info("Archiving threshold reached, creating new top layer");
-            layeredItemStore.newTopLayer();
-            log.info("New top layer created");
-        }
+    @Override
+    public Runnable create(ImportBatch record) {
+        return ImportTask.builder()
+            .id(record.getId())
+            .path(inbox.resolve(record.getPath()))
+            .singleObject(record.isSingleObject())
+            .acceptTimestampVersionDirectories(record.isAcceptTimestampVersionDirectories())
+            .build();
     }
-
 }

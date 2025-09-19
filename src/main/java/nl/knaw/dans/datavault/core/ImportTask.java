@@ -45,7 +45,7 @@ import java.util.regex.Pattern;
 @Builder(builderClassName = "Builder")
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Slf4j
-public class ImportJob implements Runnable {
+public class ImportTask implements Runnable {
     public enum Status {
         PENDING,
         RUNNING,

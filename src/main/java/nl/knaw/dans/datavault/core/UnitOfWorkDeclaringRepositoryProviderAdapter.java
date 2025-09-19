@@ -21,6 +21,9 @@ import nl.knaw.dans.datavault.api.OcflObjectVersionDto;
 
 import java.nio.file.Path;
 
+/**
+ * Delegates to a {@link RepositoryProvider} and wraps its methods in {@link UnitOfWork}s.
+ */
 @AllArgsConstructor
 public class UnitOfWorkDeclaringRepositoryProviderAdapter implements RepositoryProvider {
     private final RepositoryProvider delegate;

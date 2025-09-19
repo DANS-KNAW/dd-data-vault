@@ -13,23 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package nl.knaw.dans.datavault;
+package nl.knaw.dans.datavault.db;
 
-import io.dropwizard.db.PooledDataSourceFactory;
-import io.dropwizard.hibernate.HibernateBundle;
-import nl.knaw.dans.datavault.config.DdDataVaultConfig;
-import nl.knaw.dans.datavault.core.ConsistencyCheck;
+import io.dropwizard.hibernate.AbstractDAO;
 import nl.knaw.dans.datavault.core.ImportBatch;
-import nl.knaw.dans.layerstore.ItemRecord;
+import org.hibernate.SessionFactory;
 
-public class DdDataVautHibernateBundle extends HibernateBundle<DdDataVaultConfig> {
-
-    public DdDataVautHibernateBundle() {
-        super(ItemRecord.class, ImportBatch.class, ConsistencyCheck.class);
+public class ImportBatchDao extends AbstractDAO<ImportBatch> {
+    /**
+     * Creates a new DAO with a given session provider.
+     *
+     * @param sessionFactory a session provider
+     */
+    public ImportBatchDao(SessionFactory sessionFactory) {
+        super(sessionFactory);
     }
 
-    @Override
-    public PooledDataSourceFactory getDataSourceFactory(DdDataVaultConfig config) {
-        return config.getDatabase();
+    public ImportBatch create(ImportBatch batch) {
+        return super.persist(batch);
     }
 }

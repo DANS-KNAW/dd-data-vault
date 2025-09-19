@@ -27,6 +27,9 @@ import nl.knaw.dans.layerstore.LayeredItemStore;
 
 import java.io.IOException;
 
+/**
+ * Defines a UnitOfWork to perform a consistency check on the repository.
+ */
 @RequiredArgsConstructor
 @Slf4j
 public class ConsistencyCheckTask implements Runnable {

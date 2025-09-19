@@ -16,66 +16,60 @@
 package nl.knaw.dans.datavault.core;
 
 import lombok.AllArgsConstructor;
-import lombok.Getter;
+import lombok.Builder;
+import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
-import lombok.ToString;
 import org.hibernate.annotations.GenericGenerator;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.Lob;
-import javax.persistence.Table;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
-/**
- * Represents a consistency check task performed on the repository.
- */
-@Entity
-@Table(name = "consistency_check")
-@Getter
-@Setter
-@ToString
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class ConsistencyCheck {
-    public enum Type {
-        LAYER_IDS, LISTING_RECORDS
-    }
-
-    public enum Result {
-        OK, NOT_OK, ERROR
+@Builder
+@Entity(name = "import_batch")
+public class ImportBatch {
+    public enum Status {
+        PENDING,
+        RUNNING,
+        SUCCESS,
+        FAILED
     }
 
     @Id
     @GeneratedValue(generator = "UUID")
     @GenericGenerator(name = "UUID", strategy = "org.hibernate.id.UUIDGenerator")
-    @Column(name = "id", nullable = false)
+    @Column(nullable = false)
     private UUID id;
 
+    @Column
+    private String path;
+
+    @Column
+    private boolean singleObject;
+
+    @Column
+    private boolean acceptTimestampVersionDirectories;
+
     @Column(nullable = false)
-    private Type type;
-
-    @Column(name = "layer_id")
-    private long layerId;
-
-    @Column(name = "created", nullable = false)
     private OffsetDateTime created;
 
-    @Column(name = "started")
+    @Column
     private OffsetDateTime started;
 
-    @Column(name = "finished")
+    @Column
     private OffsetDateTime finished;
 
-    @Column(name = "result")
-    private Result result;
+    @Column
+    private Status status;
 
-    @Column(name = "message")
+    @Column
     @Lob
     private String message;
 

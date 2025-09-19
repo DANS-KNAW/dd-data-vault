@@ -23,6 +23,9 @@ import nl.knaw.dans.layerstore.LayerConsistencyChecker;
 
 import java.io.IOException;
 
+/**
+ * Delegates to a {@link LayerConsistencyChecker} and wraps its methods in {@link UnitOfWork}s.
+ */
 @RequiredArgsConstructor
 public class UnitOfWorkDeclaringLayerConsistencyChecker implements LayerConsistencyChecker {
     private final LayerConsistencyChecker delegate;
