@@ -30,7 +30,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 
-public class ImportTaskTest extends AbstractTestFixture {
+public class ImportJobTaskTest extends AbstractTestFixture {
     private final RepositoryProvider repositoryProvider = Mockito.mock(RepositoryProvider.class);
     private final LayerThresholdHandler layerThresholdHandler = Mockito.mock(LayerThresholdHandler.class, invocation -> null);
     private final ExecutorService executorService = Executors.newFixedThreadPool(4);
@@ -43,15 +43,15 @@ public class ImportTaskTest extends AbstractTestFixture {
         Files.createDirectories(outbox);
 
         var id = UUID.randomUUID();
-        var importBatch = new ImportJob();
-        importBatch.setId(id);
-        importBatch.setPath(simpleObject.getParent().toString());
-        importBatch.setSingleObject(false);
-        importBatch.setAcceptTimestampVersionDirectories(false);
-        importBatch.setStatus(ImportJob.Status.PENDING);
+        var importJob = new ImportJob();
+        importJob.setId(id);
+        importJob.setPath(simpleObject.getParent().toString());
+        importJob.setSingleObject(false);
+        importJob.setAcceptTimestampVersionDirectories(false);
+        importJob.setStatus(ImportJob.Status.PENDING);
 
         var importBatchDao = Mockito.mock(ImportJobDao.class);
-        Mockito.when(importBatchDao.get(id)).thenReturn(importBatch);
+        Mockito.when(importBatchDao.get(id)).thenReturn(importJob);
 
         // When
         var task = new ImportJobTask(
@@ -69,7 +69,7 @@ public class ImportTaskTest extends AbstractTestFixture {
         // Then
         Mockito.verify(repositoryProvider).addVersion(Mockito.anyString(), eq(1), eq(simpleObject.resolve("v1")));
         Mockito.verify(repositoryProvider).addVersion(Mockito.anyString(), eq(2), eq(simpleObject.resolve("v2")));
-        assertThat(importBatch.getStatus()).isEqualTo(ImportJob.Status.SUCCESS);
+        assertThat(importJob.getStatus()).isEqualTo(ImportJob.Status.SUCCESS);
         assertDirectoriesEqual(getTestInput("simple-object"), outbox.resolve("processed/simple-object"));
     }
 
@@ -82,15 +82,15 @@ public class ImportTaskTest extends AbstractTestFixture {
         Files.createDirectories(outbox);
 
         var id = UUID.randomUUID();
-        var importBatch = new ImportJob();
-        importBatch.setId(id);
-        importBatch.setPath(simpleObject.getParent().toString());
-        importBatch.setSingleObject(false);
-        importBatch.setAcceptTimestampVersionDirectories(false);
-        importBatch.setStatus(ImportJob.Status.PENDING);
+        var importJob = new ImportJob();
+        importJob.setId(id);
+        importJob.setPath(simpleObject.getParent().toString());
+        importJob.setSingleObject(false);
+        importJob.setAcceptTimestampVersionDirectories(false);
+        importJob.setStatus(ImportJob.Status.PENDING);
 
         var importBatchDao = Mockito.mock(ImportJobDao.class);
-        Mockito.when(importBatchDao.get(id)).thenReturn(importBatch);
+        Mockito.when(importBatchDao.get(id)).thenReturn(importJob);
 
         // When
         var task = new ImportJobTask(
@@ -109,7 +109,7 @@ public class ImportTaskTest extends AbstractTestFixture {
         Mockito.verify(repositoryProvider).addVersion(Mockito.anyString(), eq(1), eq(simpleObject.resolve("v1")));
         Mockito.verify(repositoryProvider).addVersion(Mockito.anyString(), eq(1), eq(multiVersionObject.resolve("v1")));
         Mockito.verify(repositoryProvider).addVersion(Mockito.anyString(), eq(2), eq(multiVersionObject.resolve("v2")));
-        assertThat(importBatch.getStatus()).isEqualTo(ImportJob.Status.SUCCESS);
+        assertThat(importJob.getStatus()).isEqualTo(ImportJob.Status.SUCCESS);
         assertDirectoriesEqual(getTestInput("simple-object"), outbox.resolve("processed/simple-object"));
         assertDirectoriesEqual(getTestInput("multi-version-object"), outbox.resolve("processed/multi-version-object"));
     }
@@ -122,15 +122,15 @@ public class ImportTaskTest extends AbstractTestFixture {
         Files.createDirectories(outbox);
 
         var id = UUID.randomUUID();
-        var importBatch = new ImportJob();
-        importBatch.setId(id);
-        importBatch.setPath(invalidObject.getParent().toString());
-        importBatch.setSingleObject(false);
-        importBatch.setAcceptTimestampVersionDirectories(false);
-        importBatch.setStatus(ImportJob.Status.PENDING);
+        var importJob = new ImportJob();
+        importJob.setId(id);
+        importJob.setPath(invalidObject.getParent().toString());
+        importJob.setSingleObject(false);
+        importJob.setAcceptTimestampVersionDirectories(false);
+        importJob.setStatus(ImportJob.Status.PENDING);
 
         var importBatchDao = Mockito.mock(ImportJobDao.class);
-        Mockito.when(importBatchDao.get(id)).thenReturn(importBatch);
+        Mockito.when(importBatchDao.get(id)).thenReturn(importJob);
 
         // When
         var task = new ImportJobTask(
@@ -146,8 +146,9 @@ public class ImportTaskTest extends AbstractTestFixture {
         task.run();
 
         // Then
-        assertThat(importBatch.getStatus()).isEqualTo(ImportJob.Status.FAILED);
-        assertThat(importBatch.getMessage()).isEqualTo("Invalid batch layout: invalid object directories (name must match configured pattern 'urn:nbn:nl:ui:13-.*'): [target/test/ImportTaskTest/batch3/simple-object]");
+        assertThat(importJob.getStatus()).isEqualTo(ImportJob.Status.FAILED);
+        assertThat(importJob.getMessage())
+            .isEqualTo("java.lang.IllegalArgumentException: Invalid batch layout: invalid object directories (name must match configured pattern 'urn:nbn:nl:ui:13-.*'): [target/test/ImportJobTaskTest/batch3/simple-object]");
         assertThat(outbox.resolve("failed/simple-object"))
             .withFailMessage("Invalid input should not be moved ")
             .doesNotExist();
@@ -162,15 +163,15 @@ public class ImportTaskTest extends AbstractTestFixture {
         Files.createDirectories(outbox);
 
         var id = UUID.randomUUID();
-        var importBatch = new ImportJob();
-        importBatch.setId(id);
-        importBatch.setPath(testDir.resolve("batch4").toString());
-        importBatch.setSingleObject(false);
-        importBatch.setAcceptTimestampVersionDirectories(false);
-        importBatch.setStatus(ImportJob.Status.PENDING);
+        var importJob = new ImportJob();
+        importJob.setId(id);
+        importJob.setPath(testDir.resolve("batch4").toString());
+        importJob.setSingleObject(false);
+        importJob.setAcceptTimestampVersionDirectories(false);
+        importJob.setStatus(ImportJob.Status.PENDING);
 
         var importBatchDao = Mockito.mock(ImportJobDao.class);
-        Mockito.when(importBatchDao.get(id)).thenReturn(importBatch);
+        Mockito.when(importBatchDao.get(id)).thenReturn(importJob);
 
         // Make the second version of the multi-version-object fail
         doThrow(new RuntimeException("Failed to add version"))
@@ -191,8 +192,8 @@ public class ImportTaskTest extends AbstractTestFixture {
         task.run();
 
         // Then
-        assertThat(importBatch.getStatus()).isEqualTo(ImportJob.Status.FAILED);
-        assertThat(importBatch.getMessage()).isEqualTo(String.format("One or more tasks failed. Check error documents in '%s'.", outbox));
+        assertThat(importJob.getStatus()).isEqualTo(ImportJob.Status.FAILED);
+        assertThat(importJob.getMessage()).isEqualTo(String.format("One or more tasks failed. Check error documents in '%s'.", outbox));
         assertDirectoriesEqual(getTestInput("simple-object"), outbox.resolve("processed/simple-object"));
         assertDirectoriesEqual(getTestInput("multi-version-object"), outbox.resolve("failed/multi-version-object"));
     }
