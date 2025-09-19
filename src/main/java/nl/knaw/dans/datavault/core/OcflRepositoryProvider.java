@@ -194,6 +194,9 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
                         }
                     });
                 }
+                finally {
+                    FileUtils.deleteQuietly(tempExtensionsPath.toFile());
+                }
             }
             else {
                 throw new RuntimeException("Root extensions source path " + rootExtensionsSourcePath + " does not exist");

@@ -76,13 +76,11 @@ public class ImportJobTask implements Runnable {
         }
         catch (IllegalArgumentException e) {
             log.error("Invalid batch layout for batch directory {}. Leaving input in place.", importJob.getPath(), e);
-            importJob.setStatus(Status.FAILED);
-            importJob.setMessage(e.getMessage());
+            failed(e.getClass().getName() + ": " + e.getMessage());
         }
         catch (Exception e) {
             log.error("Error processing import batch {}", id, e);
-            importJob.setStatus(Status.FAILED);
-            importJob.setMessage(e.getMessage());
+            failed(e.getClass().getName() + ": " + e.getMessage());
         }
         finally {
             importJob.setFinished(OffsetDateTime.now());
