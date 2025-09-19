@@ -19,8 +19,8 @@ import io.dropwizard.hibernate.UnitOfWork;
 import lombok.AllArgsConstructor;
 import nl.knaw.dans.datavault.Conversions;
 import nl.knaw.dans.datavault.api.ImportCommandDto;
-import nl.knaw.dans.datavault.core.ImportBatch;
-import nl.knaw.dans.datavault.db.ImportBatchDao;
+import nl.knaw.dans.datavault.core.ImportJob;
+import nl.knaw.dans.datavault.db.ImportJobDao;
 import org.mapstruct.factory.Mappers;
 
 import javax.ws.rs.core.Response;
@@ -33,36 +33,37 @@ import static javax.ws.rs.core.Response.Status.CREATED;
 @AllArgsConstructor
 public class ImportsApiResource implements ImportsApi {
     private final Conversions conversions = Mappers.getMapper(Conversions.class);
-    private final ImportBatchDao importBatchDao;
+    private final ImportJobDao importJobDao;
     private final Path inbox;
 
     @Override
     @UnitOfWork
     public Response importsGet() {
-        return null;
+        var jobs = importJobDao.list();
+        return Response.ok(conversions.convert(jobs)).build();
     }
 
     @Override
     @UnitOfWork
     public Response importsIdGet(UUID id) {
-        var batch = importBatchDao.get(id);
-        if (batch == null) {
+        var job = importJobDao.get(id);
+        if (job == null) {
             return Response.status(Response.Status.NOT_FOUND).build();
         }
-        return Response.ok(conversions.convert(batch)).build();
+        return Response.ok(conversions.convert(job)).build();
     }
 
     @Override
     @UnitOfWork
     public Response importsPost(ImportCommandDto importJobDto) {
         try {
-            var importBatch = conversions.convert(importJobDto);
-            importBatch.setPath(getInboxRelativePath(Path.of(importBatch.getPath())));
-            importBatch.setCreated(OffsetDateTime.now());
-            importBatch.setStatus(ImportBatch.Status.PENDING);
+            var job = conversions.convert(importJobDto);
+            job.setPath(getInboxRelativePath(Path.of(job.getPath())));
+            job.setCreated(OffsetDateTime.now());
+            job.setStatus(ImportJob.Status.PENDING);
             return Response
                 .status(CREATED)
-                .entity(conversions.convert(importBatchDao.create(importBatch)))
+                .entity(conversions.convert(importJobDao.create(job)))
                 .build();
         }
         catch (IllegalArgumentException e) {

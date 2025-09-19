@@ -16,38 +16,38 @@
 package nl.knaw.dans.datavault.db;
 
 import io.dropwizard.hibernate.AbstractDAO;
-import nl.knaw.dans.datavault.core.ImportBatch;
-import nl.knaw.dans.datavault.core.ImportBatchTask.Status;
+import nl.knaw.dans.datavault.core.ImportJob;
 import org.hibernate.SessionFactory;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-public class ImportBatchDao extends AbstractDAO<ImportBatch> implements TaskSource<ImportBatch> {
+public class ImportJobDao extends AbstractDAO<ImportJob> implements TaskSource<ImportJob> {
     /**
      * Creates a new DAO with a given session provider.
      *
      * @param sessionFactory a session provider
      */
-    public ImportBatchDao(SessionFactory sessionFactory) {
+    public ImportJobDao(SessionFactory sessionFactory) {
         super(sessionFactory);
     }
 
-    public ImportBatch create(ImportBatch batch) {
+    public ImportJob create(ImportJob batch) {
         return super.persist(batch);
     }
 
-    public ImportBatch get(UUID id) {
+    public ImportJob get(UUID id) {
         return super.get(id);
     }
 
     @Override
-    public Optional<ImportBatch> nextTask() {
+    public Optional<ImportJob> nextTask() {
         var criteria = currentSession().getCriteriaBuilder();
-        var query = criteria.createQuery(ImportBatch.class);
-        var root = query.from(ImportBatch.class);
+        var query = criteria.createQuery(ImportJob.class);
+        var root = query.from(ImportJob.class);
         var statusPath = root.get("status");
-        query.where(criteria.equal(statusPath, ImportBatch.Status.PENDING));
+        query.where(criteria.equal(statusPath, ImportJob.Status.PENDING));
         query.orderBy(criteria.asc(root.get("created")));
 
         return currentSession()
@@ -57,7 +57,15 @@ public class ImportBatchDao extends AbstractDAO<ImportBatch> implements TaskSour
             .findFirst();
     }
 
-    public void update(ImportBatch batch) {
+    public void update(ImportJob batch) {
         currentSession().update(batch);
+    }
+
+    public List<ImportJob> list() {
+        var criteria = currentSession().getCriteriaBuilder();
+        var query = criteria.createQuery(ImportJob.class);
+        var root = query.from(ImportJob.class);
+        query.orderBy(criteria.asc(root.get("created")));
+        return currentSession().createQuery(query).getResultList();
     }
 }

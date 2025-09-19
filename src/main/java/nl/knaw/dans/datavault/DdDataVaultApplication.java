@@ -28,7 +28,7 @@ import io.dropwizard.hibernate.UnitOfWorkAwareProxyFactory;
 import lombok.extern.slf4j.Slf4j;
 import nl.knaw.dans.datavault.config.DdDataVaultConfig;
 import nl.knaw.dans.datavault.core.ConsistencyCheckTaskFactory;
-import nl.knaw.dans.datavault.core.ImportBatchTaskFactory;
+import nl.knaw.dans.datavault.core.ImportJobTaskFactory;
 import nl.knaw.dans.datavault.core.LayerThresholdHandler;
 import nl.knaw.dans.datavault.core.OcflRepositoryProvider;
 import nl.knaw.dans.datavault.core.PollingTaskExecutor;
@@ -36,7 +36,7 @@ import nl.knaw.dans.datavault.core.RepositoryProvider;
 import nl.knaw.dans.datavault.core.UnitOfWorkDeclaringLayerConsistencyChecker;
 import nl.knaw.dans.datavault.core.UnitOfWorkDeclaringRepositoryProviderAdapter;
 import nl.knaw.dans.datavault.db.ConsistencyCheckDao;
-import nl.knaw.dans.datavault.db.ImportBatchDao;
+import nl.knaw.dans.datavault.db.ImportJobDao;
 import nl.knaw.dans.datavault.resources.ConsistencyChecksApiResource;
 import nl.knaw.dans.datavault.resources.DefaultApiResource;
 import nl.knaw.dans.datavault.resources.ImportsApiResource;
@@ -97,7 +97,7 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
             .workDir(configuration.getDataVault().getOcflRepository().getWorkDir())
             .build());
         environment.lifecycle().manage(ocflRepositoryProvider);
-        var importBatchDao = new ImportBatchDao(hibernateBundle.getSessionFactory());
+        var importBatchDao = new ImportJobDao(hibernateBundle.getSessionFactory());
         environment.jersey().register(new ImportsApiResource(importBatchDao, configuration.getDataVault().getIngest().getInbox()));
         environment.jersey().register(new LayersApiResource(layeredItemStore));
         environment.jersey().register(new ObjectsApiResource(ocflRepositoryProvider));
@@ -118,7 +118,7 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
                 environment.lifecycle().scheduledExecutorService("import-executor").build(),
                 configuration.getDataVault().getIngest().getPollingInterval().toJavaDuration(),
                 importBatchDao,
-                new ImportBatchTaskFactory(
+                new ImportJobTaskFactory(
                     configuration.getDataVault().getIngest().getInbox(),
                     configuration.getDataVault().getIngest().getOutbox(),
                     importBatchDao,

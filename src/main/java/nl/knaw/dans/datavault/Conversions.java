@@ -19,32 +19,26 @@ import nl.knaw.dans.datavault.api.ConsistencyCheckRequestDto;
 import nl.knaw.dans.datavault.api.ConsistencyCheckResultDto;
 import nl.knaw.dans.datavault.api.ImportCommandDto;
 import nl.knaw.dans.datavault.api.ImportJobStatusDto;
-import nl.knaw.dans.datavault.api.ImportJobStatusDto.StatusEnum;
 import nl.knaw.dans.datavault.core.ConsistencyCheck;
-import nl.knaw.dans.datavault.core.ImportBatch;
-import nl.knaw.dans.datavault.core.ImportBatchTask;
+import nl.knaw.dans.datavault.core.ImportJob;
 import org.mapstruct.Mapper;
 
 import java.nio.file.Path;
+import java.util.List;
 
 @Mapper
 public interface Conversions {
-    ImportJobStatusDto convert(ImportBatchTask importBatchTask);
+    ImportJobStatusDto convert(ImportJob job);
+
+    List<ImportJobStatusDto> convert(List<ImportJob> jobs);
 
     ConsistencyCheck.Type convert(ConsistencyCheckRequestDto.TypeEnum type);
 
     ConsistencyCheckResultDto convert(ConsistencyCheck check);
 
-    ImportBatch convert(ImportCommandDto command);
-
-    ImportJobStatusDto convert(ImportBatch batch);
+    ImportJob convert(ImportCommandDto command);
 
     default String convert(Path path) {
         return path.toString();
     }
-
-    default StatusEnum convert(ImportBatchTask.Status status) {
-        return StatusEnum.fromValue(status.name());
-    }
-
 }

@@ -15,19 +15,18 @@
  */
 package nl.knaw.dans.datavault.core;
 
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Builder.Default;
+import io.dropwizard.hibernate.UnitOfWork;
 import lombok.Data;
-import lombok.Getter;
-import lombok.NonNull;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import nl.knaw.dans.datavault.core.ImportJob.Status;
+import nl.knaw.dans.datavault.db.ImportJobDao;
 
 import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -38,20 +37,22 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.regex.Pattern;
 
-/**
- * Represents an import job that processes a batch directory containing object import directories. It is also possible to process a single object import directory (which must then still be placed in a
- * batch directory).
- */
-@Builder(builderClassName = "Builder")
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Slf4j
-public class ImportBatchTask implements Runnable {
-    public enum Status {
-        PENDING,
-        RUNNING,
-        SUCCESS,
-        FAILED
-    }
+@RequiredArgsConstructor
+public class ImportJobTask implements Runnable {
+    private final UUID id;
+    /**
+     * The full path to the import batch directory.
+     */
+    private final Path batchOrObjectImportDir;
+    private final Path batchOutbox;
+    private final ImportJobDao importJobDao;
+    private final ExecutorService executorService;
+    private final RepositoryProvider repositoryProvider;
+    private final Pattern validObjectIdentifierPattern;
+    private final LayerThresholdHandler layerThresholdHandler;
+
+    private ImportJob importJob;
 
     @Data
     private static class ObjectValidationResult {
@@ -59,96 +60,81 @@ public class ImportBatchTask implements Runnable {
         private final List<Path> invalidVersionDirectories = new ArrayList<>();
     }
 
-    @Default
-    private final Pattern validObjectIdentifierPattern = Pattern.compile(".+");
-    @NonNull
-    private final ExecutorService executorService;
-    @NonNull
-    private final RepositoryProvider repositoryProvider;
-
-    @NonNull
-    private final LayerThresholdHandler layerThresholdHandler;
-
-    private final boolean acceptTimestampVersionDirectories;
-
-    @Default
-    @Getter
-    private final UUID id = UUID.randomUUID();
-
-    @Getter
-    @NonNull
-    private final Path path;
-
-    @NonNull
-    private final Path batchOutbox;
-
-    @Getter
-    private final boolean singleObject;
-
-    @Default
-    @Getter
-    private Status status = Status.PENDING;
-
-    @Getter
-    private String message;
-
+    @UnitOfWork
     @Override
     public void run() {
+        importJob = importJobDao.get(id);
+        importJob.setStarted(OffsetDateTime.now());
+        log.info("Starting import batch task {}", id);
         try {
-            log.debug("Starting job for {}", path);
-            status = Status.RUNNING;
-            if (singleObject) {
+            if (importJob.isSingleObject()) {
                 createOrUpdateObject();
             }
             else {
                 createOrUpdateObjects();
             }
         }
-        catch (IOException | InterruptedException | ExecutionException e) {
-            log.error("Error processing import job for {}", path, e);
-            status = Status.FAILED;
-        }
         catch (IllegalArgumentException e) {
-            log.error("Invalid batch layout for batch directory {}. Leaving input in place.", path, e);
-            status = Status.FAILED;
+            log.error("Invalid batch layout for batch directory {}. Leaving input in place.", importJob.getPath(), e);
+            importJob.setStatus(Status.FAILED);
+            importJob.setMessage(e.getMessage());
+        }
+        catch (Exception e) {
+            log.error("Error processing import batch {}", id, e);
+            importJob.setStatus(Status.FAILED);
+            importJob.setMessage(e.getMessage());
         }
         finally {
-            log.debug("Job for {} finished with status {}", path, status);
+            importJob.setFinished(OffsetDateTime.now());
+            importJobDao.update(importJob);
         }
+        log.info("Import batch task {} finished", id);
     }
 
     private void createOrUpdateObject() throws IOException, ExecutionException, InterruptedException {
-        checkBatchLayout(path.getParent());
-        var future = executorService.submit(new ObjectCreateOrUpdateTask(path, batchOutbox, repositoryProvider, acceptTimestampVersionDirectories));
-        status = checkFuture(future) ? Status.SUCCESS : Status.FAILED;
+        checkBatchLayout(batchOrObjectImportDir.getParent());
+        var future = executorService.submit(new ObjectCreateOrUpdateTask(batchOrObjectImportDir, batchOutbox, repositoryProvider, importJob.isAcceptTimestampVersionDirectories()));
+        if (checkFuture(future)) {
+            success();
+        }
+        else {
+            failed("Updated failed. Check error documents in '" + batchOutbox + "'.");
+        }
     }
 
     private void createOrUpdateObjects() throws IOException, InterruptedException {
-        checkBatchLayout(path);
+        checkBatchLayout(batchOrObjectImportDir);
         List<ObjectCreateOrUpdateTask> tasks = new LinkedList<>();
-        try (DirectoryStream<Path> stream = Files.newDirectoryStream(path)) {
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(batchOrObjectImportDir)) {
             for (Path path : stream) {
-                tasks.add(new ObjectCreateOrUpdateTask(path, batchOutbox, repositoryProvider, acceptTimestampVersionDirectories));
+                tasks.add(new ObjectCreateOrUpdateTask(path, batchOutbox, repositoryProvider, importJob.isAcceptTimestampVersionDirectories()));
             }
         }
-        log.info("Starting {} tasks for batch directory {}", tasks.size(), path);
+        log.info("Starting {} tasks for batch directory {}", tasks.size(), batchOrObjectImportDir);
         var futures = executorService.invokeAll(tasks.stream().map(Executors::callable).toList());
 
         if (futures.stream().allMatch(this::checkFuture)) {
             if (tasks.stream().allMatch(task -> task.getStatus() == ObjectCreateOrUpdateTask.Status.SUCCESS)) {
-                status = Status.SUCCESS;
-                log.info("All tasks for batch directory {} finished successfully", path);
+                success();
+                log.info("All tasks for batch directory {} finished successfully", batchOrObjectImportDir);
                 layerThresholdHandler.newTopLayerIfThresholdReached();
             }
             else {
-                status = Status.FAILED;
-                message = String.format("One or more tasks failed. Check error documents in '%s'.", batchOutbox);
+                failed("One or more tasks failed. Check error documents in '" + batchOutbox + "'.");
             }
         }
         else {
-            status = Status.FAILED;
-            message = "One or more tasks threw an exception. Check the logs for more information.";
+            failed("One or more tasks threw an exception. Check the logs for more information.");
         }
+    }
+
+    private void success() {
+        importJob.setStatus(Status.SUCCESS);
+    }
+
+    private void failed(String message) {
+        importJob.setStatus(Status.FAILED);
+        importJob.setMessage(message);
     }
 
     private boolean checkFuture(Future<?> future) {
@@ -179,11 +165,21 @@ public class ImportBatchTask implements Runnable {
         }
 
         if (!invalidObjectDirectories.isEmpty() || !invalidVersionDirectories.isEmpty()) {
-            throw new IllegalArgumentException("Invalid batch layout: " +
-                "invalid object directories (name must match configured pattern '" + validObjectIdentifierPattern + "'): " + invalidObjectDirectories +
-                ", invalid version directories (name must follow vN pattern or be a number, depending on configuration): " + invalidVersionDirectories);
+            List<String> parts = getErrorParts(invalidObjectDirectories, invalidVersionDirectories);
+            throw new IllegalArgumentException("Invalid batch layout: " + String.join(", ", parts));
         }
         log.debug("Batch layout for batch directory {} is valid", path);
+    }
+
+    private List<String> getErrorParts(List<Path> invalidObjectDirectories, List<Path> invalidVersionDirectories) {
+        List<String> parts = new ArrayList<>();
+        if (!invalidObjectDirectories.isEmpty()) {
+            parts.add("invalid object directories (name must match configured pattern '" + validObjectIdentifierPattern + "'): " + invalidObjectDirectories);
+        }
+        if (!invalidVersionDirectories.isEmpty()) {
+            parts.add("invalid version directories (name must follow vN pattern or be a number, depending on configuration): " + invalidVersionDirectories);
+        }
+        return parts;
     }
 
     private ObjectValidationResult validateObjectImportDirectoryLayout(Path objectDir) throws IOException {
@@ -205,7 +201,7 @@ public class ImportBatchTask implements Runnable {
     }
 
     private boolean isValidateObjectVersionImportDirName(String dirName) {
-        if (acceptTimestampVersionDirectories) {
+        if (importJob.isAcceptTimestampVersionDirectories()) {
             try {
                 long timestamp = Long.parseLong(dirName);
                 return timestamp >= 0;
@@ -220,4 +216,5 @@ public class ImportBatchTask implements Runnable {
                 dirName.substring(1).matches("\\d+");
         }
     }
+
 }

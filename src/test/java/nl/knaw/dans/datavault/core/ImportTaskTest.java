@@ -15,10 +15,12 @@
  */
 package nl.knaw.dans.datavault.core;
 
+import nl.knaw.dans.datavault.db.ImportJobDao;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import java.nio.file.Files;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.regex.Pattern;
@@ -39,21 +41,35 @@ public class ImportTaskTest extends AbstractTestFixture {
         var simpleObject = copyToTestDir("simple-object", "batch1");
         var outbox = testDir.resolve("outbox");
         Files.createDirectories(outbox);
-        
+
+        var id = UUID.randomUUID();
+        var importBatch = new ImportJob();
+        importBatch.setId(id);
+        importBatch.setPath(simpleObject.getParent().toString());
+        importBatch.setSingleObject(false);
+        importBatch.setAcceptTimestampVersionDirectories(false);
+        importBatch.setStatus(ImportJob.Status.PENDING);
+
+        var importBatchDao = Mockito.mock(ImportJobDao.class);
+        Mockito.when(importBatchDao.get(id)).thenReturn(importBatch);
 
         // When
-        var importJob = ImportBatchTask.builder()
-            .executorService(executorService)
-            .repositoryProvider(repositoryProvider)
-            .layerThresholdHandler(layerThresholdHandler)
-            .path(simpleObject.getParent())
-            .batchOutbox(outbox)
-            .build();
-        importJob.run();
+        var task = new ImportJobTask(
+            id,
+            simpleObject.getParent(),
+            outbox,
+            importBatchDao,
+            executorService,
+            repositoryProvider,
+            Pattern.compile(".+"),
+            layerThresholdHandler
+        );
+        task.run();
 
         // Then
         Mockito.verify(repositoryProvider).addVersion(Mockito.anyString(), eq(1), eq(simpleObject.resolve("v1")));
-        assertThat(importJob.getStatus()).isEqualTo(ImportBatchTask.Status.SUCCESS);
+        Mockito.verify(repositoryProvider).addVersion(Mockito.anyString(), eq(2), eq(simpleObject.resolve("v2")));
+        assertThat(importBatch.getStatus()).isEqualTo(ImportJob.Status.SUCCESS);
         assertDirectoriesEqual(getTestInput("simple-object"), outbox.resolve("processed/simple-object"));
     }
 
@@ -65,21 +81,35 @@ public class ImportTaskTest extends AbstractTestFixture {
         var outbox = testDir.resolve("outbox");
         Files.createDirectories(outbox);
 
+        var id = UUID.randomUUID();
+        var importBatch = new ImportJob();
+        importBatch.setId(id);
+        importBatch.setPath(simpleObject.getParent().toString());
+        importBatch.setSingleObject(false);
+        importBatch.setAcceptTimestampVersionDirectories(false);
+        importBatch.setStatus(ImportJob.Status.PENDING);
+
+        var importBatchDao = Mockito.mock(ImportJobDao.class);
+        Mockito.when(importBatchDao.get(id)).thenReturn(importBatch);
+
         // When
-        var importJob = ImportBatchTask.builder()
-            .executorService(executorService)
-            .repositoryProvider(repositoryProvider)
-            .layerThresholdHandler(layerThresholdHandler)
-            .path(simpleObject.getParent())
-            .batchOutbox(outbox)
-            .build();
-        importJob.run();
+        var task = new ImportJobTask(
+            id,
+            simpleObject.getParent(),
+            outbox,
+            importBatchDao,
+            executorService,
+            repositoryProvider,
+            Pattern.compile(".+"),
+            layerThresholdHandler
+        );
+        task.run();
 
         // Then
         Mockito.verify(repositoryProvider).addVersion(Mockito.anyString(), eq(1), eq(simpleObject.resolve("v1")));
         Mockito.verify(repositoryProvider).addVersion(Mockito.anyString(), eq(1), eq(multiVersionObject.resolve("v1")));
         Mockito.verify(repositoryProvider).addVersion(Mockito.anyString(), eq(2), eq(multiVersionObject.resolve("v2")));
-        assertThat(importJob.getStatus()).isEqualTo(ImportBatchTask.Status.SUCCESS);
+        assertThat(importBatch.getStatus()).isEqualTo(ImportJob.Status.SUCCESS);
         assertDirectoriesEqual(getTestInput("simple-object"), outbox.resolve("processed/simple-object"));
         assertDirectoriesEqual(getTestInput("multi-version-object"), outbox.resolve("processed/multi-version-object"));
     }
@@ -91,19 +121,36 @@ public class ImportTaskTest extends AbstractTestFixture {
         var outbox = testDir.resolve("outbox");
         Files.createDirectories(outbox);
 
+        var id = UUID.randomUUID();
+        var importBatch = new ImportJob();
+        importBatch.setId(id);
+        importBatch.setPath(invalidObject.getParent().toString());
+        importBatch.setSingleObject(false);
+        importBatch.setAcceptTimestampVersionDirectories(false);
+        importBatch.setStatus(ImportJob.Status.PENDING);
+
+        var importBatchDao = Mockito.mock(ImportJobDao.class);
+        Mockito.when(importBatchDao.get(id)).thenReturn(importBatch);
+
         // When
-        var importJob = ImportBatchTask.builder()
-            .validObjectIdentifierPattern(Pattern.compile("urn:nbn:nl:ui:13-.*"))
-            .executorService(executorService)
-            .repositoryProvider(repositoryProvider)
-            .layerThresholdHandler(layerThresholdHandler)
-            .path(invalidObject.getParent())
-            .batchOutbox(outbox)
-            .build();
-        importJob.run();
+        var task = new ImportJobTask(
+            id,
+            invalidObject.getParent(),
+            outbox,
+            importBatchDao,
+            executorService,
+            repositoryProvider,
+            Pattern.compile("urn:nbn:nl:ui:13-.*"),
+            layerThresholdHandler
+        );
+        task.run();
 
         // Then
-        assertThat(importJob.getStatus()).isEqualTo(ImportBatchTask.Status.FAILED);
+        assertThat(importBatch.getStatus()).isEqualTo(ImportJob.Status.FAILED);
+        assertThat(importBatch.getMessage()).isEqualTo("Invalid batch layout: invalid object directories (name must match configured pattern 'urn:nbn:nl:ui:13-.*'): [target/test/ImportTaskTest/batch3/simple-object]");
+        assertThat(outbox.resolve("failed/simple-object"))
+            .withFailMessage("Invalid input should not be moved ")
+            .doesNotExist();
     }
 
     @Test
@@ -114,23 +161,38 @@ public class ImportTaskTest extends AbstractTestFixture {
         var outbox = testDir.resolve("outbox");
         Files.createDirectories(outbox);
 
-        // When
+        var id = UUID.randomUUID();
+        var importBatch = new ImportJob();
+        importBatch.setId(id);
+        importBatch.setPath(testDir.resolve("batch4").toString());
+        importBatch.setSingleObject(false);
+        importBatch.setAcceptTimestampVersionDirectories(false);
+        importBatch.setStatus(ImportJob.Status.PENDING);
+
+        var importBatchDao = Mockito.mock(ImportJobDao.class);
+        Mockito.when(importBatchDao.get(id)).thenReturn(importBatch);
+
         // Make the second version of the multi-version-object fail
         doThrow(new RuntimeException("Failed to add version"))
             .when(repositoryProvider)
             .addVersion(eq("multi-version-object"), eq(2), eq(multiVersionObject.resolve("v2")));
-        var importJob = ImportBatchTask.builder()
-            .executorService(executorService)
-            .repositoryProvider(repositoryProvider)
-            .layerThresholdHandler(layerThresholdHandler)
-            .path(testDir.resolve("batch4"))
-            .batchOutbox(outbox)
-            .build();
-        importJob.run();
+
+        // When
+        var task = new ImportJobTask(
+            id,
+            testDir.resolve("batch4"),
+            outbox,
+            importBatchDao,
+            executorService,
+            repositoryProvider,
+            Pattern.compile(".+"),
+            layerThresholdHandler
+        );
+        task.run();
 
         // Then
-        assertThat(importJob.getStatus()).isEqualTo(ImportBatchTask.Status.FAILED);
-        assertThat(importJob.getMessage()).isEqualTo(String.format("One or more tasks failed. Check error documents in '%s'.", outbox));
+        assertThat(importBatch.getStatus()).isEqualTo(ImportJob.Status.FAILED);
+        assertThat(importBatch.getMessage()).isEqualTo(String.format("One or more tasks failed. Check error documents in '%s'.", outbox));
         assertDirectoriesEqual(getTestInput("simple-object"), outbox.resolve("processed/simple-object"));
         assertDirectoriesEqual(getTestInput("multi-version-object"), outbox.resolve("failed/multi-version-object"));
     }

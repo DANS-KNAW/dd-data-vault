@@ -33,8 +33,8 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@Entity(name = "import_batch")
-public class ImportBatch {
+@Entity(name = "import_job")
+public class ImportJob {
     public enum Status {
         PENDING,
         RUNNING,
