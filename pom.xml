@@ -22,7 +22,7 @@
     <parent>
         <groupId>nl.knaw.dans</groupId>
         <artifactId>dd-parent</artifactId>
-        <version>1.10.0</version>
+        <version>1.10.1-SNAPSHOT</version>
     </parent>
 
     <artifactId>dd-data-vault</artifactId>
@@ -90,7 +90,6 @@
         <dependency>
             <groupId>nl.knaw.dans</groupId>
             <artifactId>dans-validation-lib</artifactId>
-            <version>1.1.0</version>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
@@ -153,7 +152,7 @@
                         <dependency>
                             <groupId>org.projectlombok</groupId>
                             <artifactId>lombok-mapstruct-binding</artifactId>
-                            <version>0.2.0</version>
+                            <version>${lombok-mapstruct-binding.version}</version>
                         </dependency>
                     </annotationProcessorPaths>
                 </configuration>
