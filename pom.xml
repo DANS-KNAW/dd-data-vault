@@ -30,7 +30,7 @@
 
     <name>DD Data Vault</name>
     <url>https://github.com/DANS-KNAW/dd-data-vault</url>
-    <description>Manages a DANS Data Vault store</description>
+    <description>Manages a DANS Data Vault Storage Root</description>
     <inceptionYear>2024</inceptionYear>
 
     <properties>
