@@ -23,13 +23,15 @@ repo_url: https://github.com/DANS-KNAW/dd-data-vault
 
 nav:
   - Manual:
-     - DESCRIPTION: index.md
-     - INSTALLATION: installation.md
-     - CONFIGURATION: config.md
-     - API: to-api.md
-     - ⇒ Context: context.md
+      - Description: index.md
+      - Installation: installation.md
+      - Configuration: config.md
+      - API: to-api.md
+      - Context: context.md
   - Development:
-     - Overview: dev.md
+      - Overview: dev.md
+      - Database for testing: test-db.md
+      - Testing with dmftar: test-dmftar.md
 
 plugins:
   - markdownextradata

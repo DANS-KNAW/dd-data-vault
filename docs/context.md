@@ -1,7 +1,5 @@
----
-
-Context: DANS Data Station Architecture
-=======================================
+Context
+=======
 
 This module is a component in the [DANS Data Station Architecture]{:target=_blank}.
 

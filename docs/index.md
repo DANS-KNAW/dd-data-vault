@@ -1,7 +1,7 @@
 dd-data-vault
 =============
 
-Manages a DANS Data Vault Storage Root.
+Manages a DANS Data Vault Storage Root
 
 Purpose
 -------

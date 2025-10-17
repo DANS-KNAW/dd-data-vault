@@ -190,16 +190,12 @@
                             <goal>generate</goal>
                         </goals>
                         <configuration combine.children="override">
-                            <inputSpec>${project.build.directory}/openapi/dd-data-vault-api.yml</inputSpec>
                             <generatorName>jaxrs-spec</generatorName>
-                            <globalProperties>
-                                <skipFormModel>false</skipFormModel>
-                            </globalProperties>
-                            <configOptions combine.children="override">
-                                <apiPackage>nl.knaw.dans.datavault.resources</apiPackage>
-                                <modelPackage>nl.knaw.dans.datavault.api</modelPackage>
-                                <invokerPackage>nl.knaw.dans.datavault.resources</invokerPackage>
-                            </configOptions>
+                            <inputSpec>${project.build.directory}/openapi/dd-data-vault-api.yml</inputSpec>
+                            <apiPackage>nl.knaw.dans.datavault.resources</apiPackage>
+                            <modelPackage>nl.knaw.dans.datavault.api</modelPackage>
+                            <invokerPackage>nl.knaw.dans.datavault.resources</invokerPackage>
+                            <templateDirectory>${project.basedir}/src/main/resources/openapi-generator-templates</templateDirectory>
                         </configuration>
                     </execution>
                 </executions>
