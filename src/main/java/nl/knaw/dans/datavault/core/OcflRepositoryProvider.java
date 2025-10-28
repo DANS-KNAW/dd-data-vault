@@ -17,6 +17,7 @@ package nl.knaw.dans.datavault.core;
 
 import io.dropwizard.lifecycle.Managed;
 import io.ocfl.api.OcflRepository;
+import io.ocfl.api.exception.NotFoundException;
 import io.ocfl.api.model.ObjectVersionId;
 import io.ocfl.api.model.User;
 import io.ocfl.api.model.VersionInfo;
@@ -121,10 +122,15 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
     }
 
     @Override
-    public OcflObjectVersionDto getOcflObjectVersion(String objectId, int version) {
-        var versionInfo = ocflRepository.getObject(ObjectVersionId.version(objectId, version));
-        return new OcflObjectVersionDto()
-            .versionNumber(version).created(versionInfo.getCreated());
+    public Optional<OcflObjectVersionDto> getOcflObjectVersion(String objectId, int version) {
+        try {
+            var versionInfo = ocflRepository.getObject(ObjectVersionId.version(objectId, version));
+            return Optional.of(new OcflObjectVersionDto()
+                .versionNumber(version).created(versionInfo.getCreated()));
+        }
+        catch (NotFoundException e) {
+            return Optional.empty();
+        }
     }
 
     private VersionInfo createVersionInfo() {

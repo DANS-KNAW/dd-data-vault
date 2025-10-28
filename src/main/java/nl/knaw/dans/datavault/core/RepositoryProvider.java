@@ -20,6 +20,7 @@ import io.dropwizard.lifecycle.Managed;
 import nl.knaw.dans.datavault.api.OcflObjectVersionDto;
 
 import java.nio.file.Path;
+import java.util.Optional;
 
 /**
  * Provides access to the repository.
@@ -51,6 +52,6 @@ public interface RepositoryProvider extends Managed {
      * @param version  The version number of the object
      * @return the version information for the object
      */
-    OcflObjectVersionDto getOcflObjectVersion(String objectId, int version);
+    Optional<OcflObjectVersionDto> getOcflObjectVersion(String objectId, int version);
 
 }
