@@ -28,6 +28,9 @@ public class ObjectsApiResource implements ObjectsApi {
     @UnitOfWork
     @Override
     public Response objectsIdVersionsNrGet(String id, Integer nr) {
-        return Response.ok(ocflRepositoryProvider.getOcflObjectVersion(id, nr)).build();
+        return ocflRepositoryProvider.getOcflObjectVersion(id, nr)
+                    .map(Response::ok)
+                    .orElseGet(() -> Response.status(Response.Status.NOT_FOUND))
+                    .build();
     }
 }

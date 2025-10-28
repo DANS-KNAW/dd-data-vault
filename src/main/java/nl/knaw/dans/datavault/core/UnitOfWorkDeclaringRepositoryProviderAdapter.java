@@ -20,6 +20,7 @@ import lombok.AllArgsConstructor;
 import nl.knaw.dans.datavault.api.OcflObjectVersionDto;
 
 import java.nio.file.Path;
+import java.util.Optional;
 
 /**
  * Delegates to a {@link RepositoryProvider} and wraps its methods in {@link UnitOfWork}s.
@@ -42,7 +43,7 @@ public class UnitOfWorkDeclaringRepositoryProviderAdapter implements RepositoryP
 
     @Override
     @UnitOfWork
-    public OcflObjectVersionDto getOcflObjectVersion(String objectId, int version) {
+    public Optional<OcflObjectVersionDto> getOcflObjectVersion(String objectId, int version) {
         return delegate.getOcflObjectVersion(objectId, version);
     }
 
