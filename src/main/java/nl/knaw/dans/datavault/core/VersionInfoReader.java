@@ -24,9 +24,11 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Properties;
+import java.util.Set;
 
 @RequiredArgsConstructor
 public class VersionInfoReader {
+    private static final Set<String> ALLOWED_KEYS = Set.of("user.name", "user.email", "message");
     private final DefaultVersionInfoConfig defaultConfig;
 
     public VersionInfo read(Path file) throws IOException {
@@ -43,6 +45,12 @@ public class VersionInfoReader {
             props.load(in);
         }
 
+        for (var key : props.stringPropertyNames()) {
+            if (!ALLOWED_KEYS.contains(key)) {
+                throw new IllegalArgumentException("Unknown property in version info file: " + key);
+            }
+        }
+
         var info = new VersionInfo();
         var user = new User();
         user.setName(getOrThrow(props, "user.name"));
@@ -52,6 +60,14 @@ public class VersionInfoReader {
         return info;
     }
 
+    private VersionInfo createDefaultVersionInfo() {
+        return new VersionInfo()
+            .setMessage(defaultConfig.getMessage())
+            .setUser(new User()
+                .setName(defaultConfig.getUsername())
+                .setAddress(defaultConfig.getEmail().toString()));
+    }
+
     private String getOrThrow(Properties props, String key) {
         var value = props.getProperty(key);
         if (value == null || value.isBlank()) {
@@ -59,14 +75,4 @@ public class VersionInfoReader {
         }
         return value;
     }
-
-    private VersionInfo createDefaultVersionInfo() {
-        return new VersionInfo()
-            .setMessage(defaultConfig.getMessage())
-            .setUser(new User()
-                .setName(defaultConfig.getUsername())
-                .setAddress(defaultConfig.getEmail().toString())
-            );
-    }
-
 }
