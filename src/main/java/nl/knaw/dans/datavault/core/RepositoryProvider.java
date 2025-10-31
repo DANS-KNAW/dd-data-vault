@@ -15,7 +15,6 @@
  */
 package nl.knaw.dans.datavault.core;
 
-import io.dropwizard.hibernate.UnitOfWork;
 import io.dropwizard.lifecycle.Managed;
 import nl.knaw.dans.datavault.api.OcflObjectVersionDto;
 

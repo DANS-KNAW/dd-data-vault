@@ -21,6 +21,7 @@ batch-dir
  │   │   └── <content files>
  │   ├── v2
  │   │   └── <content files>
+ │   ├── v2.properties
  │   └── v3
  │       └── <content files>
  ├── urn:nbn:nl:ui:13-2ced2354-3a9d-44b1-a594-107b3af99789
@@ -39,6 +40,14 @@ batch-dir
 * The service can also be configured to accept timestamps as version directories. In that case, the version directories are expected to be numbers,
   representing the timestamp of the version in milliseconds since the epoch. This timestamp is only used for ordering the versions in the OCFL object, so
   any number can be used as long as it is unique for the object. This option is mainly used for testing purposes.
+* A version directory can optionally be accompanied by a Java properties file named `vN.properties`, where `N` is the version number, (e.g. `v2.properties` for
+  version 2).
+  This properties-file - if present - must have the following properties:
+    * `user.name` - the name of the user that created this version
+    * `user.email` - the email of the user that created this version
+    * `message` - the commit message for this version
+      If no properties file is present, the service will use default values for these properties. These default values can be configured in the configuration
+      file, under `dataVault.defaultVersionInfo`. If no default values are configured, an error will be raised.
 
 Processing
 ----------

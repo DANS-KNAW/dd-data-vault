@@ -30,7 +30,6 @@ public class DataVaultConfig {
 
     @NotNull
     private OcflRepositoryConfig ocflRepository;
-    @NotNull
     @Valid
     private DefaultVersionInfoConfig defaultVersionInfo;
     @NotNull

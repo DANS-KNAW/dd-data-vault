@@ -22,6 +22,7 @@ import nl.knaw.dans.datavault.api.ImportJobStatusDto;
 import nl.knaw.dans.datavault.core.ConsistencyCheck;
 import nl.knaw.dans.datavault.core.ImportJob;
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -36,6 +37,13 @@ public interface Conversions {
 
     ConsistencyCheckResultDto convert(ConsistencyCheck check);
 
+    // The following properties are ignored because they are either auto-generated or set by the application logic
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "created", ignore = true)
+    @Mapping(target = "started", ignore = true)
+    @Mapping(target = "finished", ignore = true)
+    @Mapping(target = "status", ignore = true)
+    @Mapping(target = "message", ignore = true)
     ImportJob convert(ImportCommandDto command);
 
     default String convert(Path path) {

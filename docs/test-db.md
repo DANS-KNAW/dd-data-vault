@@ -13,3 +13,5 @@ CREATE USER dd_data_vault_local_test WITH PASSWORD 'dd_data_vault_local_test';
 GRANT ALL PRIVILEGES ON DATABASE dd_data_vault_local_test TO dd_data_vault_local_test;
 \q
 ```
+
+**UPDATE: for dev boxes created after 2025-10-31, this database is already present.**
