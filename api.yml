@@ -1,0 +1,363 @@
+#
+# Copyright (C) 2024 DANS - Data Archiving and Networked Services (info@dans.knaw.nl)
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+openapi: 3.0.1
+
+servers:
+  - url: http://localhost:20365/
+
+info:
+  description: Service for managing a Data Vault
+  version: 0.8.0
+  title: dd-data-vault-api
+  contact:
+    email: info@dans.knaw.nl
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+
+paths:
+  /:
+    get:
+      operationId: rootGet
+      summary: Returns a description of the service.
+      parameters:
+        - name: Accept
+          in: header
+          required: false
+          schema:
+            type: string
+            enum: [ application/json, text/plain ]
+            default: application/json
+      responses:
+        200:
+          description: description of the service
+          content:
+            text/plain:
+              schema:
+                type: string
+                description: a plain text, human readable description of the service
+                example: |
+                  Data Vault API Running (v0.8.0)
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppInfo'
+
+  /imports:
+    get:
+      operationId: importsGet
+      summary: Returns a list of all current import jobs and their status
+      responses:
+        200:
+          description: A list of all current import jobs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ImportJobStatus'
+    post:
+      operationId: importsPost
+      summary: Submits a new import job
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImportCommand'
+      responses:
+        201:
+          description: The job has been submitted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportJobStatus'
+
+  /imports/{id}:
+    get:
+      operationId: importsIdGet
+      summary: Returns the import job with the specified id
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: The unique identifier of the job
+      responses:
+        200:
+          description: The job with the specified id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportJobStatus'
+        404:
+          description: No job with the specified id was found
+
+  /layers:
+    post:
+      operationId: layersPost
+      summary: Creates a new top layer, closing and archiving the current top layer
+      responses:
+        201:
+          description: The new top layer has been created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LayerStatus'
+
+  /layers/{layerId}:
+    get:
+      operationId: layersIdGet
+      summary: Returns the status of the layer with the specified id
+      parameters:
+        - name: layerId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: The timestamp of the layer, in milliseconds since the epoch
+      responses:
+        200:
+          description: The status of the layer with the specified id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LayerStatus'
+        404:
+          description: No layer with the specified id was found
+
+  /layers/top:
+    get:
+      operationId: layersTopGet
+      summary: Returns the status of the top layer
+      responses:
+        200:
+          description: The status of the top layer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LayerStatus'
+
+  /layers/ids:
+    get:
+      operationId: layersIdsGet
+      summary: Returns a list of all layer ids
+      responses:
+        200:
+          description: A list of all layer ids
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: integer
+                  format: int64
+
+  /objects/{id}/versions/{nr}:
+    get:
+      operationId: objectsIdVersionsNrGet
+      summary: Returns the properties of the given object version
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: nr
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Information object the requested version
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OcflObjectVersion'
+
+  /consistency-checks:
+    post:
+      operationId: consistencyChecksPost
+      summary: Requests a consistency check of the data vault
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConsistencyCheckRequest'
+      responses:
+        202:
+          description: The consistency check has been requested
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConsistencyCheckResult'
+
+  /consistency-checks/{id}:
+    get:
+      operationId: consistencyChecksIdGet
+      summary: Returns the status of the consistency check with the specified id
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        200:
+          description: The status of the consistency check with the specified id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConsistencyCheckResult'
+        404:
+          description: No consistency check with the specified id was found
+
+components:
+  schemas:
+    ConsistencyCheckRequest:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [ LAYER_IDS, LISTING_RECORDS ]
+          description: The type of consistency check to perform
+        layerId:
+          type: integer
+          format: int64
+          description: The ID of the layer to perform the consistency check on (only applicable for LISTING_RECORDS)
+
+    ConsistencyCheckResult:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: The unique identifier of the consistency check
+        type:
+          type: string
+          enum: [ LAYER_IDS, LISTING_RECORDS ]
+          description: The type of consistency check that was performed
+        layerId:
+          type: integer
+          format: int64
+          description: The ID of the layer that was checked (only applicable for LISTING_RECORDS)
+        created:
+          type: string
+          format: date-time
+          description: The date and time when the consistency check was performed
+        started:
+          type: string
+          format: date-time
+          description: The date and time when the consistency check was started
+        finished:
+          type: string
+          format: date-time
+          description: The date and time when the consistency check was finished
+        result:
+          type: string
+          enum: [ OK, NOT_OK, ERROR ]
+          description: The result of the consistency check
+        message:
+          type: string
+          description: A message describing the result of the consistency check
+
+    AppInfo:
+      type: object
+      properties:
+        name:
+          type: string
+        version:
+          type: string
+
+    ImportCommand:
+      type: object
+      properties:
+        path:
+          type: string
+          format: path
+          description: The path to the object import or batch directory
+        singleObject:
+          type: boolean
+          default: false
+          description: Whether the import is for a single object or a batch
+        acceptTimestampVersionDirectories:
+          type: boolean
+          default: false
+          description: Whether to accept timestamp directories in the batch directory. By default the version directories are expected to be the
+            exact version numbers of the versions to be created.
+    ImportJobStatus:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: The unique identifier of the job
+        path:
+          type: string
+          format: path
+          description: The path to the object import or batch directory
+        singleObject:
+          type: boolean
+          description: Whether the import is for a single object or a batch
+        status:
+          type: string
+          description: The current status of the job
+          enum:
+            - PENDING
+            - RUNNING
+            - SUCCESS
+            - FAILED
+        created:
+          type: string
+          format: date-time
+          description: The date and time when the job was created
+        started:
+          type: string
+          format: date-time
+          description: The date and time when the job was started
+        finished:
+          type: string
+          format: date-time
+          description: The date and time when the job was finished
+        message:
+          type: string
+          description: A message describing the current status of the job
+    LayerStatus:
+      type: object
+      properties:
+        layerId:
+          type: integer
+          format: int64
+          description: The timestamp of the layer, in milliseconds since the epoch
+        sizeInBytes:
+          type: integer
+          format: int64
+          description: The size of the layer in bytes
+
+    OcflObjectVersion:
+      type: object
+      properties:
+        versionNumber:
+          type: integer
+          description: The version number
+        created:
+          type: string
+          format: date-time
+
