@@ -59,15 +59,13 @@ import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 public class OcflRepositoryProvider implements RepositoryProvider, Managed {
     public static final String PACKAGING_FORMAT_KEY = "packaging-format";
     public static final String DANS_RDA_BAG_PACK_PROFILE_0_1_0 = "DANS RDA BagPack Profile/0.1.0";
+    private final VersionInfoReader versionInfoReader;
 
     @NonNull
     private final LayeredItemStore layeredItemStore;
 
     @NonNull
     private final Path workDir;
-
-    @NonNull
-    private final DefaultVersionInfoConfig defaultVersionInfoConfig;
 
     @NonNull
     private final LayerConsistencyChecker layerConsistencyChecker;
@@ -80,10 +78,9 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
     @Builder
     public static OcflRepositoryProvider create(LayeredItemStore itemStore, Path workDir, DefaultVersionInfoConfig defaultVersionInfoConfig, LayerConsistencyChecker layerConsistencyChecker,
         Path rootExtensionsSourcePath) {
-        return new OcflRepositoryProvider(itemStore, workDir, defaultVersionInfoConfig, layerConsistencyChecker, rootExtensionsSourcePath);
+        return new OcflRepositoryProvider(new VersionInfoReader(defaultVersionInfoConfig), itemStore, workDir, layerConsistencyChecker, rootExtensionsSourcePath);
     }
 
-    // TODO: add user name and email and message to the method
     @Override
     public void addVersion(String objectId, int version, Path objectVersionDirectory) {
         log.debug("Adding version import directory {} to object {} as version v{}", objectVersionDirectory, objectId, version);
@@ -91,7 +88,7 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
             throw new IllegalStateException("OCFL repository is not yet started");
         }
         // putObject wants the version number of HEAD, so we need to subtract 1 from the version number
-        ocflRepository.putObject(ObjectVersionId.version(objectId, version - 1), objectVersionDirectory, createVersionInfo());
+        ocflRepository.putObject(ObjectVersionId.version(objectId, version - 1), objectVersionDirectory, createVersionInfoFor(objectVersionDirectory));
 
         updateObjectVersionProperties(objectId, version, PACKAGING_FORMAT_KEY, DANS_RDA_BAG_PACK_PROFILE_0_1_0);
     }
@@ -102,7 +99,7 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
         if (ocflRepository == null) {
             throw new IllegalStateException("OCFL repository is not yet started");
         }
-        ocflRepository.putObject(ObjectVersionId.head(objectId), objectVersionDirectory, createVersionInfo());
+        ocflRepository.putObject(ObjectVersionId.head(objectId), objectVersionDirectory, createVersionInfoFor(objectVersionDirectory));
         long headVersion = Optional.ofNullable(ObjectVersionId.head(objectId).getVersionNum()).map(VersionNum::getVersionNum).orElse(1L);
 
         updateObjectVersionProperties(objectId, headVersion, PACKAGING_FORMAT_KEY, DANS_RDA_BAG_PACK_PROFILE_0_1_0);
@@ -133,13 +130,13 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
         }
     }
 
-    private VersionInfo createVersionInfo() {
-        return new VersionInfo()
-            .setMessage(defaultVersionInfoConfig.getMessage())
-            .setUser(new User()
-                .setName(defaultVersionInfoConfig.getUsername())
-                .setAddress(defaultVersionInfoConfig.getEmail().toString())
-            );
+    private VersionInfo createVersionInfoFor(Path objectVersionDirectory) {
+        try {
+            return versionInfoReader.read(objectVersionDirectory.resolveSibling(objectVersionDirectory.getFileName().toString() + ".properties"));
+        }
+        catch (IOException e) {
+            throw new RuntimeException("Failed to read version info from " + objectVersionDirectory, e);
+        }
     }
 
     @Override

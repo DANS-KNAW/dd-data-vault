@@ -80,6 +80,7 @@ public class ObjectCreateOrUpdateTask implements Runnable {
     private List<Path> getVersionDirectoriesInOrder() throws IOException {
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(objectDirectory)) {
             return StreamSupport.stream(stream.spliterator(), false)
+                .filter(Files::isDirectory)
                 .sorted(acceptTimestampVersionDirectories ? TimestampDirectoryComparator.INSTANCE : VersionDirectoryComparator.INSTANCE)
                 .toList();
         }

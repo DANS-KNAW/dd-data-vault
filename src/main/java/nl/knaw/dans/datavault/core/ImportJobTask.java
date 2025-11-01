@@ -189,7 +189,7 @@ public class ImportJobTask implements Runnable {
             result.setObjectImportDirNameIsValid(true);
             try (DirectoryStream<Path> versionStream = Files.newDirectoryStream(objectDir)) {
                 for (Path versionDir : versionStream) {
-                    if (!isValidateObjectVersionImportDirName(versionDir.getFileName().toString())) {
+                    if (!isValidObjectVersionImportDirName(versionDir.getFileName().toString()) && !isValidVersionPropertiesFileName(versionDir.getFileName().toString())) {
                         result.getInvalidVersionDirectories().add(versionDir);
                     }
                 }
@@ -198,7 +198,7 @@ public class ImportJobTask implements Runnable {
         return result;
     }
 
-    private boolean isValidateObjectVersionImportDirName(String dirName) {
+    private boolean isValidObjectVersionImportDirName(String dirName) {
         if (importJob.isAcceptTimestampVersionDirectories()) {
             try {
                 long timestamp = Long.parseLong(dirName);
@@ -213,6 +213,10 @@ public class ImportJobTask implements Runnable {
                 dirName.length() > 1 &&
                 dirName.substring(1).matches("\\d+");
         }
+    }
+
+    private boolean isValidVersionPropertiesFileName(String fileName) {
+        return fileName.matches("v\\d+\\.properties");
     }
 
 }

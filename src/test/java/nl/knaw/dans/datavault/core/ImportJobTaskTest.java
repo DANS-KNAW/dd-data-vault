@@ -148,7 +148,8 @@ public class ImportJobTaskTest extends AbstractTestFixture {
         // Then
         assertThat(importJob.getStatus()).isEqualTo(ImportJob.Status.FAILED);
         assertThat(importJob.getMessage())
-            .isEqualTo("java.lang.IllegalArgumentException: Invalid batch layout: invalid object directories (name must match configured pattern 'urn:nbn:nl:ui:13-.*'): [target/test/ImportJobTaskTest/batch3/simple-object]");
+            .isEqualTo(
+                "java.lang.IllegalArgumentException: Invalid batch layout: invalid object directories (name must match configured pattern 'urn:nbn:nl:ui:13-.*'): [target/test/ImportJobTaskTest/batch3/simple-object]");
         assertThat(outbox.resolve("failed/simple-object"))
             .withFailMessage("Invalid input should not be moved ")
             .doesNotExist();
