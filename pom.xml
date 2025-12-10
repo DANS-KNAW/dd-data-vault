@@ -22,7 +22,7 @@
     <parent>
         <groupId>nl.knaw.dans</groupId>
         <artifactId>dd-parent</artifactId>
-        <version>1.9.0</version>
+        <version>1.10.0</version>
     </parent>
 
     <artifactId>dd-data-vault</artifactId>
@@ -37,8 +37,6 @@
         <main-class>nl.knaw.dans.datavault.DdDataVaultApplication</main-class>
         <dd-data-vault-api.version>0.8.0</dd-data-vault-api.version>
         <dans-build-resources-maven-plugin.version>0.8.0</dans-build-resources-maven-plugin.version>
-        <dans-ocfl-java-extensions-lib.version>0.11.0</dans-ocfl-java-extensions-lib.version>
-        <dans-java-utils.version>2.3.0</dans-java-utils.version>
     </properties>
 
     <scm>
@@ -90,7 +88,6 @@
         <dependency>
             <groupId>nl.knaw.dans</groupId>
             <artifactId>dans-validation-lib</artifactId>
-            <version>1.1.0</version>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
@@ -153,7 +150,7 @@
                         <dependency>
                             <groupId>org.projectlombok</groupId>
                             <artifactId>lombok-mapstruct-binding</artifactId>
-                            <version>0.2.0</version>
+                            <version>${lombok-mapstruct-binding.version}</version>
                         </dependency>
                     </annotationProcessorPaths>
                 </configuration>
