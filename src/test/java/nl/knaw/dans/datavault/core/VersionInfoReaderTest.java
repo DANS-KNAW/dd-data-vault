@@ -29,6 +29,26 @@ public class VersionInfoReaderTest extends AbstractTestFixture {
         // Given
         var properties = """
             user.name=Test User
+            user.email=mailto:test.user@mail.com
+            message=Initial version
+            """;
+        var v1Props = testDir.resolve("v1.properties");
+        Files.writeString(v1Props, properties);
+
+        // When
+        var info = new VersionInfoReader(null).read(v1Props);
+
+        // Then
+        assertThat(info.getUser().getName()).isEqualTo("Test User");
+        assertThat(info.getUser().getAddress()).isEqualTo("mailto:test.user@mail.com");
+        assertThat(info.getMessage()).isEqualTo("Initial version");
+    }
+
+    @Test
+    public void should_add_mailto_prefix_if_missing_in_email() throws Exception {
+        // Given
+        var properties = """
+            user.name=Test User
             user.email=test.user@mail.com
             message=Initial version
             """;
@@ -40,9 +60,28 @@ public class VersionInfoReaderTest extends AbstractTestFixture {
 
         // Then
         assertThat(info.getUser().getName()).isEqualTo("Test User");
-        assertThat(info.getUser().getAddress()).isEqualTo("test.user@mail.com");
+        assertThat(info.getUser().getAddress()).isEqualTo("mailto:test.user@mail.com");
         assertThat(info.getMessage()).isEqualTo("Initial version");
     }
+
+    @Test
+    public void should_throw_exception_for_invalid_email() throws Exception {
+        // Given
+        var properties = """
+            user.name=Test User
+            user.email=invalid-email
+            message=Initial version
+            """;
+        var v1Props = testDir.resolve("v1.properties");
+        Files.writeString(v1Props, properties);
+
+        // When / Then
+        var ex = assertThrows(IllegalArgumentException.class, () -> {
+            new VersionInfoReader(null).read(v1Props);
+        });
+        assertThat(ex.getMessage()).isEqualTo("Invalid email address: mailto:invalid-email");
+    }
+
 
     @Test
     public void should_use_default_version_info_when_file_missing() throws Exception {

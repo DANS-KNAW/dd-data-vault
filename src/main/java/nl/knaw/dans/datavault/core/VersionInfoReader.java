@@ -25,9 +25,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Properties;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 @RequiredArgsConstructor
 public class VersionInfoReader {
+    private static final Pattern validEmailPattern = Pattern.compile("^mailto:[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+\\.[A-Za-z]{2,}$");
     private static final Set<String> ALLOWED_KEYS = Set.of("user.name", "user.email", "message");
     private final DefaultVersionInfoConfig defaultConfig;
 
@@ -54,10 +56,22 @@ public class VersionInfoReader {
         var info = new VersionInfo();
         var user = new User();
         user.setName(getOrThrow(props, "user.name"));
-        user.setAddress(getOrThrow(props, "user.email"));
+        // Add mailto: if not present yet
+        var mail = getOrThrow(props, "user.email");
+        if (!mail.startsWith("mailto:")) {
+            mail = "mailto:" + mail;
+        }
+        validateEmail(mail);
+        user.setAddress(mail);
         info.setUser(user);
         info.setMessage(getOrThrow(props, "message"));
         return info;
+    }
+
+    private void validateEmail(String email) {
+        if (!validEmailPattern.matcher(email).matches()) {
+            throw new IllegalArgumentException("Invalid email address: " + email);
+        }
     }
 
     private VersionInfo createDefaultVersionInfo() {
