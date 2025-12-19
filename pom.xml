@@ -22,7 +22,7 @@
     <parent>
         <groupId>nl.knaw.dans</groupId>
         <artifactId>dd-parent</artifactId>
-        <version>1.10.0</version>
+        <version>1.11.0</version>
     </parent>
 
     <artifactId>dd-data-vault</artifactId>
@@ -35,8 +35,6 @@
 
     <properties>
         <main-class>nl.knaw.dans.datavault.DdDataVaultApplication</main-class>
-        <dd-data-vault-api.version>0.8.0</dd-data-vault-api.version>
-        <dans-build-resources-maven-plugin.version>0.8.0</dans-build-resources-maven-plugin.version>
     </properties>
 
     <scm>
