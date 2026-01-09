@@ -18,6 +18,7 @@ package nl.knaw.dans.datavault.core;
 import io.ocfl.api.model.User;
 import io.ocfl.api.model.VersionInfo;
 import nl.knaw.dans.datavault.config.DefaultVersionInfoConfig;
+import org.apache.commons.validator.routines.EmailValidator;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -29,7 +30,7 @@ import java.util.stream.Collectors;
 import java.util.regex.Pattern;
 
 public class VersionPropertiesReader {
-    private static final Pattern validEmailPattern = Pattern.compile("^mailto:[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+\\.[A-Za-z]{2,}$");
+    private static final String MAILTO_PREFIX = "mailto:";
     private static final Set<String> VERSION_INFO_KEYS = Set.of("user.name", "user.email", "message");
     private final DefaultVersionInfoConfig defaultConfig;
     private final Properties props;
@@ -78,20 +79,20 @@ public class VersionPropertiesReader {
         var info = new VersionInfo();
         var user = new User();
         user.setName(getOrThrow(props, "user.name"));
-        // Add mailto: if not present yet
-        var mail = getOrThrow(props, "user.email");
-        if (!mail.startsWith("mailto:")) {
-            mail = "mailto:" + mail;
+        var email = getOrThrow(props, "user.email");
+        if (!email.startsWith(MAILTO_PREFIX)) {
+            email = MAILTO_PREFIX + email;
         }
-        validateEmail(mail);
-        user.setAddress(mail);
+        validateEmail(email);
+        user.setAddress(email);
         info.setUser(user);
         info.setMessage(getOrThrow(props, "message"));
         return info;
     }
 
     private void validateEmail(String email) {
-        if (!validEmailPattern.matcher(email).matches()) {
+        var mailWithoutMailTo = email.startsWith(MAILTO_PREFIX) ? email.substring(MAILTO_PREFIX.length()) : email;
+        if (!EmailValidator.getInstance().isValid(mailWithoutMailTo)) {
             throw new IllegalArgumentException("Invalid email address: " + email);
         }
     }

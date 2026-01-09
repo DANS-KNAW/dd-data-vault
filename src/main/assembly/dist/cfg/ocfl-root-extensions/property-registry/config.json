@@ -5,6 +5,11 @@
       "description": "The packaging format of the current object version, as defined in the packaging-format-registry extension.",
       "type": "string",
       "required": true
+    },
+    "dataset-version": {
+      "description": "The version of the dataset that this object version is an export of, as defined by the depositor",
+      "type": "string",
+      "required": false
     }
   }
 }
