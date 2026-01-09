@@ -36,6 +36,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 import java.net.URI;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 
@@ -182,6 +183,69 @@ public class OcflRepositoryProviderTest extends AbstractTestFixture {
             OcflRepositoryProvider.DANS_RDA_BAG_PACK_PROFILE_0_1_0);
     }
 
+    @Test
+    public void addHeadVersion_should_add_custom_properties() throws Exception {
+        // Given
+        copyToTestDir("simple-object/v1", TEST_INPUT);
+        var properties = """
+            user.name=Test User
+            user.email=test.user@mail.com
+            message=Initial version
+            custom.key1=Value 1
+            custom.key2=Value 2
+            """;
+        Files.writeString(testDir.resolve(TEST_INPUT + "/v1.properties"), properties);
+
+        // When
+        ocflRepositoryProvider.addHeadVersion("urn:nbn:o1", testDir.resolve(TEST_INPUT + "/v1"));
+
+        // Then
+        long layerId = layerManager.getTopLayer().getId();
+        var objectRoot = testDir.resolve(LAYER_STAGING_ROOT).resolve(Long.toString(layerId)).resolve("000/000/0o1/o1");
+        
+        // Verify that the object version properties are set correctly
+        Map<String, Map<String, Object>> objectVersionProperties = mapper.readValue(
+            objectRoot.resolve("extensions/object-version-properties/object_version_properties.json").toFile(),
+            mapper.getTypeFactory().constructMapType(Map.class, String.class, Map.class)
+        );
+
+        assertThat(objectVersionProperties.get("v1")).containsEntry("key1", "Value 1");
+        assertThat(objectVersionProperties.get("v1")).containsEntry("key2", "Value 2");
+        assertThat(objectVersionProperties.get("v1")).containsEntry(OcflRepositoryProvider.PACKAGING_FORMAT_KEY,
+            OcflRepositoryProvider.DANS_RDA_BAG_PACK_PROFILE_0_1_0);
+    }
+
+    @Test
+    public void addVersion_should_add_custom_properties() throws Exception {
+        // Given
+        copyToTestDir("simple-object/v1", TEST_INPUT);
+        ocflRepositoryProvider.addHeadVersion("urn:nbn:o1", testDir.resolve(TEST_INPUT + "/v1"));
+        copyToTestDir("simple-object/v2", TEST_INPUT);
+        var properties = """
+            user.name=Test User
+            user.email=test.user@mail.com
+            message=Second version
+            custom.key3=Value 3
+            """;
+        Files.writeString(testDir.resolve(TEST_INPUT + "/v2.properties"), properties);
+
+        // When
+        ocflRepositoryProvider.addVersion("urn:nbn:o1", 2, testDir.resolve(TEST_INPUT + "/v2"));
+
+        // Then
+        long layerId = layerManager.getTopLayer().getId();
+        var objectRoot = testDir.resolve(LAYER_STAGING_ROOT).resolve(Long.toString(layerId)).resolve("000/000/0o1/o1");
+
+        // Verify that the object version properties are set correctly
+        Map<String, Map<String, Object>> objectVersionProperties = mapper.readValue(
+            objectRoot.resolve("extensions/object-version-properties/object_version_properties.json").toFile(),
+            mapper.getTypeFactory().constructMapType(Map.class, String.class, Map.class)
+        );
+
+        assertThat(objectVersionProperties.get("v2")).containsEntry("key3", "Value 3");
+        assertThat(objectVersionProperties.get("v2")).containsEntry(OcflRepositoryProvider.PACKAGING_FORMAT_KEY,
+            OcflRepositoryProvider.DANS_RDA_BAG_PACK_PROFILE_0_1_0);
+    }
 
 
     // TODO: sidecar file must have the algorithm as inventory sidecar file (this must then first be made configurable in OcflRepositoryProvider)

@@ -17,40 +17,62 @@ package nl.knaw.dans.datavault.core;
 
 import io.ocfl.api.model.User;
 import io.ocfl.api.model.VersionInfo;
-import lombok.RequiredArgsConstructor;
 import nl.knaw.dans.datavault.config.DefaultVersionInfoConfig;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.regex.Pattern;
 
-@RequiredArgsConstructor
-public class VersionInfoReader {
+public class VersionPropertiesReader {
     private static final Pattern validEmailPattern = Pattern.compile("^mailto:[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+\\.[A-Za-z]{2,}$");
-    private static final Set<String> ALLOWED_KEYS = Set.of("user.name", "user.email", "message");
+    private static final Set<String> VERSION_INFO_KEYS = Set.of("user.name", "user.email", "message");
     private final DefaultVersionInfoConfig defaultConfig;
+    private final Properties props;
 
-    public VersionInfo read(Path file) throws IOException {
+    public VersionPropertiesReader(Path file, DefaultVersionInfoConfig defaultConfig) throws IOException {
+        this.defaultConfig = defaultConfig;
+
         if (file == null || !Files.exists(file)) {
             if (defaultConfig == null) {
                 throw new IllegalArgumentException("No version info file " + file + " provided and no default configuration available");
             }
-
-            return createDefaultVersionInfo();
+            this.props = null;
         }
-
-        var props = new Properties();
-        try (var in = Files.newInputStream(file)) {
-            props.load(in);
-        }
-
-        for (var key : props.stringPropertyNames()) {
-            if (!ALLOWED_KEYS.contains(key)) {
-                throw new IllegalArgumentException("Unknown property in version info file: " + key);
+        else {
+            this.props = new Properties();
+            try (var in = Files.newInputStream(file)) {
+                this.props.load(in);
             }
+
+            for (var key : this.props.stringPropertyNames()) {
+                if (!VERSION_INFO_KEYS.contains(key) && !key.startsWith("custom.")) {
+                    throw new IllegalArgumentException("Unknown property in version info file: " + key);
+                }
+            }
+        }
+    }
+
+    public Map<String, String> getCustomProperties() {
+        if (this.props == null) {
+            return Map.of();
+        }
+
+        return this.props.stringPropertyNames().stream()
+            .filter(key -> key.startsWith("custom."))
+            .collect(Collectors.toMap(
+                key -> key.substring("custom.".length()),
+                this.props::getProperty
+            ));
+    }
+
+    public VersionInfo getVersionInfo() {
+        if (this.props == null) {
+            return createDefaultVersionInfo();
         }
 
         var info = new VersionInfo();
