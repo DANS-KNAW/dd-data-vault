@@ -56,9 +56,6 @@ import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 @Slf4j
 @RequiredArgsConstructor(access = AccessLevel.PRIVATE) // Builder should be used to create instances
 public class OcflRepositoryProvider implements RepositoryProvider, Managed {
-    public static final String PACKAGING_FORMAT_KEY = "packaging-format";
-    public static final String DANS_RDA_BAG_PACK_PROFILE_0_1_0 = "DANS RDA BagPack Profile/0.1.0";
-    public static final String DATASET_VERSION_KEY = "dataset-version";
     private final DefaultVersionInfoConfig defaultVersionInfoConfig;
 
     @NonNull
@@ -92,7 +89,6 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
         var reader = createVersionPropertiesReader(versionInfoFile);
         ocflRepository.putObject(ObjectVersionId.version(objectId, version - 1), objectVersionDirectory, reader.getVersionInfo());
 
-        updateObjectVersionProperties(objectId, version, PACKAGING_FORMAT_KEY, DANS_RDA_BAG_PACK_PROFILE_0_1_0);
         reader.getCustomProperties().forEach((key, value) -> updateObjectVersionProperties(objectId, version, key, value));
     }
 
@@ -106,7 +102,6 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
         ocflRepository.putObject(ObjectVersionId.head(objectId), objectVersionDirectory, reader.getVersionInfo());
         long headVersion = Optional.ofNullable(ObjectVersionId.head(objectId).getVersionNum()).map(VersionNum::getVersionNum).orElse(1L);
 
-        updateObjectVersionProperties(objectId, headVersion, PACKAGING_FORMAT_KEY, DANS_RDA_BAG_PACK_PROFILE_0_1_0);
         reader.getCustomProperties().forEach((key, value) -> updateObjectVersionProperties(objectId, headVersion, key, value));
     }
 

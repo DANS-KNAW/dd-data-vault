@@ -48,8 +48,12 @@ batch-dir
     * `message` - the commit message for this version
       If no properties file is present, the service will use default values for these properties. These default values can be configured in the configuration
       file, under `dataVault.defaultVersionInfo`. If no default values are configured, an error will be raised.
+* `vN.properties` can optionally have custom properties. These are properties prefixed with the string `custom.`. The service will add these as object version
+  properties using the mechanism defined by the [Object Version Properties]{:target=_blank} extension. 
 
-Processing
+[Object Version Properties]: {{ object_version_properties_ext }}
+
+* Processing
 ----------
 
 ### Order of batches
