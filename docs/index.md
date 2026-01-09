@@ -53,7 +53,7 @@ batch-dir
 
 [Object Version Properties]: {{ object_version_properties_ext }}
 
-* Processing
+Processing
 ----------
 
 ### Order of batches
