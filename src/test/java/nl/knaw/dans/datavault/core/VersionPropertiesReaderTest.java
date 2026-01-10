@@ -15,6 +15,7 @@
  */
 package nl.knaw.dans.datavault.core;
 
+import nl.knaw.dans.datavault.config.DefaultVersionInfoConfig;
 import org.junit.jupiter.api.Test;
 
 import java.nio.file.Files;
@@ -86,7 +87,7 @@ public class VersionPropertiesReaderTest extends AbstractTestFixture {
     @Test
     public void should_use_default_version_info_when_file_missing() throws Exception {
         // Given
-        var defaultConfig = new nl.knaw.dans.datavault.config.DefaultVersionInfoConfig();
+        var defaultConfig = new DefaultVersionInfoConfig();
         defaultConfig.setUsername("Default User");
         defaultConfig.setEmail(new java.net.URI("mailto:default.user@mail.com"));
         defaultConfig.setMessage("Default version message");
@@ -145,7 +146,7 @@ public class VersionPropertiesReaderTest extends AbstractTestFixture {
     @Test
     public void should_return_empty_map_for_custom_properties_when_file_missing() throws Exception {
         // When
-        var reader = new VersionPropertiesReader(null, new nl.knaw.dans.datavault.config.DefaultVersionInfoConfig() {{
+        var reader = new VersionPropertiesReader(null, new DefaultVersionInfoConfig() {{
             setUsername("user");
             setEmail(new java.net.URI("mailto:user@mail.com"));
             setMessage("msg");
