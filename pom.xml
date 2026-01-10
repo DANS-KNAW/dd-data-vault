@@ -34,6 +34,8 @@
     <inceptionYear>2024</inceptionYear>
 
     <properties>
+        <!-- TODO: move to dd-parent -->
+        <commons-validator.version>1.7</commons-validator.version>
         <main-class>nl.knaw.dans.datavault.DdDataVaultApplication</main-class>
     </properties>
 
@@ -82,6 +84,11 @@
         <dependency>
             <groupId>nl.knaw.dans</groupId>
             <artifactId>dans-java-utils</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>commons-validator</groupId>
+            <artifactId>commons-validator</artifactId>
+            <version>${commons-validator.version}</version>
         </dependency>
         <dependency>
             <groupId>nl.knaw.dans</groupId>

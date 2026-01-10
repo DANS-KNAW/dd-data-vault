@@ -33,6 +33,9 @@ nav:
       - Database for testing: test-db.md
       - Testing with dmftar: test-dmftar.md
 
+extra:
+  object_version_properties_ext: https://dans-knaw.github.io/dans-ocfl-extensions/object-version-properties/object-version-properties/
+
 plugins:
   - markdownextradata
   - search

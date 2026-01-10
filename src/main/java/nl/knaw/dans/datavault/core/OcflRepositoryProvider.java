@@ -19,7 +19,6 @@ import io.dropwizard.lifecycle.Managed;
 import io.ocfl.api.OcflRepository;
 import io.ocfl.api.exception.NotFoundException;
 import io.ocfl.api.model.ObjectVersionId;
-import io.ocfl.api.model.User;
 import io.ocfl.api.model.VersionInfo;
 import io.ocfl.api.model.VersionNum;
 import io.ocfl.core.OcflRepositoryBuilder;
@@ -57,9 +56,7 @@ import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 @Slf4j
 @RequiredArgsConstructor(access = AccessLevel.PRIVATE) // Builder should be used to create instances
 public class OcflRepositoryProvider implements RepositoryProvider, Managed {
-    public static final String PACKAGING_FORMAT_KEY = "packaging-format";
-    public static final String DANS_RDA_BAG_PACK_PROFILE_0_1_0 = "DANS RDA BagPack Profile/0.1.0";
-    private final VersionInfoReader versionInfoReader;
+    private final DefaultVersionInfoConfig defaultVersionInfoConfig;
 
     @NonNull
     private final LayeredItemStore layeredItemStore;
@@ -78,7 +75,7 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
     @Builder
     public static OcflRepositoryProvider create(LayeredItemStore itemStore, Path workDir, DefaultVersionInfoConfig defaultVersionInfoConfig, LayerConsistencyChecker layerConsistencyChecker,
         Path rootExtensionsSourcePath) {
-        return new OcflRepositoryProvider(new VersionInfoReader(defaultVersionInfoConfig), itemStore, workDir, layerConsistencyChecker, rootExtensionsSourcePath);
+        return new OcflRepositoryProvider(defaultVersionInfoConfig, itemStore, workDir, layerConsistencyChecker, rootExtensionsSourcePath);
     }
 
     @Override
@@ -88,9 +85,11 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
             throw new IllegalStateException("OCFL repository is not yet started");
         }
         // putObject wants the version number of HEAD, so we need to subtract 1 from the version number
-        ocflRepository.putObject(ObjectVersionId.version(objectId, version - 1), objectVersionDirectory, createVersionInfoFor(objectVersionDirectory));
+        var versionInfoFile = objectVersionDirectory.resolveSibling(objectVersionDirectory.getFileName().toString() + ".properties");
+        var reader = createVersionPropertiesReader(versionInfoFile);
+        ocflRepository.putObject(ObjectVersionId.version(objectId, version - 1), objectVersionDirectory, reader.getVersionInfo());
 
-        updateObjectVersionProperties(objectId, version, PACKAGING_FORMAT_KEY, DANS_RDA_BAG_PACK_PROFILE_0_1_0);
+        reader.getCustomProperties().forEach((key, value) -> updateObjectVersionProperties(objectId, version, key, value));
     }
 
     @Override
@@ -99,10 +98,11 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
         if (ocflRepository == null) {
             throw new IllegalStateException("OCFL repository is not yet started");
         }
-        ocflRepository.putObject(ObjectVersionId.head(objectId), objectVersionDirectory, createVersionInfoFor(objectVersionDirectory));
+        var reader = createVersionPropertiesReader(objectVersionDirectory.resolveSibling(objectVersionDirectory.getFileName().toString() + ".properties"));
+        ocflRepository.putObject(ObjectVersionId.head(objectId), objectVersionDirectory, reader.getVersionInfo());
         long headVersion = Optional.ofNullable(ObjectVersionId.head(objectId).getVersionNum()).map(VersionNum::getVersionNum).orElse(1L);
 
-        updateObjectVersionProperties(objectId, headVersion, PACKAGING_FORMAT_KEY, DANS_RDA_BAG_PACK_PROFILE_0_1_0);
+        reader.getCustomProperties().forEach((key, value) -> updateObjectVersionProperties(objectId, headVersion, key, value));
     }
 
     private void updateObjectVersionProperties(String objectId, long version, String key, Object value) {
@@ -130,12 +130,12 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
         }
     }
 
-    private VersionInfo createVersionInfoFor(Path objectVersionDirectory) {
+    private VersionPropertiesReader createVersionPropertiesReader(Path versionPropertiesFile) {
         try {
-            return versionInfoReader.read(objectVersionDirectory.resolveSibling(objectVersionDirectory.getFileName().toString() + ".properties"));
+            return new VersionPropertiesReader(versionPropertiesFile, defaultVersionInfoConfig);
         }
         catch (IOException e) {
-            throw new RuntimeException("Failed to read version info from " + objectVersionDirectory, e);
+            throw new RuntimeException("Failed to read version info from " + versionPropertiesFile, e);
         }
     }
 
