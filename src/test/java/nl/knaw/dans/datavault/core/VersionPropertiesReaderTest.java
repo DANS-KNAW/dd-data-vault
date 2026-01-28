@@ -15,7 +15,6 @@
  */
 package nl.knaw.dans.datavault.core;
 
-import nl.knaw.dans.datavault.config.DefaultVersionInfoConfig;
 import org.junit.jupiter.api.Test;
 
 import java.nio.file.Files;
@@ -37,7 +36,7 @@ public class VersionPropertiesReaderTest extends AbstractTestFixture {
         Files.writeString(v1Props, properties);
 
         // When
-        var info = new VersionPropertiesReader(v1Props, null).getVersionInfo();
+        var info = new VersionPropertiesReader(v1Props).getVersionInfo();
 
         // Then
         assertThat(info.getUser().getName()).isEqualTo("Test User");
@@ -57,7 +56,7 @@ public class VersionPropertiesReaderTest extends AbstractTestFixture {
         Files.writeString(v1Props, properties);
 
         // When
-        var info = new VersionPropertiesReader(v1Props, null).getVersionInfo();
+        var info = new VersionPropertiesReader(v1Props).getVersionInfo();
 
         // Then
         assertThat(info.getUser().getName()).isEqualTo("Test User");
@@ -78,28 +77,11 @@ public class VersionPropertiesReaderTest extends AbstractTestFixture {
 
         // When / Then
         var ex = assertThrows(IllegalArgumentException.class, () -> {
-            new VersionPropertiesReader(v1Props, null).getVersionInfo();
+            new VersionPropertiesReader(v1Props).getVersionInfo();
         });
         assertThat(ex.getMessage()).isEqualTo("Invalid email address: mailto:invalid-email");
     }
 
-
-    @Test
-    public void should_use_default_version_info_when_file_missing() throws Exception {
-        // Given
-        var defaultConfig = new DefaultVersionInfoConfig();
-        defaultConfig.setUsername("Default User");
-        defaultConfig.setEmail(new java.net.URI("mailto:default.user@mail.com"));
-        defaultConfig.setMessage("Default version message");
-
-        // When
-        var info = new VersionPropertiesReader(null, defaultConfig).getVersionInfo();
-
-        // Then
-        assertThat(info.getUser().getName()).isEqualTo("Default User");
-        assertThat(info.getUser().getAddress()).isEqualTo("mailto:default.user@mail.com");
-        assertThat(info.getMessage()).isEqualTo("Default version message");
-    }
 
     @Test
     public void should_allow_custom_properties_and_return_them_without_prefix() throws Exception {
@@ -115,7 +97,7 @@ public class VersionPropertiesReaderTest extends AbstractTestFixture {
         Files.writeString(vProps, properties);
 
         // When
-        var reader = new VersionPropertiesReader(vProps, null);
+        var reader = new VersionPropertiesReader(vProps);
         var customProps = reader.getCustomProperties();
 
         // Then
@@ -136,48 +118,11 @@ public class VersionPropertiesReaderTest extends AbstractTestFixture {
         Files.writeString(vProps, properties);
 
         // When
-        var reader = new VersionPropertiesReader(vProps, null);
+        var reader = new VersionPropertiesReader(vProps);
         var customProps = reader.getCustomProperties();
 
         // Then
         assertThat(customProps).isEmpty();
-    }
-
-    @Test
-    public void should_return_empty_map_for_custom_properties_when_file_missing() throws Exception {
-        // When
-        var reader = new VersionPropertiesReader(null, new DefaultVersionInfoConfig() {{
-            setUsername("user");
-            setEmail(new java.net.URI("mailto:user@mail.com"));
-            setMessage("msg");
-        }});
-        var customProps = reader.getCustomProperties();
-
-        // Then
-        assertThat(customProps).isEmpty();
-    }
-
-    @Test
-    public void should_allow_mixed_standard_and_custom_properties() throws Exception {
-        // Given
-        var properties = """
-            user.name=Test User
-            user.email=test.user@mail.com
-            message=Initial version
-            custom.prop1=Value 1
-            """;
-        var vProps = testDir.resolve("v-mixed.properties");
-        Files.writeString(vProps, properties);
-
-        // When
-        var reader = new VersionPropertiesReader(vProps, null);
-        var info = reader.getVersionInfo();
-        var customProps = reader.getCustomProperties();
-
-        // Then
-        assertThat(info.getUser().getName()).isEqualTo("Test User");
-        assertThat(customProps).hasSize(1);
-        assertThat(customProps.get("prop1")).isEqualTo("Value 1");
     }
 
     @Test
@@ -194,7 +139,7 @@ public class VersionPropertiesReaderTest extends AbstractTestFixture {
 
         // When / Then
         var ex = assertThrows(IllegalArgumentException.class, () -> {
-            new VersionPropertiesReader(v2Props, null).getVersionInfo();
+            new VersionPropertiesReader(v2Props).getVersionInfo();
         });
         assertThat(ex.getMessage()).isEqualTo("Unknown property in version info file: unknown.property");
     }
@@ -212,49 +157,27 @@ public class VersionPropertiesReaderTest extends AbstractTestFixture {
 
         // When / Then
         var ex = assertThrows(IllegalArgumentException.class, () -> {
-            new VersionPropertiesReader(v3Props, null).getVersionInfo();
+            new VersionPropertiesReader(v3Props).getVersionInfo();
         });
         assertThat(ex.getMessage()).isEqualTo("Missing required property: user.email");
     }
 
     @Test
-    public void should_throw_exception_when_no_file_and_no_default_config() throws Exception {
-        // When / Then
-        var ex = assertThrows(IllegalArgumentException.class, () -> {
-            new VersionPropertiesReader(null, null).getVersionInfo();
+    public void should_throw_exception_when_no_file_provided() throws Exception {
+        var ex = assertThrows(NullPointerException.class, () -> {
+            new VersionPropertiesReader(null).getVersionInfo();
         });
-        assertThat(ex.getMessage()).isEqualTo("No version info file null provided and no default configuration available");
     }
 
     @Test
-    public void should_throw_exception_for_blank_required_property() throws Exception {
-        // Given
-        var properties = """
-            user.name=
-            user.email=test.user@mail.com
-            message=Initial version
-            """;
-
-        var v4Props = testDir.resolve("v4.properties");
-        Files.writeString(v4Props, properties);
-
-        // When / Then
-        var ex = assertThrows(IllegalArgumentException.class, () -> {
-            new VersionPropertiesReader(v4Props, null).getVersionInfo();
-        });
-
-        assertThat(ex.getMessage()).isEqualTo("Missing required property: user.name");
-    }
-
-    @Test
-    public void should_throw_exception_when_file_does_not_exist_and_no_default_config() throws Exception {
+    public void should_throw_exception_when_file_does_not_exist() throws Exception {
         // Given
         var nonExistentFile = testDir.resolve("nonexistent.properties");
 
         // When / Then
         var ex = assertThrows(IllegalArgumentException.class, () -> {
-            new VersionPropertiesReader(nonExistentFile, null).getVersionInfo();
+            new VersionPropertiesReader(nonExistentFile).getVersionInfo();
         });
-        assertThat(ex.getMessage()).isEqualTo("No version info file " + nonExistentFile + " provided and no default configuration available");
+        assertThat(ex.getMessage()).isEqualTo("Version properties file does not exist: " + nonExistentFile);
     }
 }

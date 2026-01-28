@@ -93,7 +93,6 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
             .itemStore(layeredItemStore)
             .layerConsistencyChecker(layerConsistencyChecker)
             .rootExtensionsSourcePath(configuration.getDataVault().getOcflRepository().getRootExtensionsSourcePath())
-            .defaultVersionInfoConfig(configuration.getDataVault().getDefaultVersionInfo())
             .workDir(configuration.getDataVault().getOcflRepository().getWorkDir())
             .build());
         environment.lifecycle().manage(ocflRepositoryProvider);

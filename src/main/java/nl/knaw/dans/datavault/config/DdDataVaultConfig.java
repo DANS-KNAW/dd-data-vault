@@ -32,9 +32,11 @@ public class DdDataVaultConfig extends Configuration {
     @NotNull
     private DataSourceFactory database;
 
+    @Valid
     @NotNull
     private ExecutorServiceFactory executorService;
 
+    @Valid
     @NotNull
     private DataVaultConfig dataVault;
 }

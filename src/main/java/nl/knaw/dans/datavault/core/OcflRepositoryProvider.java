@@ -32,7 +32,6 @@ import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import nl.knaw.dans.datavault.api.OcflObjectVersionDto;
-import nl.knaw.dans.datavault.config.DefaultVersionInfoConfig;
 import nl.knaw.dans.layerstore.ItemsMismatchException;
 import nl.knaw.dans.layerstore.LayerConsistencyChecker;
 import nl.knaw.dans.layerstore.LayeredItemStore;
@@ -56,8 +55,6 @@ import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 @Slf4j
 @RequiredArgsConstructor(access = AccessLevel.PRIVATE) // Builder should be used to create instances
 public class OcflRepositoryProvider implements RepositoryProvider, Managed {
-    private final DefaultVersionInfoConfig defaultVersionInfoConfig;
-
     @NonNull
     private final LayeredItemStore layeredItemStore;
 
@@ -73,9 +70,9 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
     private OcflStorage ocflStorage;
 
     @Builder
-    public static OcflRepositoryProvider create(LayeredItemStore itemStore, Path workDir, DefaultVersionInfoConfig defaultVersionInfoConfig, LayerConsistencyChecker layerConsistencyChecker,
+    public static OcflRepositoryProvider create(LayeredItemStore itemStore, Path workDir, LayerConsistencyChecker layerConsistencyChecker,
         Path rootExtensionsSourcePath) {
-        return new OcflRepositoryProvider(defaultVersionInfoConfig, itemStore, workDir, layerConsistencyChecker, rootExtensionsSourcePath);
+        return new OcflRepositoryProvider(itemStore, workDir, layerConsistencyChecker, rootExtensionsSourcePath);
     }
 
     @Override
@@ -132,7 +129,7 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
 
     private VersionPropertiesReader createVersionPropertiesReader(Path versionPropertiesFile) {
         try {
-            return new VersionPropertiesReader(versionPropertiesFile, defaultVersionInfoConfig);
+            return new VersionPropertiesReader(versionPropertiesFile);
         }
         catch (IOException e) {
             throw new RuntimeException("Failed to read version info from " + versionPropertiesFile, e);

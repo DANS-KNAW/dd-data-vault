@@ -17,7 +17,7 @@ package nl.knaw.dans.datavault.core;
 
 import io.ocfl.api.model.User;
 import io.ocfl.api.model.VersionInfo;
-import nl.knaw.dans.datavault.config.DefaultVersionInfoConfig;
+import lombok.NonNull;
 import org.apache.commons.validator.routines.EmailValidator;
 
 import java.io.IOException;
@@ -27,42 +27,29 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.regex.Pattern;
 
 public class VersionPropertiesReader {
     private static final String MAILTO_PREFIX = "mailto:";
     private static final Set<String> VERSION_INFO_KEYS = Set.of("user.name", "user.email", "message");
-    private final DefaultVersionInfoConfig defaultConfig;
     private final Properties props;
 
-    public VersionPropertiesReader(Path file, DefaultVersionInfoConfig defaultConfig) throws IOException {
-        this.defaultConfig = defaultConfig;
-
-        if (file == null || !Files.exists(file)) {
-            if (defaultConfig == null) {
-                throw new IllegalArgumentException("No version info file " + file + " provided and no default configuration available");
-            }
-            this.props = null;
+    public VersionPropertiesReader(@NonNull Path file) throws IOException {
+        if (!Files.exists(file)) {
+            throw new IllegalArgumentException("Version properties file does not exist: " + file);
         }
-        else {
-            this.props = new Properties();
-            try (var in = Files.newInputStream(file)) {
-                this.props.load(in);
-            }
+        this.props = new Properties();
+        try (var in = Files.newInputStream(file)) {
+            this.props.load(in);
+        }
 
-            for (var key : this.props.stringPropertyNames()) {
-                if (!VERSION_INFO_KEYS.contains(key) && !key.startsWith("custom.")) {
-                    throw new IllegalArgumentException("Unknown property in version info file: " + key);
-                }
+        for (var key : this.props.stringPropertyNames()) {
+            if (!VERSION_INFO_KEYS.contains(key) && !key.startsWith("custom.")) {
+                throw new IllegalArgumentException("Unknown property in version info file: " + key);
             }
         }
     }
 
     public Map<String, String> getCustomProperties() {
-        if (this.props == null) {
-            return Map.of();
-        }
-
         return this.props.stringPropertyNames().stream()
             .filter(key -> key.startsWith("custom."))
             .collect(Collectors.toMap(
@@ -72,10 +59,6 @@ public class VersionPropertiesReader {
     }
 
     public VersionInfo getVersionInfo() {
-        if (this.props == null) {
-            return createDefaultVersionInfo();
-        }
-
         var info = new VersionInfo();
         var user = new User();
         user.setName(getOrThrow(props, "user.name"));
@@ -95,14 +78,6 @@ public class VersionPropertiesReader {
         if (!EmailValidator.getInstance().isValid(mailWithoutMailTo)) {
             throw new IllegalArgumentException("Invalid email address: " + email);
         }
-    }
-
-    private VersionInfo createDefaultVersionInfo() {
-        return new VersionInfo()
-            .setMessage(defaultConfig.getMessage())
-            .setUser(new User()
-                .setName(defaultConfig.getUsername())
-                .setAddress(defaultConfig.getEmail().toString()));
     }
 
     private String getOrThrow(Properties props, String key) {

@@ -18,11 +18,9 @@ package nl.knaw.dans.datavault.core;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.dropwizard.testing.junit5.DAOTestExtension;
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
-import nl.knaw.dans.datavault.config.DefaultVersionInfoConfig;
 import nl.knaw.dans.layerstore.DirectLayerArchiver;
 import nl.knaw.dans.layerstore.ItemRecord;
 import nl.knaw.dans.layerstore.ItemsMatchDbConsistencyChecker;
-import nl.knaw.dans.layerstore.LayerConsistencyChecker;
 import nl.knaw.dans.layerstore.LayerDatabase;
 import nl.knaw.dans.layerstore.LayerDatabaseImpl;
 import nl.knaw.dans.layerstore.LayerManager;
@@ -35,7 +33,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
-import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
@@ -80,16 +77,11 @@ public class OcflRepositoryProviderTest extends AbstractTestFixture {
         var archiveRoot = createSubdir(LAYER_ARCHIVE_ROOT);
         layerManager = new LayerManagerImpl(stagingRoot, new ZipArchiveProvider(archiveRoot), new DirectLayerArchiver());
         var itemStore = new LayeredItemStore(dao, layerManager, new StoreInventoryDbBackedContentManager());
-        var defaultVersionInfoConfig = new DefaultVersionInfoConfig();
-        defaultVersionInfoConfig.setUsername("test-user");
-        defaultVersionInfoConfig.setEmail(URI.create("mailto:testuser@example.com"));
-        defaultVersionInfoConfig.setMessage("Test message");
 
         ocflRepositoryProvider = OcflRepositoryProvider.builder()
             .itemStore(itemStore)
             .layerConsistencyChecker(new ItemsMatchDbConsistencyChecker(dao))
             .rootExtensionsSourcePath(Path.of("src/main/assembly/dist/cfg/ocfl-root-extensions"))
-            .defaultVersionInfoConfig(defaultVersionInfoConfig)
             .workDir(testDir.resolve(WORK_DIR))
             .build();
 
@@ -142,7 +134,6 @@ public class OcflRepositoryProviderTest extends AbstractTestFixture {
         assertThat(objectVersionProperties.get("v1").keySet()).hasSize(1);
         assertThat(objectVersionProperties.get("v1")).containsEntry("packaging-format", "DANS RDA BagPack Profile/0.1.0");
     }
-
 
     @Test
     public void addVersion_should_add_version_to_existing_object() throws Exception {
@@ -270,7 +261,6 @@ public class OcflRepositoryProviderTest extends AbstractTestFixture {
         assertThat(objectVersionProperties.get("v2")).containsEntry("key3", "Value 3");
         assertThat(objectVersionProperties.get("v2")).containsEntry("packaging-format", "DANS RDA BagPack Profile/0.1.0");
     }
-
 
     // TODO: sidecar file must have the algorithm as inventory sidecar file (this must then first be made configurable in OcflRepositoryProvider)
 }
