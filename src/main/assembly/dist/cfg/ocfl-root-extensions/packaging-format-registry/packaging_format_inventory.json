@@ -4,6 +4,11 @@
       "name": "DANS RDA BagPack Profile",
       "version": "0.1.0",
       "summary": "Extension of the RDA BagPack Profile for DANS"
+    },
+    "8d86429cf4f0aa86c4f375bd1c655b6a": {
+      "name": "DANS RDA BagPack Profile",
+      "version": "1.0.0",
+      "summary": "Extension of the RDA BagPack Profile for DANS"
     }
   }
 }
