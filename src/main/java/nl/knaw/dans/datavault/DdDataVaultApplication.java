@@ -89,12 +89,13 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
         var layerManager = createLayerManager(configuration, environment, uowFactory, createUnitOfWorkAwareProxy(uowFactory, layerConsistencyChecker));
         var layeredItemStore = new LayeredItemStore(layerDatabaseDao, layerManager, new StoreInventoryDbBackedContentManager());
         layeredItemStore.setAllowReadingContentFromArchives(false);
-        var ocflRepositoryProvider = createUnitOfWorkAwareProxy(uowFactory, OcflRepositoryProvider.builder()
-            .itemStore(layeredItemStore)
-            .layerConsistencyChecker(layerConsistencyChecker)
-            .rootExtensionsSourcePath(configuration.getDataVault().getOcflRepository().getRootExtensionsSourcePath())
-            .workDir(configuration.getDataVault().getOcflRepository().getWorkDir())
-            .build());
+        RepositoryProvider ocflRepositoryProvider = createUnitOfWorkAwareProxy(uowFactory, OcflRepositoryProvider.create(
+            layeredItemStore,
+            configuration.getDataVault().getOcflRepository().getWorkDir(),
+            layerConsistencyChecker,
+            configuration.getDataVault().getOcflRepository().getRootExtensionsSourcePath(),
+            configuration.getDataVault().getOcflRepository().getRootDocsSourcePath()
+        ));
         environment.lifecycle().manage(ocflRepositoryProvider);
         var importBatchDao = new ImportJobDao(hibernateBundle.getSessionFactory());
         environment.jersey().register(new ImportsApiResource(importBatchDao, configuration.getDataVault().getIngest().getInbox()));

@@ -67,6 +67,7 @@ dataVault:
   ocflRepository:
     workDir: /data/vault/tmp
     rootExtensionsSourcePath: /etc/opt/dans.knaw.nl/dd-data-vault/ocfl-root-extensions
+    rootDocsSourcePath: /etc/opt/dans.knaw.nl/dd-data-vault/ocfl-root-docs
 
   #
   # Settings for the layer store in which the data vault stores its data.

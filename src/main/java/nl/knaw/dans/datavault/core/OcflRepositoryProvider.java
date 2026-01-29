@@ -19,7 +19,6 @@ import io.dropwizard.lifecycle.Managed;
 import io.ocfl.api.OcflRepository;
 import io.ocfl.api.exception.NotFoundException;
 import io.ocfl.api.model.ObjectVersionId;
-import io.ocfl.api.model.VersionInfo;
 import io.ocfl.api.model.VersionNum;
 import io.ocfl.core.OcflRepositoryBuilder;
 import io.ocfl.core.extension.UnsupportedExtensionBehavior;
@@ -65,14 +64,15 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
     private final LayerConsistencyChecker layerConsistencyChecker;
 
     private final Path rootExtensionsSourcePath;
+    private final Path rootDocsSourcePath;
 
     private OcflRepository ocflRepository;
     private OcflStorage ocflStorage;
 
     @Builder
     public static OcflRepositoryProvider create(LayeredItemStore itemStore, Path workDir, LayerConsistencyChecker layerConsistencyChecker,
-        Path rootExtensionsSourcePath) {
-        return new OcflRepositoryProvider(itemStore, workDir, layerConsistencyChecker, rootExtensionsSourcePath);
+        Path rootExtensionsSourcePath, Path rootDocsSourcePath) {
+        return new OcflRepositoryProvider(itemStore, workDir, layerConsistencyChecker, rootExtensionsSourcePath, rootDocsSourcePath);
     }
 
     @Override
@@ -151,6 +151,7 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
                 .workDir(Files.createDirectories(workDir)).build();
 
             addExtensions();
+            addRootDocs();
         }
         catch (Exception e) {
             throw new RuntimeException("Failed to create OCFL repository", e);
@@ -199,11 +200,36 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
                 }
             }
             else {
-                throw new RuntimeException("Root extensions source path " + rootExtensionsSourcePath + " does not exist");
+                throw new IllegalStateException("Root extensions source path " + rootExtensionsSourcePath + " does not exist");
             }
         }
         else {
             log.info("Root extensions source path is not set, no extensions will be copied to the OCFL repository");
+        }
+    }
+
+    private void addRootDocs() throws IOException {
+        if (rootDocsSourcePath != null) {
+            if (Files.exists(rootDocsSourcePath)) {
+                log.info("Copying storage root docs from {} into the OCFL storage root (non-recursive)", rootDocsSourcePath);
+                try (var stream = Files.list(rootDocsSourcePath)) {
+                    for (Path entry : stream.toList()) {
+                        if (Files.isDirectory(entry)) {
+                            throw new IllegalStateException("Root docs source path contains a subdirectory, which is not allowed: " + entry.getFileName());
+                        }
+                        var dest = entry.getFileName().toString();
+                        try (var is = Files.newInputStream(entry)) {
+                            layeredItemStore.writeFile(dest, is);
+                        }
+                    }
+                }
+            }
+            else {
+                throw new IllegalStateException("Root docs source path " + rootDocsSourcePath + " does not exist");
+            }
+        }
+        else {
+            log.info("Root docs source path is not set, no docs will be copied to the OCFL repository");
         }
     }
 

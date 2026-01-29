@@ -26,4 +26,6 @@ public class OcflRepositoryConfig {
     private Path workDir;
 
     private Path rootExtensionsSourcePath;
+
+    private Path rootDocsSourcePath;
 }
