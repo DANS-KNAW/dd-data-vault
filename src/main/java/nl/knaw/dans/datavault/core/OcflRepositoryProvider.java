@@ -215,7 +215,7 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
                 try (var stream = Files.list(rootDocsSourcePath)) {
                     for (Path entry : stream.toList()) {
                         if (Files.isDirectory(entry)) {
-                            throw new IllegalStateException("Root docs source path contains a subdirectory, which is not allowed: " + entry.getFileName());
+                            throw new IllegalStateException("Root docs source path must contain only files, found subdirectory: " + entry.getFileName());
                         }
                         var dest = entry.getFileName().toString();
                         try (var is = Files.newInputStream(entry)) {
