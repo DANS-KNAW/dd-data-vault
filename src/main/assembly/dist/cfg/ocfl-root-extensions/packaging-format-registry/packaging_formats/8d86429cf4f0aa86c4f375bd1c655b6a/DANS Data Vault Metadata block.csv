@@ -1,0 +1,12 @@
+#metadataBlock,name,dataverseAlias,displayName,blockURI,,,,,,,,,,,,
+,dansDataVaultMetadata,,Data Vault Metadata,https://schemas.dans.knaw.nl/metadatablock/dansDataVaultMetadata#,,,,,,,,,,,,
+#datasetField,name,title,description,watermark, fieldType,displayOrder,displayFormat,advancedSearchField,allowControlledVocabulary,allowmultiples,facetable,displayoncreate,required,parent,metadatablock_id,termURI
+,dansDataversePid,DV PID,The PID used by Dataverse (version independent),,text,0,,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,dansDataVaultMetadata,
+,dansDataversePidVersion,DV PID Version,The version number used by Dataverse,,text,1,,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,dansDataVaultMetadata,
+,dansBagId,Bag ID,The URN:UUID of the bag stored in on tape (corresponds to one version),,text,2,,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,dansDataVaultMetadata,
+,dansNbn,NBN,The URN:NBN of this dataset (version independent),,text,3,,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,dansDataVaultMetadata,
+,dansOtherId,Other ID,"ID used by the depositing organization, may be a PID, must be namespaced",,text,4,,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,dansDataVaultMetadata,
+,dansOtherIdVersion,Other ID Version,"The version number used by the depositing organization, if empty “Other ID” refers to a specific version",,text,5,,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,dansDataVaultMetadata,
+,dansSwordToken,SWORD Token,"The UUID of the first version, the base revision (version independent)",,text,6,,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,dansDataVaultMetadata,
+,dansDataSupplier,Data Supplier,Shortname for an organizational data supplier (only provided for automated deposits),,text,7,,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,,dansDataVaultMetadata,
+#controlledVocabulary,DatasetField,Value,identifier,displayOrder,,,,,,,,,,,,
