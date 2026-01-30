@@ -23,7 +23,6 @@ Validate OCFL extension registries in this repository:
 It checks them against the DANS OCFL extensions docs in modules/dans-ocfl-extensions.
 This script uses only the standard library and is intended for CI usage.
 """
-from __future__ import annotations
 
 import argparse
 import hashlib
