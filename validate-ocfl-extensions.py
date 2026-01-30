@@ -121,7 +121,7 @@ def validate_packaging_format_registry(path: Path) -> List[ValidationError]:
         return errors
 
     # Validate entries
-    seen_pairs: set[Tuple[str, str]] = set()
+    seen_pairs: Set[Tuple[str, str]] = set()
     for key, entry in manifest.items():
         entry_path = inventory_path
         if not isinstance(entry, dict):
