@@ -217,9 +217,9 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
                         if (Files.isDirectory(entry)) {
                             throw new IllegalStateException("Root docs source path must contain only files, found subdirectory: " + entry.getFileName());
                         }
-                        var dest = entry.getFileName().toString();
+                        var destFileName = entry.getFileName().toString();
                         try (var is = Files.newInputStream(entry)) {
-                            layeredItemStore.writeFile(dest, is);
+                            layeredItemStore.writeFile(destFileName, is);
                         }
                     }
                 }
