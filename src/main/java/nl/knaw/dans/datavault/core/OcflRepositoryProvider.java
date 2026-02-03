@@ -82,7 +82,7 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
             throw new IllegalStateException("OCFL repository is not yet started");
         }
         // putObject wants the version number of HEAD, so we need to subtract 1 from the version number
-        var versionInfoFile = objectVersionDirectory.resolveSibling(objectVersionDirectory.getFileName().toString() + ".properties");
+        var versionInfoFile = objectVersionDirectory.resolveSibling(objectVersionDirectory.getFileName().toString() + ".json");
         var reader = createVersionPropertiesReader(versionInfoFile);
         ocflRepository.putObject(ObjectVersionId.version(objectId, version - 1), objectVersionDirectory, reader.getVersionInfo());
 
@@ -95,7 +95,7 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
         if (ocflRepository == null) {
             throw new IllegalStateException("OCFL repository is not yet started");
         }
-        var reader = createVersionPropertiesReader(objectVersionDirectory.resolveSibling(objectVersionDirectory.getFileName().toString() + ".properties"));
+        var reader = createVersionPropertiesReader(objectVersionDirectory.resolveSibling(objectVersionDirectory.getFileName().toString() + ".json"));
         ocflRepository.putObject(ObjectVersionId.head(objectId), objectVersionDirectory, reader.getVersionInfo());
         long headVersion = Optional.ofNullable(ObjectVersionId.head(objectId).getVersionNum()).map(VersionNum::getVersionNum).orElse(1L);
 

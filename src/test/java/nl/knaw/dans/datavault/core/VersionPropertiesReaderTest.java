@@ -27,16 +27,22 @@ public class VersionPropertiesReaderTest extends AbstractTestFixture {
     @Test
     public void should_read_version_info_from_properties_file() throws Exception {
         // Given
-        var properties = """
-            user.name=Test User
-            user.email=mailto:test.user@mail.com
-            message=Initial version
+        var json = """
+            { 
+               "version-info" : {
+                     "user": {
+                        "name": "Test User",
+                        "email": "test.user@mail.com"
+                     },
+                     "message": "Initial version"
+               }
+            }
             """;
-        var v1Props = testDir.resolve("v1.properties");
-        Files.writeString(v1Props, properties);
+        var v1Json = testDir.resolve("v1.json");
+        Files.writeString(v1Json, json);
 
         // When
-        var info = new VersionPropertiesReader(v1Props).getVersionInfo();
+        var info = new VersionPropertiesReader(v1Json).getVersionInfo();
 
         // Then
         assertThat(info.getUser().getName()).isEqualTo("Test User");
@@ -47,16 +53,22 @@ public class VersionPropertiesReaderTest extends AbstractTestFixture {
     @Test
     public void should_add_mailto_prefix_if_missing_in_email() throws Exception {
         // Given
-        var properties = """
-            user.name=Test User
-            user.email=test.user@mail.com
-            message=Initial version
+        var json = """
+            { 
+               "version-info" : {
+                     "user": {
+                        "name": "Test User",
+                        "email": "test.user@mail.com"
+                     },
+                     "message": "Initial version"
+               }
+            }
             """;
-        var v1Props = testDir.resolve("v1.properties");
-        Files.writeString(v1Props, properties);
+        var v1Json = testDir.resolve("v1.json");
+        Files.writeString(v1Json, json);
 
         // When
-        var info = new VersionPropertiesReader(v1Props).getVersionInfo();
+        var info = new VersionPropertiesReader(v1Json).getVersionInfo();
 
         // Then
         assertThat(info.getUser().getName()).isEqualTo("Test User");
@@ -67,17 +79,23 @@ public class VersionPropertiesReaderTest extends AbstractTestFixture {
     @Test
     public void should_throw_exception_for_invalid_email() throws Exception {
         // Given
-        var properties = """
-            user.name=Test User
-            user.email=invalid-email
-            message=Initial version
+        var json = """
+            { 
+               "version-info" : {
+                     "user": {
+                        "name": "Test User",
+                        "email": "invalid-email"
+                     },
+                     "message": "Initial version"
+               }
+            }
             """;
-        var v1Props = testDir.resolve("v1.properties");
-        Files.writeString(v1Props, properties);
+        var v1Json = testDir.resolve("v1.json");
+        Files.writeString(v1Json, json);
 
         // When / Then
         var ex = assertThrows(IllegalArgumentException.class, () -> {
-            new VersionPropertiesReader(v1Props).getVersionInfo();
+            new VersionPropertiesReader(v1Json).getVersionInfo();
         });
         assertThat(ex.getMessage()).isEqualTo("Invalid email address: mailto:invalid-email");
     }
@@ -86,18 +104,26 @@ public class VersionPropertiesReaderTest extends AbstractTestFixture {
     @Test
     public void should_allow_custom_properties_and_return_them_without_prefix() throws Exception {
         // Given
-        var properties = """
-            user.name=Test User
-            user.email=test.user@mail.com
-            message=Initial version
-            custom.property1=Value 1
-            custom.other-property=Value 2
+        var json = """
+            { 
+               "version-info" : {
+                     "user": {
+                        "name": "Test User",
+                        "email": "test.user@mail.com"
+                     },
+                     "message": "Initial version"
+               },
+               "object-version-properties": {
+                    "property1": "Value 1",
+                    "other-property": "Value 2"
+               }
+            }
             """;
-        var vProps = testDir.resolve("v-custom.properties");
-        Files.writeString(vProps, properties);
+        var vJson = testDir.resolve("v-custom.json");
+        Files.writeString(vJson, json);
 
         // When
-        var reader = new VersionPropertiesReader(vProps);
+        var reader = new VersionPropertiesReader(vJson);
         var customProps = reader.getCustomProperties();
 
         // Then
@@ -109,16 +135,22 @@ public class VersionPropertiesReaderTest extends AbstractTestFixture {
     @Test
     public void should_return_empty_map_for_custom_properties_when_none_present() throws Exception {
         // Given
-        var properties = """
-            user.name=Test User
-            user.email=test.user@mail.com
-            message=Initial version
+        var json = """
+            { 
+               "version-info" : {
+                     "user": {
+                        "name": "Test User",
+                        "email": "test.user@mail.com"
+                     },
+                     "message": "Initial version"
+               }
+            }
             """;
-        var vProps = testDir.resolve("v-no-custom.properties");
-        Files.writeString(vProps, properties);
+        var vJson = testDir.resolve("v-no-custom.json");
+        Files.writeString(vJson, json);
 
         // When
-        var reader = new VersionPropertiesReader(vProps);
+        var reader = new VersionPropertiesReader(vJson);
         var customProps = reader.getCustomProperties();
 
         // Then
@@ -128,18 +160,24 @@ public class VersionPropertiesReaderTest extends AbstractTestFixture {
     @Test
     public void should_throw_exception_for_unknown_property() throws Exception {
         // Given
-        var properties = """
-            user.name=Test User
-            unknown.property=Some Value
-            message=Initial version
+        var json = """
+            { 
+               "version-info" : {
+                     "user": {
+                        "name": "Test User"
+                     },
+                     "message": "Initial version"
+               },
+               "unknown.property": "Some Value"
+            }
             """;
 
-        var v2Props = testDir.resolve("v2.properties");
-        Files.writeString(v2Props, properties);
+        var v2Json = testDir.resolve("v2.json");
+        Files.writeString(v2Json, json);
 
         // When / Then
         var ex = assertThrows(IllegalArgumentException.class, () -> {
-            new VersionPropertiesReader(v2Props).getVersionInfo();
+            new VersionPropertiesReader(v2Json).getVersionInfo();
         });
         assertThat(ex.getMessage()).isEqualTo("Unknown property in version info file: unknown.property");
     }
@@ -147,19 +185,25 @@ public class VersionPropertiesReaderTest extends AbstractTestFixture {
     @Test
     public void should_throw_exception_for_missing_required_property() throws Exception {
         // Given
-        var properties = """
-            user.name=Test User
-            message=Initial version
+        var json = """
+            { 
+               "version-info" : {
+                     "user": {
+                        "name": "Test User"
+                     },
+                     "message": "Initial version"
+               }
+            }
             """;
 
-        var v3Props = testDir.resolve("v3.properties");
-        Files.writeString(v3Props, properties);
+        var v3Json = testDir.resolve("v3.json");
+        Files.writeString(v3Json, json);
 
         // When / Then
         var ex = assertThrows(IllegalArgumentException.class, () -> {
-            new VersionPropertiesReader(v3Props).getVersionInfo();
+            new VersionPropertiesReader(v3Json).getVersionInfo();
         });
-        assertThat(ex.getMessage()).isEqualTo("Missing required property: user.email");
+        assertThat(ex.getMessage()).isEqualTo("Missing required property: version-info.user.email");
     }
 
     @Test
@@ -172,12 +216,12 @@ public class VersionPropertiesReaderTest extends AbstractTestFixture {
     @Test
     public void should_throw_exception_when_file_does_not_exist() throws Exception {
         // Given
-        var nonExistentFile = testDir.resolve("nonexistent.properties");
+        var nonExistentFile = testDir.resolve("nonexistent.json");
 
         // When / Then
         var ex = assertThrows(IllegalArgumentException.class, () -> {
             new VersionPropertiesReader(nonExistentFile).getVersionInfo();
         });
-        assertThat(ex.getMessage()).isEqualTo("Version properties file does not exist: " + nonExistentFile);
+        assertThat(ex.getMessage()).isEqualTo("Version info file does not exist: " + nonExistentFile);
     }
 }
