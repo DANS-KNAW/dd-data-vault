@@ -216,7 +216,7 @@ public class ImportJobTask implements Runnable {
     }
 
     private boolean isValidVersionPropertiesFileName(String fileName) {
-        return fileName.matches("v\\d+\\.properties");
+        return fileName.matches("v\\d+\\.json");
     }
 
 }
