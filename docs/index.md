@@ -21,7 +21,7 @@ batch-dir
  │   │   └── <content files>
  │   ├── v2
  │   │   └── <content files>
- │   ├── v2.properties
+ │   ├── v2.json
  │   └── v3
  │       └── <content files>
  ├── urn:nbn:nl:ui:13-2ced2354-3a9d-44b1-a594-107b3af99789
@@ -40,16 +40,30 @@ batch-dir
 * The service can also be configured to accept timestamps as version directories. In that case, the version directories are expected to be numbers,
   representing the timestamp of the version in milliseconds since the epoch. This timestamp is only used for ordering the versions in the OCFL object, so
   any number can be used as long as it is unique for the object. This option is mainly used for testing purposes.
-* A version directory can optionally be accompanied by a Java properties file named `vN.properties`, where `N` is the version number, (e.g. `v2.properties` for
-  version 2).
-  This properties-file - if present - must have the following properties:
-    * `user.name` - the name of the user that created this version
-    * `user.email` - the email of the user that created this version
-    * `message` - the commit message for this version
-      If no properties file is present, the service will use default values for these properties. These default values can be configured in the configuration
-      file, under `dataVault.defaultVersionInfo`. If no default values are configured, an error will be raised.
-* `vN.properties` can optionally have custom properties. These are properties prefixed with the string `custom.`. The service will add these as object version
-  properties using the mechanism defined by the [Object Version Properties]{:target=_blank} extension. 
+* A version directory must be accompanied by a JSON file named `vN.json`, where `N` is the version number (e.g. `v2.json` for
+  version 2). This file is required for every version. It must have the following structure:
+  
+  ```json
+  {
+    "version-info": {
+      "user": {
+        "name": "John Doe",
+        "email": "john.doe@mail.com"
+      },
+      "message": "Commit message"
+    },
+    "object-version-properties": {
+      "dataset-version": "1.2",
+      "packaging-format": "DANS RDA BagPack/1.0.0"
+    }
+  }
+  ```
+  
+  Requirements and notes:
+  - The `version-info` object is mandatory and must include `user.name`, `user.email`, and `message`.
+  - `version-info.user.email` may be specified with or without the `mailto:` prefix; the service will normalize it to `mailto:`.
+  - The `object-version-properties` object is optional and may contain any custom properties to be stored for the object version. These are written to the
+    Object Version Properties extension.
 
 [Object Version Properties]: {{ object_version_properties_ext }}
 
@@ -72,5 +86,3 @@ processes the object import directory ensures that the version directories are p
 After processing a batch, the service will check if the maximum size of the layer has been reached. If this is the case, the service will create a new layer
 and start the archiving process of the old layer. Since object import directories are processed in parallel, it is not possible to do a more fine-grained
 check for the maximum size of the layer.
-
-
