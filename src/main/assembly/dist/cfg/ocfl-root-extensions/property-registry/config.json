@@ -7,9 +7,27 @@
       "required": true
     },
     "dataset-version": {
-      "description": "The version of the dataset that this object version is an export of, as defined by the depositor",
+      "description": "The version of the dataset that this object version is an export of, as defined by the depositor.",
       "type": "string",
       "required": false
+    },
+    "deaccessioned": {
+      "description": "If present, this version of the object has been deaccessioned and should not be disseminated.",
+      "type": "object",
+      "required": false,
+      "properties": {
+        "datetime": {
+          "description": "The date on which this object version has been deaccessioned",
+          "type": "string",
+          "constraint": "a datetime in ISO 8601 YYYY-MM-DDTHH-mm-ss format",
+          "required": true
+        },
+        "reason": {
+          "description": "The reason why this object version has been deaccessioned.",
+          "type": "string",
+          "required": true
+        }
+      }
     }
   }
 }
