@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -66,7 +67,7 @@ public class VersionPropertiesReader {
         var fields = customNode.fields();
         return iterableToStream(fields)
             .collect(Collectors.toMap(
-                e -> e.getKey(),
+                Entry::getKey,
                 e -> {
                     var v = e.getValue();
                     if (!v.isValueNode()) {
