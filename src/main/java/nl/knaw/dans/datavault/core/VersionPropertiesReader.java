@@ -128,7 +128,7 @@ public class VersionPropertiesReader {
         return node.asText();
     }
 
-    private static <T> java.util.stream.Stream<Map.Entry<String, JsonNode>> iterableToStream(java.util.Iterator<Map.Entry<String, JsonNode>> it) {
+    private static java.util.stream.Stream<Map.Entry<String, JsonNode>> iterableToStream(java.util.Iterator<Map.Entry<String, JsonNode>> it) {
         Iterable<Map.Entry<String, JsonNode>> iterable = () -> it;
         return java.util.stream.StreamSupport.stream(iterable.spliterator(), false);
     }
