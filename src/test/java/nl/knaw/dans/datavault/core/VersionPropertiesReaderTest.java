@@ -128,8 +128,8 @@ public class VersionPropertiesReaderTest extends AbstractTestFixture {
 
         // Then
         assertThat(customProps).hasSize(2);
-        assertThat(customProps.get("property1")).isEqualTo("Value 1");
-        assertThat(customProps.get("other-property")).isEqualTo("Value 2");
+        assertThat(customProps.get("property1").asText()).isEqualTo("Value 1");
+        assertThat(customProps.get("other-property").asText()).isEqualTo("Value 2");
     }
 
     @Test
@@ -223,5 +223,50 @@ public class VersionPropertiesReaderTest extends AbstractTestFixture {
             new VersionPropertiesReader(nonExistentFile).getVersionInfo();
         });
         assertThat(ex.getMessage()).isEqualTo("Version info file does not exist: " + nonExistentFile);
+    }
+
+    @Test
+    public void should_allow_custom_properties_as_json_object() throws Exception {
+        // Given
+        var json = """
+            { 
+               "version-info" : {
+                     "user": {
+                        "name": "Test User",
+                        "email": "test.user@mail.com"
+                     },
+                     "message": "Initial version"
+               },
+               "object-version-properties": {
+                    "metadata": {
+                        "title": "A Title",
+                        "author": {
+                            "name": "Jane Doe",
+                            "orcid": "0000-0001-2345-6789"
+                        },
+                        "published": true,
+                        "year": 2025
+                    }
+               }
+            }
+            """;
+        var vJson = testDir.resolve("v-custom-object.json");
+        java.nio.file.Files.writeString(vJson, json);
+
+        // When
+        var reader = new VersionPropertiesReader(vJson);
+        var customProps = reader.getCustomProperties();
+
+        // Then
+        assertThat(customProps).hasSize(1);
+        var metadata = customProps.get("metadata");
+        assertThat(metadata).isNotNull();
+        assertThat(metadata.get("title").asText()).isEqualTo("A Title");
+        assertThat(metadata.get("published").asBoolean()).isTrue();
+        assertThat(metadata.get("year").asInt()).isEqualTo(2025);
+        var author = metadata.get("author");
+        assertThat(author).isNotNull();
+        assertThat(author.get("name").asText()).isEqualTo("Jane Doe");
+        assertThat(author.get("orcid").asText()).isEqualTo("0000-0001-2345-6789");
     }
 }

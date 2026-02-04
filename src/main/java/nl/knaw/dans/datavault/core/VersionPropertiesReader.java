@@ -56,7 +56,7 @@ public class VersionPropertiesReader {
         }
     }
 
-    public Map<String, String> getCustomProperties() {
+    public Map<String, JsonNode> getCustomProperties() {
         var customNode = root.get("object-version-properties");
         if (customNode == null) {
             return Map.of();
@@ -64,18 +64,9 @@ public class VersionPropertiesReader {
         if (!customNode.isObject()) {
             throw new IllegalArgumentException("object-version-properties must be a JSON object");
         }
-        var fields = customNode.fields();
+        var fields = customNode.properties().iterator();
         return iterableToStream(fields)
-            .collect(Collectors.toMap(
-                Entry::getKey,
-                e -> {
-                    var v = e.getValue();
-                    if (!v.isValueNode()) {
-                        throw new IllegalArgumentException("Custom property '" + e.getKey() + "' must be a primitive value");
-                    }
-                    return v.asText();
-                }
-            ));
+            .collect(Collectors.toMap(Map.Entry::getKey, Entry::getValue));
     }
 
     public VersionInfo getVersionInfo() {
