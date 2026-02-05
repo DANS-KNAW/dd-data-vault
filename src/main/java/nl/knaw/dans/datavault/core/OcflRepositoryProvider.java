@@ -68,6 +68,8 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
 
     private OcflRepository ocflRepository;
     private OcflStorage ocflStorage;
+    private PropertyRegistryValidator propertyRegistryValidator;
+
 
     @Builder
     public static OcflRepositoryProvider create(LayeredItemStore itemStore, Path workDir, LayerConsistencyChecker layerConsistencyChecker,
@@ -81,9 +83,11 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
         if (ocflRepository == null) {
             throw new IllegalStateException("OCFL repository is not yet started");
         }
-        // putObject wants the version number of HEAD, so we need to subtract 1 from the version number
-        var versionInfoFile = objectVersionDirectory.resolveSibling(objectVersionDirectory.getFileName().toString() + ".properties");
+        var versionInfoFile = objectVersionDirectory.resolveSibling(objectVersionDirectory.getFileName().toString() + ".json");
         var reader = createVersionPropertiesReader(versionInfoFile);
+        // Validate custom properties against the storage-root property registry before writing anything
+        propertyRegistryValidator.validate(reader.getCustomProperties());
+        // putObject wants the version number of HEAD, so we need to subtract 1 from the version number
         ocflRepository.putObject(ObjectVersionId.version(objectId, version - 1), objectVersionDirectory, reader.getVersionInfo());
 
         reader.getCustomProperties().forEach((key, value) -> updateObjectVersionProperties(objectId, version, key, value));
@@ -95,7 +99,9 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
         if (ocflRepository == null) {
             throw new IllegalStateException("OCFL repository is not yet started");
         }
-        var reader = createVersionPropertiesReader(objectVersionDirectory.resolveSibling(objectVersionDirectory.getFileName().toString() + ".properties"));
+        var reader = createVersionPropertiesReader(objectVersionDirectory.resolveSibling(objectVersionDirectory.getFileName().toString() + ".json"));
+        // Validate custom properties against the storage-root property registry before writing anything
+        propertyRegistryValidator.validate(reader.getCustomProperties());
         ocflRepository.putObject(ObjectVersionId.head(objectId), objectVersionDirectory, reader.getVersionInfo());
         long headVersion = Optional.ofNullable(ObjectVersionId.head(objectId).getVersionNum()).map(VersionNum::getVersionNum).orElse(1L);
 
@@ -152,6 +158,8 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
 
             addExtensions();
             addRootDocs();
+            propertyRegistryValidator = new PropertyRegistryValidator(layeredItemStore);
+            log.info("OCFL repository provider started");
         }
         catch (Exception e) {
             throw new RuntimeException("Failed to create OCFL repository", e);

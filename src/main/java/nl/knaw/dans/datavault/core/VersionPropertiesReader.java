@@ -15,6 +15,8 @@
  */
 package nl.knaw.dans.datavault.core;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.ocfl.api.model.User;
 import io.ocfl.api.model.VersionInfo;
 import lombok.NonNull;
@@ -24,52 +26,88 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
-import java.util.Properties;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 public class VersionPropertiesReader {
     private static final String MAILTO_PREFIX = "mailto:";
-    private static final Set<String> VERSION_INFO_KEYS = Set.of("user.name", "user.email", "message");
-    private final Properties props;
+    private static final Set<String> VERSION_INFO_KEYS = Set.of("version-info", "object-version-properties");
+
+    private final JsonNode root;
 
     public VersionPropertiesReader(@NonNull Path file) throws IOException {
         if (!Files.exists(file)) {
-            throw new IllegalArgumentException("Version properties file does not exist: " + file);
+            throw new IllegalArgumentException("Version info file does not exist: " + file);
         }
-        this.props = new Properties();
+        var mapper = new ObjectMapper();
         try (var in = Files.newInputStream(file)) {
-            this.props.load(in);
+            this.root = mapper.readTree(in);
         }
-
-        for (var key : this.props.stringPropertyNames()) {
-            if (!VERSION_INFO_KEYS.contains(key) && !key.startsWith("custom.")) {
+        if (root == null || !root.isObject()) {
+            throw new IllegalArgumentException("Version info JSON must be an object at root");
+        }
+        // Validate top-level keys
+        for (var it = root.fieldNames(); it.hasNext(); ) {
+            var key = it.next();
+            if (!VERSION_INFO_KEYS.contains(key)) {
                 throw new IllegalArgumentException("Unknown property in version info file: " + key);
             }
         }
     }
 
-    public Map<String, String> getCustomProperties() {
-        return this.props.stringPropertyNames().stream()
-            .filter(key -> key.startsWith("custom."))
-            .collect(Collectors.toMap(
-                key -> key.substring("custom.".length()),
-                this.props::getProperty
-            ));
+    public Map<String, JsonNode> getCustomProperties() {
+        var customNode = root.get("object-version-properties");
+        if (customNode == null) {
+            return Map.of();
+        }
+        if (!customNode.isObject()) {
+            throw new IllegalArgumentException("object-version-properties must be a JSON object");
+        }
+        var fields = customNode.properties().iterator();
+        return iterableToStream(fields)
+            .collect(Collectors.toMap(Map.Entry::getKey, Entry::getValue));
     }
 
     public VersionInfo getVersionInfo() {
+        var infoNode = root.get("version-info");
+        if (infoNode == null) {
+            throw new IllegalArgumentException("Missing required property: version-info");
+        }
+        if (!infoNode.isObject()) {
+            throw new IllegalArgumentException("version-info must be a JSON object");
+        }
+        var userNode = infoNode.get("user");
+        if (userNode == null) {
+            throw new IllegalArgumentException("Missing required property: version-info.user");
+        }
+        if (!userNode.isObject()) {
+            throw new IllegalArgumentException("version-info.user must be a JSON object");
+        }
+        var nameNode = userNode.get("name");
+        if (nameNode == null) {
+            throw new IllegalArgumentException("Missing required property: version-info.user.name");
+        }
+        var emailNode = userNode.get("email");
+        if (emailNode == null) {
+            throw new IllegalArgumentException("Missing required property: version-info.user.email");
+        }
+        var messageNode = infoNode.get("message");
+        if (messageNode == null) {
+            throw new IllegalArgumentException("Missing required property: version-info.message");
+        }
+
         var info = new VersionInfo();
         var user = new User();
-        user.setName(getOrThrow(props, "user.name"));
-        var email = getOrThrow(props, "user.email");
+        user.setName(requireText(nameNode, "version-info.user.name"));
+        var email = requireText(emailNode, "version-info.user.email");
         if (!email.startsWith(MAILTO_PREFIX)) {
             email = MAILTO_PREFIX + email;
         }
         validateEmail(email);
         user.setAddress(email);
         info.setUser(user);
-        info.setMessage(getOrThrow(props, "message"));
+        info.setMessage(requireText(messageNode, "version-info.message"));
         return info;
     }
 
@@ -80,11 +118,18 @@ public class VersionPropertiesReader {
         }
     }
 
-    private String getOrThrow(Properties props, String key) {
-        var value = props.getProperty(key);
-        if (value == null || value.isBlank()) {
-            throw new IllegalArgumentException("Missing required property: " + key);
+    private static String requireText(JsonNode node, String path) {
+        if (node == null || node.isNull() || node.asText().isBlank()) {
+            throw new IllegalArgumentException("Missing required property: " + path);
         }
-        return value;
+        if (!node.isValueNode()) {
+            throw new IllegalArgumentException("Property must be a primitive value: " + path);
+        }
+        return node.asText();
+    }
+
+    private static java.util.stream.Stream<Map.Entry<String, JsonNode>> iterableToStream(java.util.Iterator<Map.Entry<String, JsonNode>> it) {
+        Iterable<Map.Entry<String, JsonNode>> iterable = () -> it;
+        return java.util.stream.StreamSupport.stream(iterable.spliterator(), false);
     }
 }

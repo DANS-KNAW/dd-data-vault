@@ -93,13 +93,18 @@ public class OcflRepositoryProviderTest extends AbstractTestFixture {
     public void addHeadVersion_should_create_new_object() throws Exception {
         // Given
         copyToTestDir("simple-object/v1", TEST_INPUT);
-        var properties = """
-            user.name=Test User
-            user.email=test.user@mail.com
-            message=Initial version
-            custom.packaging-format=DANS RDA BagPack Profile/0.1.0
+        var json = """
+            {
+              "version-info": {
+                "user": {"name": "Test User", "email": "test.user@mail.com"},
+                "message": "Initial version"
+              },
+              "object-version-properties": {
+                "packaging-format": "DANS RDA BagPack Profile/0.1.0"
+              }
+            }
             """;
-        Files.writeString(testDir.resolve(TEST_INPUT + "/v1.properties"), properties);
+        Files.writeString(testDir.resolve(TEST_INPUT + "/v1.json"), json);
 
         // When
         ocflRepositoryProvider.addHeadVersion("urn:nbn:o1", testDir.resolve(TEST_INPUT + "/v1"));
@@ -139,22 +144,32 @@ public class OcflRepositoryProviderTest extends AbstractTestFixture {
     public void addVersion_should_add_version_to_existing_object() throws Exception {
         // Given
         copyToTestDir("simple-object/v1", TEST_INPUT);
-        var propertiesV1 = """
-            user.name=Test User
-            user.email=test.user@mail.com
-            message=Initial version
-            custom.packaging-format=DANS RDA BagPack Profile/0.1.0
+        var jsonV1 = """
+            {
+              "version-info": {
+                "user": {"name": "Test User", "email": "test.user@mail.com"},
+                "message": "Initial version"
+              },
+              "object-version-properties": {
+                "packaging-format": "DANS RDA BagPack Profile/0.1.0"
+              }
+            }
             """;
-        Files.writeString(testDir.resolve(TEST_INPUT + "/v1.properties"), propertiesV1);
+        Files.writeString(testDir.resolve(TEST_INPUT + "/v1.json"), jsonV1);
         ocflRepositoryProvider.addHeadVersion("urn:nbn:o1", testDir.resolve(TEST_INPUT + "/v1"));
         copyToTestDir("simple-object/v2", TEST_INPUT);
-        var propertiesV2 = """
-            user.name=Test User
-            user.email=test.user@mail.com
-            message=Version 2
-            custom.packaging-format=DANS RDA BagPack Profile/0.1.0
+        var jsonV2 = """
+            {
+              "version-info": {
+                "user": {"name": "Test User", "email": "test.user@mail.com"},
+                "message": "Version 2"
+              },
+              "object-version-properties": {
+                "packaging-format": "DANS RDA BagPack Profile/0.1.0"
+              }
+            }
             """;
-        Files.writeString(testDir.resolve(TEST_INPUT + "/v2.properties"), propertiesV2);
+        Files.writeString(testDir.resolve(TEST_INPUT + "/v2.json"), jsonV2);
 
         // When
         ocflRepositoryProvider.addVersion("urn:nbn:o1", 2, testDir.resolve(TEST_INPUT + "/v2"));
@@ -191,76 +206,5 @@ public class OcflRepositoryProviderTest extends AbstractTestFixture {
         assertThat(objectVersionProperties.get("v2")).containsEntry("packaging-format", "DANS RDA BagPack Profile/0.1.0");
     }
 
-    @Test
-    public void addHeadVersion_should_add_custom_properties() throws Exception {
-        // Given
-        copyToTestDir("simple-object/v1", TEST_INPUT);
-        var properties = """
-            user.name=Test User
-            user.email=test.user@mail.com
-            message=Initial version
-            custom.key1=Value 1
-            custom.key2=Value 2
-            custom.packaging-format=DANS RDA BagPack Profile/0.1.0
-            """;
-        Files.writeString(testDir.resolve(TEST_INPUT + "/v1.properties"), properties);
-
-        // When
-        ocflRepositoryProvider.addHeadVersion("urn:nbn:o1", testDir.resolve(TEST_INPUT + "/v1"));
-
-        // Then
-        long layerId = layerManager.getTopLayer().getId();
-        var objectRoot = testDir.resolve(LAYER_STAGING_ROOT).resolve(Long.toString(layerId)).resolve("000/000/0o1/o1");
-
-        // Verify that the object version properties are set correctly
-        Map<String, Map<String, Object>> objectVersionProperties = mapper.readValue(
-            objectRoot.resolve("extensions/object-version-properties/object_version_properties.json").toFile(),
-            mapper.getTypeFactory().constructMapType(Map.class, String.class, Map.class)
-        );
-
-        assertThat(objectVersionProperties.get("v1")).containsEntry("key1", "Value 1");
-        assertThat(objectVersionProperties.get("v1")).containsEntry("key2", "Value 2");
-        assertThat(objectVersionProperties.get("v1")).containsEntry("packaging-format", "DANS RDA BagPack Profile/0.1.0");
-    }
-
-    @Test
-    public void addVersion_should_add_custom_properties() throws Exception {
-        // Given
-        copyToTestDir("simple-object/v1", TEST_INPUT);
-        var propertiesV1 = """
-            user.name=Test User
-            user.email=test.user@mail.com
-            message=Initial version
-            custom.packaging-format=DANS RDA BagPack Profile/0.1.0
-            """;
-        Files.writeString(testDir.resolve(TEST_INPUT + "/v1.properties"), propertiesV1);
-        ocflRepositoryProvider.addHeadVersion("urn:nbn:o1", testDir.resolve(TEST_INPUT + "/v1"));
-        copyToTestDir("simple-object/v2", TEST_INPUT);
-        var propertiesV2 = """
-            user.name=Test User
-            user.email=test.user@mail.com
-            message=Second version
-            custom.key3=Value 3
-            custom.packaging-format=DANS RDA BagPack Profile/0.1.0
-            """;
-        Files.writeString(testDir.resolve(TEST_INPUT + "/v2.properties"), propertiesV2);
-
-        // When
-        ocflRepositoryProvider.addVersion("urn:nbn:o1", 2, testDir.resolve(TEST_INPUT + "/v2"));
-
-        // Then
-        long layerId = layerManager.getTopLayer().getId();
-        var objectRoot = testDir.resolve(LAYER_STAGING_ROOT).resolve(Long.toString(layerId)).resolve("000/000/0o1/o1");
-
-        // Verify that the object version properties are set correctly
-        Map<String, Map<String, Object>> objectVersionProperties = mapper.readValue(
-            objectRoot.resolve("extensions/object-version-properties/object_version_properties.json").toFile(),
-            mapper.getTypeFactory().constructMapType(Map.class, String.class, Map.class)
-        );
-
-        assertThat(objectVersionProperties.get("v2")).containsEntry("key3", "Value 3");
-        assertThat(objectVersionProperties.get("v2")).containsEntry("packaging-format", "DANS RDA BagPack Profile/0.1.0");
-    }
-
-    // TODO: sidecar file must have the algorithm as inventory sidecar file (this must then first be made configurable in OcflRepositoryProvider)
+  // TODO: sidecar file must have the algorithm as inventory sidecar file (this must then first be made configurable in OcflRepositoryProvider)
 }
