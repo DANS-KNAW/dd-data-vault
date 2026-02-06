@@ -99,7 +99,6 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
             throw new IllegalStateException("OCFL repository is not yet started");
         }
         var reader = createVersionPropertiesReader(objectVersionDirectory.resolveSibling(objectVersionDirectory.getFileName().toString() + ".json"));
-        // Validate custom properties against the storage-root property registry before writing anything
         propertyRegistryValidator.validate(reader.getCustomProperties());
         ocflRepository.putObject(ObjectVersionId.head(objectId), objectVersionDirectory, reader.getVersionInfo());
         long headVersion = Optional.ofNullable(ObjectVersionId.head(objectId).getVersionNum()).map(VersionNum::getVersionNum).orElse(1L);
