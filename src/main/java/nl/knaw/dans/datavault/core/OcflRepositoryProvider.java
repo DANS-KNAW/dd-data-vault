@@ -70,7 +70,6 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
     private OcflStorage ocflStorage;
     private PropertyRegistryValidator propertyRegistryValidator;
 
-
     @Builder
     public static OcflRepositoryProvider create(LayeredItemStore itemStore, Path workDir, LayerConsistencyChecker layerConsistencyChecker,
         Path rootExtensionsSourcePath, Path rootDocsSourcePath) {
@@ -159,6 +158,9 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
             addExtensions();
             addRootDocs();
             propertyRegistryValidator = new PropertyRegistryValidator(layeredItemStore);
+            propertyRegistryValidator.validate();
+            PackagingFormatRegistryValidator packagingFormatRegistryValidator = new PackagingFormatRegistryValidator(layeredItemStore);
+            packagingFormatRegistryValidator.validate();
             log.info("OCFL repository provider started");
         }
         catch (Exception e) {

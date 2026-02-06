@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Validates object version properties against the property registry that is stored in the storage root
@@ -32,6 +33,7 @@ import java.util.Map;
  */
 public class PropertyRegistryValidator {
     private static final String REGISTRY_PATH = "extensions/property-registry/config.json";
+    private static final Set<String> ALLOWED_TYPES = Set.of("number", "string", "boolean", "object");
 
     private final ItemStore itemStore;
     private final ObjectMapper mapper = new ObjectMapper();
@@ -44,6 +46,68 @@ public class PropertyRegistryValidator {
     public PropertyRegistryValidator(@NonNull ItemStore itemStore) {
         this.itemStore = itemStore;
         loadRegistry();
+    }
+
+    /**
+     * Validate the property-registry config.json against the documented rules.
+     * Throws IllegalStateException when the configuration is invalid.
+     */
+    public void validate() {
+        try (var in = itemStore.readFile(REGISTRY_PATH)) {
+            JsonNode root = mapper.readTree(in);
+            if (root == null || !root.isObject()) {
+                throw new IllegalStateException("property-registry/config.json must be a JSON object at root");
+            }
+            var extName = root.get("extensionName");
+            if (extName == null || !extName.isTextual() || !"property-registry".equals(extName.asText())) {
+                throw new IllegalStateException("property-registry/config.json: extensionName must be 'property-registry'");
+            }
+            JsonNode registryNode = root.get("propertyRegistry");
+            if (registryNode == null || !registryNode.isObject()) {
+                throw new IllegalStateException("property-registry/config.json must contain an object 'propertyRegistry'");
+            }
+            Iterator<String> fieldNames = registryNode.fieldNames();
+            while (fieldNames.hasNext()) {
+                String key = fieldNames.next();
+                JsonNode desc = registryNode.get(key);
+                validateDescriptor(key, desc);
+            }
+        }
+        catch (IOException e) {
+            throw new IllegalStateException("Failed to read property registry from " + REGISTRY_PATH, e);
+        }
+    }
+
+    private void validateDescriptor(String key, JsonNode desc) {
+        if (desc == null || !desc.isObject()) {
+            throw new IllegalStateException("Descriptor for property '" + key + "' must be an object");
+        }
+        var description = desc.get("description");
+        if (description == null || !description.isTextual()) {
+            throw new IllegalStateException("Property '" + key + "' must have textual 'description'");
+        }
+        var typeNode = desc.get("type");
+        String type = typeNode != null && typeNode.isTextual() ? typeNode.asText() : "string";
+        if (!ALLOWED_TYPES.contains(type)) {
+            throw new IllegalStateException("Property '" + key + "' has unsupported type: " + type);
+        }
+        if ("object".equals(type)) {
+            JsonNode propsDesc = desc.get("properties");
+            if (propsDesc == null || !propsDesc.isObject()) {
+                throw new IllegalStateException("Object-typed property '" + key + "' must declare an object 'properties'");
+            }
+            // Validate sub descriptors recursively
+            Iterator<String> subFields = propsDesc.fieldNames();
+            while (subFields.hasNext()) {
+                String subKey = subFields.next();
+                validateDescriptor(key + "." + subKey, propsDesc.get(subKey));
+            }
+        }
+        var requiredNode = desc.get("required");
+        boolean required = requiredNode != null && requiredNode.isBoolean() && requiredNode.asBoolean();
+        if (required && desc.has("default")) {
+            throw new IllegalStateException("Property '" + key + "' cannot declare a default when required=true");
+        }
     }
 
     /**

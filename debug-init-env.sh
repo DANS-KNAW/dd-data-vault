@@ -31,3 +31,10 @@ echo "OK"
 echo -n "Pre-creating ocfl-work directory..."
 mkdir -p $TEMPDIR/ocfl-work
 echo "OK"
+
+echo -m "Retrieving and copying oclf-root-docs..."
+mvn initialize
+mkdir -p etc/ocfl-root-docs
+cp -r target/dans-ocfl-extensions/extension-docs/* etc/ocfl-root-docs
+cp -r target/dans-ocfl-extensions/schemas/* etc/ocfl-root-docs
+echo "OK"
