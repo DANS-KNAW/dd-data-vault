@@ -69,6 +69,7 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
     private OcflRepository ocflRepository;
     private OcflStorage ocflStorage;
     private PropertyRegistryValidator propertyRegistryValidator;
+    private ObjectVersionPropertiesValidator objectVersionPropertiesValidator;
 
     @Builder
     public static OcflRepositoryProvider create(LayeredItemStore itemStore, Path workDir, LayerConsistencyChecker layerConsistencyChecker,
@@ -86,23 +87,21 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
         var reader = createVersionPropertiesReader(versionInfoFile);
         // Validate custom properties against the storage-root property registry before writing anything
         propertyRegistryValidator.validate(reader.getCustomProperties());
-        // putObject wants the version number of HEAD, so we need to subtract 1 from the version number
-        ocflRepository.putObject(ObjectVersionId.version(objectId, version - 1), objectVersionDirectory, reader.getVersionInfo());
 
-        reader.getCustomProperties().forEach((key, value) -> updateObjectVersionProperties(objectId, version, key, value));
-    }
-
-    private void updateObjectVersionProperties(String objectId, long version, String key, Object value) {
+        // Precompute candidate object_version_properties for the new version and validate against schema
         var ovp = new ObjectVersionProperties(layeredItemStore, ocflStorage.objectRootPath(objectId));
         try {
             ovp.load();
-            ovp.putProperty(version, key, value);
-            ovp.save();
-            ovp.validate();
+            reader.getCustomProperties().forEach((key, value) -> ovp.putProperty(version, key, value));
+            objectVersionPropertiesValidator.validate(ovp.getProperties());
         }
         catch (IOException e) {
-            throw new RuntimeException("Failed to update object version properties", e);
+            throw new RuntimeException("Failed to prepare object version properties", e);
         }
+
+        // putObject wants the version number of HEAD, so we need to subtract 1 from the version number
+        ocflRepository.putObject(ObjectVersionId.version(objectId, version - 1), objectVersionDirectory, reader.getVersionInfo());
+        ovp.save();
     }
 
     @Override
@@ -143,6 +142,7 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
             addExtensions();
             addRootDocs();
             propertyRegistryValidator = new PropertyRegistryValidator(layeredItemStore);
+            objectVersionPropertiesValidator = new ObjectVersionPropertiesValidator(layeredItemStore);
             log.info("Validating OCFL repository property registry");
             propertyRegistryValidator.validate();
             log.info("OCFL repository property registry OK");

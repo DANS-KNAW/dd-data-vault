@@ -121,13 +121,15 @@ public class ObjectVersionProperties {
 
         var sidecarFile = getExtensionDir().resolve(SIDE_CAR_FILE);
         try (var propertiesIs = itemStore.readFile(propertiesJsonFile.toString())) {
-            // TODO: refactor to use inputStream directly instead of reading all bytes
             MessageDigest digest = MessageDigest.getInstance("SHA-512");
-            byte[] fileBytes = propertiesIs.readAllBytes();
-            byte[] checksumBytes = digest.digest(fileBytes);
+            byte[] buffer = new byte[8192];
+            int read;
+            while ((read = propertiesIs.read(buffer)) != -1) {
+                digest.update(buffer, 0, read);
+            }
+            byte[] checksumBytes = digest.digest();
             String checksum = Hex.encodeHexString(checksumBytes);
             String checksumWithFilename = checksum + "  " + propertiesJsonFile.getFileName().toString() + "\n";
-            // Write the checksum to the sidecar file
             itemStore.writeFile(sidecarFile.toString(), new ByteArrayInputStream(checksumWithFilename.getBytes(StandardCharsets.UTF_8)));
         }
         catch (Exception e) {
@@ -152,4 +154,13 @@ public class ObjectVersionProperties {
         properties.put(versionKey, versionProperties);
     }
 
+    /**
+     * Returns the current in-memory properties map. Intended for validation prior to saving.
+     */
+    public Map<String, Map<String, Object>> getProperties() {
+        if (properties == null) {
+            throw new IllegalStateException("Properties have not been loaded");
+        }
+        return properties;
+    }
 }
