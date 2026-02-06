@@ -158,9 +158,13 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
             addExtensions();
             addRootDocs();
             propertyRegistryValidator = new PropertyRegistryValidator(layeredItemStore);
+            log.info("Validating OCFL repository property registry");
             propertyRegistryValidator.validate();
+            log.info("OCFL repository property registry OK");
             PackagingFormatRegistryValidator packagingFormatRegistryValidator = new PackagingFormatRegistryValidator(layeredItemStore);
+            log.info("Validating OCFL repository packaging format registry");
             packagingFormatRegistryValidator.validate();
+            log.info("OCFL repository packaging format registry OK");
             log.info("OCFL repository provider started");
         }
         catch (Exception e) {

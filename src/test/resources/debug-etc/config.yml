@@ -15,7 +15,7 @@ database:
   properties:
     hibernate.dialect: org.hibernate.dialect.PostgreSQL95Dialect
     hibernate.hbm2ddl.auto: update
-  url: jdbc:postgresql://<devbox>:5432/dd_data_vault_local_test
+  url: jdbc:postgresql://dev.transfer.dans-data.nl:5432/dd_data_vault_local_test
   user: dd_data_vault_local_test
   password: dd_data_vault_local_test
 
@@ -59,7 +59,8 @@ dataVault:
   #
   ocflRepository:
     workDir: data/ocfl-work
-    rootExtensionsSourcePath: src/main/assembly/dist/cfg/ocfl-root-extensions
+    rootExtensionsSourcePath: etc/ocfl-root-extensions
+    rootDocsSourcePath: etc/ocfl-root-docs
 
   #
   # Settings for the layer store in which the data vault stores its data.

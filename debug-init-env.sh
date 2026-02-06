@@ -32,9 +32,10 @@ echo -n "Pre-creating ocfl-work directory..."
 mkdir -p $TEMPDIR/ocfl-work
 echo "OK"
 
-echo -m "Retrieving and copying oclf-root-docs..."
+echo "Retrieving and copying oclf-root-docs..."
 mvn initialize
 mkdir -p etc/ocfl-root-docs
-cp -r target/dans-ocfl-extensions/extension-docs/* etc/ocfl-root-docs
-cp -r target/dans-ocfl-extensions/schemas/* etc/ocfl-root-docs
-echo "OK"
+cp target/dans-ocfl-extensions/extension-docs/* etc/ocfl-root-docs
+cp target/dans-ocfl-extensions/schemas/* etc/ocfl-root-docs
+cp -r src/main/assembly/dist/cfg/ocfl-root-extensions etc/
+echo "...OK"
