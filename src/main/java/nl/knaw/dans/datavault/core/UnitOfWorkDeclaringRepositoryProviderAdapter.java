@@ -37,12 +37,6 @@ public class UnitOfWorkDeclaringRepositoryProviderAdapter implements RepositoryP
 
     @Override
     @UnitOfWork
-    public void addHeadVersion(String objectId, Path objectVersionDirectory) {
-        delegate.addHeadVersion(objectId, objectVersionDirectory);
-    }
-
-    @Override
-    @UnitOfWork
     public Optional<OcflObjectVersionDto> getOcflObjectVersion(String objectId, int version) {
         return delegate.getOcflObjectVersion(objectId, version);
     }

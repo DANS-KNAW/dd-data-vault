@@ -91,7 +91,7 @@ public class ObjectVersionPropertiesValidationTest extends AbstractTestFixture {
         Files.writeString(testDir.resolve(TEST_INPUT + "/v1.json"), json);
 
         var ex = assertThrows(IllegalArgumentException.class, () ->
-            provider.addHeadVersion("urn:nbn:o1", testDir.resolve(TEST_INPUT + "/v1"))
+            provider.addVersion("urn:nbn:o1", 1, testDir.resolve(TEST_INPUT + "/v1"))
         );
         assertThat(ex.getMessage()).contains("Unknown property per property-registry: unknown-key");
     }
@@ -113,7 +113,7 @@ public class ObjectVersionPropertiesValidationTest extends AbstractTestFixture {
         Files.writeString(testDir.resolve(TEST_INPUT + "/v1.json"), json);
 
         var ex = assertThrows(IllegalArgumentException.class, () ->
-            provider.addHeadVersion("urn:nbn:o1", testDir.resolve(TEST_INPUT + "/v1"))
+            provider.addVersion("urn:nbn:o1", 1, testDir.resolve(TEST_INPUT + "/v1"))
         );
         assertThat(ex.getMessage()).contains("Missing required property per property-registry: packaging-format");
     }
@@ -135,7 +135,7 @@ public class ObjectVersionPropertiesValidationTest extends AbstractTestFixture {
         Files.writeString(testDir.resolve(TEST_INPUT + "/v1.json"), json);
 
         var ex = assertThrows(IllegalArgumentException.class, () ->
-            provider.addHeadVersion("urn:nbn:o1", testDir.resolve(TEST_INPUT + "/v1"))
+            provider.addVersion("urn:nbn:o1", 1, testDir.resolve(TEST_INPUT + "/v1"))
         );
         assertThat(ex.getMessage()).contains("Property 'packaging-format' must be of type string");
     }
@@ -158,7 +158,7 @@ public class ObjectVersionPropertiesValidationTest extends AbstractTestFixture {
         Files.writeString(testDir.resolve(TEST_INPUT + "/v1.json"), json);
 
         var ex = assertThrows(IllegalArgumentException.class, () ->
-            provider.addHeadVersion("urn:nbn:o1", testDir.resolve(TEST_INPUT + "/v1"))
+            provider.addVersion("urn:nbn:o1", 1, testDir.resolve(TEST_INPUT + "/v1"))
         );
         assertThat(ex.getMessage()).contains("Missing required sub-property for 'deaccessioned': reason");
     }

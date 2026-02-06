@@ -37,14 +37,6 @@ public interface RepositoryProvider extends Managed {
     void addVersion(String objectId, int version, Path objectVersionDirectory);
 
     /**
-     * Adds a new head version to the object identified by the given object id. If the object does not exist yet, it will be created.
-     *
-     * @param objectId               The identifier of the object
-     * @param objectVersionDirectory The directory containing the new head version of the object
-     */
-    void addHeadVersion(String objectId, Path objectVersionDirectory);
-
-    /**
      * Retrieves the version information for the object identified by the given object id and version number.
      *
      * @param objectId The identifier of the object

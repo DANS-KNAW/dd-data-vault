@@ -95,7 +95,7 @@ public class OcflRepositoryProviderTest extends AbstractTestFixture {
     }
 
     @Test
-    public void addHeadVersion_should_create_new_object() throws Exception {
+    public void addVersion_should_create_new_object() throws Exception {
         // Given
         copyToTestDir("simple-object/v1", TEST_INPUT);
         var json = """
@@ -112,7 +112,7 @@ public class OcflRepositoryProviderTest extends AbstractTestFixture {
         Files.writeString(testDir.resolve(TEST_INPUT + "/v1.json"), json);
 
         // When
-        ocflRepositoryProvider.addHeadVersion("urn:nbn:o1", testDir.resolve(TEST_INPUT + "/v1"));
+        ocflRepositoryProvider.addVersion("urn:nbn:o1", 1, testDir.resolve(TEST_INPUT + "/v1"));
 
         // Then
         long layerId = layerManager.getTopLayer().getId();
@@ -161,7 +161,7 @@ public class OcflRepositoryProviderTest extends AbstractTestFixture {
             }
             """;
         Files.writeString(testDir.resolve(TEST_INPUT + "/v1.json"), jsonV1);
-        ocflRepositoryProvider.addHeadVersion("urn:nbn:o1", testDir.resolve(TEST_INPUT + "/v1"));
+        ocflRepositoryProvider.addVersion("urn:nbn:o1", 1, testDir.resolve(TEST_INPUT + "/v1"));
         copyToTestDir("simple-object/v2", TEST_INPUT);
         var jsonV2 = """
             {

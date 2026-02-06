@@ -92,20 +92,6 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
         reader.getCustomProperties().forEach((key, value) -> updateObjectVersionProperties(objectId, version, key, value));
     }
 
-    @Override
-    public void addHeadVersion(String objectId, Path objectVersionDirectory) {
-        log.debug("Adding version import directory {} to object {} as head version", objectVersionDirectory, objectId);
-        if (ocflRepository == null) {
-            throw new IllegalStateException("OCFL repository is not yet started");
-        }
-        var reader = createVersionPropertiesReader(objectVersionDirectory.resolveSibling(objectVersionDirectory.getFileName().toString() + ".json"));
-        propertyRegistryValidator.validate(reader.getCustomProperties());
-        ocflRepository.putObject(ObjectVersionId.head(objectId), objectVersionDirectory, reader.getVersionInfo());
-        long headVersion = Optional.ofNullable(ObjectVersionId.head(objectId).getVersionNum()).map(VersionNum::getVersionNum).orElse(1L);
-
-        reader.getCustomProperties().forEach((key, value) -> updateObjectVersionProperties(objectId, headVersion, key, value));
-    }
-
     private void updateObjectVersionProperties(String objectId, long version, String key, Object value) {
         var ovp = new ObjectVersionProperties(layeredItemStore, ocflStorage.objectRootPath(objectId));
         try {
