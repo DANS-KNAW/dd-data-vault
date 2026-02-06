@@ -69,40 +69,6 @@ public class ObjectVersionProperties {
     }
 
     /**
-     * Validates the loaded properties.
-     *
-     * @throws IOException if the properties file cannot be read
-     */
-    public void validate() throws IOException {
-        if (properties == null) {
-            throw new IllegalStateException("Properties have not been loaded");
-        }
-
-        var versionKeys = properties.keySet();
-        var versionSubDirs = itemStore.listDirectory(objectRootPath).stream()
-            .map(p -> Path.of(p.getPath()).getFileName().toString())
-            .filter(n -> n.startsWith("v")).collect(Collectors.toSet());
-
-        var keysWithoutVersionDirs = Sets.difference(versionKeys, versionSubDirs);
-        var versionDirsWithoutKeys = Sets.difference(versionSubDirs, versionKeys);
-
-        if (!keysWithoutVersionDirs.isEmpty()) {
-            throw new IllegalStateException("Properties contain keys that do not match version directories: " + keysWithoutVersionDirs);
-        }
-        if (!versionDirsWithoutKeys.isEmpty()) {
-            throw new IllegalStateException("Version directories that do not have corresponding properties: " + versionDirsWithoutKeys);
-        }
-
-        // Check that a sidecar file exists
-        var sidecarFile = getExtensionDir().resolve(SIDE_CAR_FILE);
-        if (!itemStore.existsPathLike(sidecarFile.toString())) {
-            throw new IllegalStateException("Sidecar file does not exist: " + sidecarFile);
-        }
-
-        // TODO: Validate the content of the sidecar file.
-    }
-
-    /**
      * Saves the properties to the object version properties extension.
      */
     public void save() {
@@ -121,6 +87,7 @@ public class ObjectVersionProperties {
 
         var sidecarFile = getExtensionDir().resolve(SIDE_CAR_FILE);
         try (var propertiesIs = itemStore.readFile(propertiesJsonFile.toString())) {
+            // Hard-coded SHA-512 for now, as this will be the algorithm in 99% of cases.
             MessageDigest digest = MessageDigest.getInstance("SHA-512");
             byte[] buffer = new byte[8192];
             int read;
