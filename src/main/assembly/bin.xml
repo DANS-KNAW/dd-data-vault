@@ -50,6 +50,13 @@
                 <exclude>bin</exclude>
             </excludes>
         </fileSet>
+        <fileSet>
+            <directory>${project.build.directory}/dans-ocfl-extensions/extension-docs</directory>
+            <outputDirectory>cfg/ocfl-root-docs</outputDirectory>
+            <includes>
+                <include>*.md</include>
+            </includes>
+        </fileSet>
     </fileSets>
     <dependencySets>
         <dependencySet>
