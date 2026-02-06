@@ -19,7 +19,6 @@ import io.dropwizard.lifecycle.Managed;
 import io.ocfl.api.OcflRepository;
 import io.ocfl.api.exception.NotFoundException;
 import io.ocfl.api.model.ObjectVersionId;
-import io.ocfl.api.model.VersionNum;
 import io.ocfl.core.OcflRepositoryBuilder;
 import io.ocfl.core.extension.UnsupportedExtensionBehavior;
 import io.ocfl.core.extension.storage.layout.config.NTupleOmitPrefixStorageLayoutConfig;
@@ -43,7 +42,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.attribute.PosixFilePermission;
 import java.util.Optional;
+import java.util.Set;
 
 import static java.nio.file.StandardCopyOption.COPY_ATTRIBUTES;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
@@ -54,6 +55,12 @@ import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 @Slf4j
 @RequiredArgsConstructor(access = AccessLevel.PRIVATE) // Builder should be used to create instances
 public class OcflRepositoryProvider implements RepositoryProvider, Managed {
+    private static final Set<PosixFilePermission> DIR_PERMISSIONS = Set.of(
+        PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE, PosixFilePermission.OWNER_EXECUTE,
+        PosixFilePermission.GROUP_READ, PosixFilePermission.GROUP_WRITE, PosixFilePermission.GROUP_EXECUTE);
+    private static final Set<PosixFilePermission> FILE_PERMISSIONS = Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE,
+        PosixFilePermission.GROUP_READ, PosixFilePermission.GROUP_WRITE);
+
     @NonNull
     private final LayeredItemStore layeredItemStore;
 
@@ -175,7 +182,7 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
         if (rootExtensionsSourcePath != null) {
             if (Files.exists(rootExtensionsSourcePath)) {
                 log.info("Copying storage root extensions from {} to the extensions directory", rootExtensionsSourcePath);
-                copyDirectoryAndPermissions(rootExtensionsSourcePath, tempExtensionsPath);
+                copyDirectoryAndSetPermissions(rootExtensionsSourcePath, tempExtensionsPath);
                 try (var stream = Files.list(tempExtensionsPath)) {
                     stream.forEach(path -> {
                         try {
@@ -232,7 +239,7 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
         }
     }
 
-    private void copyDirectoryAndPermissions(Path source, Path target) throws IOException {
+    private void copyDirectoryAndSetPermissions(Path source, Path target) throws IOException {
         if (Files.exists(target)) {
             FileUtils.deleteDirectory(target.toFile());
         }
@@ -243,7 +250,7 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
                 Path targetDir = target.resolve(source.relativize(dir));
                 if (!Files.exists(targetDir)) {
                     Files.createDirectory(targetDir);
-                    Files.setPosixFilePermissions(targetDir, Files.getPosixFilePermissions(dir));
+                    Files.setPosixFilePermissions(targetDir, DIR_PERMISSIONS);
                 }
                 return FileVisitResult.CONTINUE;
             }
@@ -252,6 +259,8 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
                 Path targetFile = target.resolve(source.relativize(file));
                 Files.copy(file, targetFile, REPLACE_EXISTING, COPY_ATTRIBUTES);
+                // Set permissions to rw for owner and group, and none for others
+                Files.setPosixFilePermissions(targetFile, FILE_PERMISSIONS);
                 return FileVisitResult.CONTINUE;
             }
         });
