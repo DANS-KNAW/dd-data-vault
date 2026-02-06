@@ -36,6 +36,7 @@
     <properties>
         <!-- TODO: move to dd-parent -->
         <commons-validator.version>1.7</commons-validator.version>
+        <dans-ocfl-extensions.version>0.1.0</dans-ocfl-extensions.version>
         <main-class>nl.knaw.dans.datavault.DdDataVaultApplication</main-class>
     </properties>
 
@@ -125,6 +126,12 @@
             <artifactId>json-schema-validator</artifactId>
             <version>1.0.88</version>
         </dependency>
+        <dependency>
+            <!-- Dependency so version is checked for snapshot on release -->
+            <groupId>nl.knaw.dans</groupId>
+            <artifactId>dans-ocfl-extensions</artifactId>
+            <version>${dans-ocfl-extensions.version}</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -197,7 +204,7 @@
                                 <artifactItem>
                                     <groupId>nl.knaw.dans</groupId>
                                     <artifactId>dans-ocfl-extensions</artifactId>
-                                    <version>0.1.0-SNAPSHOT</version>
+                                    <version>${dans-ocfl-extensions.version}</version>
                                     <outputDirectory>${project.build.directory}/dans-ocfl-extensions</outputDirectory>
                                 </artifactItem>
                             </artifactItems>
