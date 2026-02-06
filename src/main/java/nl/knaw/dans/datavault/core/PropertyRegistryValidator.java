@@ -55,6 +55,8 @@ public class PropertyRegistryValidator {
     public void validate() {
         try (var in = itemStore.readFile(REGISTRY_PATH)) {
             JsonNode root = mapper.readTree(in);
+            // Validate against JSON Schema first (loaded from OCFL root schemas directory)
+            new SchemaValidator(itemStore).validate("property-registry-config.schema.json", root);
             if (root == null || !root.isObject()) {
                 throw new IllegalStateException("property-registry/config.json must be a JSON object at root");
             }

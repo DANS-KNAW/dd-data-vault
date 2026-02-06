@@ -19,7 +19,7 @@
         "datetime": {
           "description": "The timestamp when the deaccessioning of the object version was registered in the OCFL repository. If not present, unknown.",
           "type": "string",
-          "constraint": "a datetime in ISO 8601 YYYY-MM-DDTHH-mm-ss format",
+          "constraints": "a datetime in ISO 8601 YYYY-MM-DDTHH-mm-ss format",
           "required": false
         },
         "reason": {

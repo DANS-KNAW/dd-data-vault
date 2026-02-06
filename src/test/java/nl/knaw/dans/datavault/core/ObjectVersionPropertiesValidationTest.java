@@ -27,6 +27,7 @@ import nl.knaw.dans.layerstore.LayeredItemStore;
 import nl.knaw.dans.layerstore.ZipArchiveProvider;
 import nl.knaw.dans.lib.ocflext.StoreInventoryDbBackedContentManager;
 import nl.knaw.dans.lib.util.PersistenceProviderImpl;
+import org.apache.commons.io.FileUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -55,6 +56,9 @@ public class ObjectVersionPropertiesValidationTest extends AbstractTestFixture {
     @BeforeEach
     public void setUpEach() throws Exception {
         super.setUp();
+        var rootDocsPath = testDir.resolve("root-docs");
+        FileUtils.copyDirectory(Path.of("target/dans-ocfl-extensions/extension-docs/").toFile(), rootDocsPath.toFile());
+        FileUtils.copyDirectory(Path.of("target/dans-ocfl-extensions/schemas/").toFile(), rootDocsPath.toFile());
         var stagingRoot = createSubdir(LAYER_STAGING_ROOT);
         var archiveRoot = createSubdir(LAYER_ARCHIVE_ROOT);
         var layerManager = new LayerManagerImpl(stagingRoot, new ZipArchiveProvider(archiveRoot), new DirectLayerArchiver());
@@ -63,6 +67,7 @@ public class ObjectVersionPropertiesValidationTest extends AbstractTestFixture {
             .itemStore(itemStore)
             .layerConsistencyChecker(new ItemsMatchDbConsistencyChecker(dao))
             .rootExtensionsSourcePath(Path.of("src/main/assembly/dist/cfg/ocfl-root-extensions"))
+            .rootDocsSourcePath(rootDocsPath)
             .workDir(testDir.resolve(WORK_DIR))
             .build();
         provider.start();

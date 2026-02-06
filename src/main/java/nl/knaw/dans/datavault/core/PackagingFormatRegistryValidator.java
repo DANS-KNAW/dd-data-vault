@@ -56,9 +56,12 @@ public class PackagingFormatRegistryValidator {
      */
     public void validate() {
         JsonNode config = readJson(CONFIG_PATH);
+        // Schema-based validation first
+        new SchemaValidator(itemStore).validate("packaging-format-registry-config.schema.json", config);
         validateConfig(config);
 
         JsonNode inventory = readJson(INVENTORY_PATH);
+        new SchemaValidator(itemStore).validate("packaging_format_inventory.schema.json", inventory);
         Map<String, ManifestEntry> manifest = readManifest(inventory);
         validateManifestAndDirectories(config, manifest);
     }
