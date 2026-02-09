@@ -68,6 +68,10 @@ dataVault:
     workDir: /data/vault/tmp
     rootExtensionsSourcePath: /etc/opt/dans.knaw.nl/dd-data-vault/ocfl-root-extensions
     rootDocsSourcePath: /etc/opt/dans.knaw.nl/dd-data-vault/ocfl-root-docs
+    rootExtensionsInit:
+      - file: property-registry/config.json
+        jsonPath: $.propertyRegistry.dataset-version.required
+        value: true
 
   #
   # Settings for the layer store in which the data vault stores its data.

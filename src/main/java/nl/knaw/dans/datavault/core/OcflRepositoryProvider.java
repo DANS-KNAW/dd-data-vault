@@ -15,6 +15,10 @@
  */
 package nl.knaw.dans.datavault.core;
 
+import com.jayway.jsonpath.Configuration;
+import com.jayway.jsonpath.Option;
+import com.jayway.jsonpath.JsonPath;
+import nl.knaw.dans.datavault.config.RootExtensionsInitEdit;
 import io.dropwizard.lifecycle.Managed;
 import io.ocfl.api.OcflRepository;
 import io.ocfl.api.exception.NotFoundException;
@@ -37,12 +41,14 @@ import nl.knaw.dans.lib.ocflext.LayeredStorage;
 import org.apache.commons.io.FileUtils;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.PosixFilePermission;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -72,6 +78,7 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
 
     private final Path rootExtensionsSourcePath;
     private final Path rootDocsSourcePath;
+    private final List<RootExtensionsInitEdit> rootExtensionsInitEdits;
 
     private OcflRepository ocflRepository;
     private OcflStorage ocflStorage;
@@ -80,8 +87,8 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
 
     @Builder
     public static OcflRepositoryProvider create(LayeredItemStore itemStore, Path workDir, LayerConsistencyChecker layerConsistencyChecker,
-        Path rootExtensionsSourcePath, Path rootDocsSourcePath) {
-        return new OcflRepositoryProvider(itemStore, workDir, layerConsistencyChecker, rootExtensionsSourcePath, rootDocsSourcePath);
+        Path rootExtensionsSourcePath, Path rootDocsSourcePath, List<RootExtensionsInitEdit> rootExtensionsInitEdits) {
+        return new OcflRepositoryProvider(itemStore, workDir, layerConsistencyChecker, rootExtensionsSourcePath, rootDocsSourcePath, rootExtensionsInitEdits);
     }
 
     @Override
@@ -183,6 +190,8 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
             if (Files.exists(rootExtensionsSourcePath)) {
                 log.info("Copying storage root extensions from {} to the extensions directory", rootExtensionsSourcePath);
                 copyDirectoryAndSetPermissions(rootExtensionsSourcePath, tempExtensionsPath);
+                // Apply initialization edits if configured
+                applyRootExtensionsInitEdits(tempExtensionsPath);
                 try (var stream = Files.list(tempExtensionsPath)) {
                     stream.forEach(path -> {
                         try {
@@ -264,5 +273,80 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
                 return FileVisitResult.CONTINUE;
             }
         });
+    }
+
+    private void applyRootExtensionsInitEdits(Path tempExtensionsPath) throws IOException {
+        var edits = getRootExtensionsInitEdits();
+        if (edits.isEmpty()) {
+            return;
+        }
+        var jsonPathConf = Configuration.builder().options(Option.DEFAULT_PATH_LEAF_TO_NULL).build();
+        for (var edit : edits) {
+            var targetFile = tempExtensionsPath.resolve(edit.getFile());
+            if (!Files.exists(targetFile)) {
+                throw new IllegalStateException("Root extension init edit target does not exist: " + edit.getFile());
+            }
+            var content = Files.readString(targetFile);
+            var document = JsonPath.parse(content, jsonPathConf);
+            var matchesRaw = document.read(edit.getJsonPath());
+            var current = getNodeToReplace(edit, matchesRaw);
+            var replacement = edit.getValue();
+            if (!isTypeCompatible(current, replacement)) {
+                throw new IllegalStateException("Type mismatch for JSONPath " + edit.getJsonPath() + " in file " + edit.getFile() +
+                    ": existing type is " + current.getClass().getSimpleName() +
+                    ", replacement type is " + replacement.getClass().getSimpleName());
+            }
+            document.set(edit.getJsonPath(), replacement);
+            var updated = document.jsonString();
+            Files.writeString(targetFile, updated);
+            log.info("Applied root extension init edit on {} at {}", edit.getFile(), edit.getJsonPath());
+        }
+    }
+
+    private static Object getNodeToReplace(RootExtensionsInitEdit edit, Object matchesRaw) {
+        List<?> matches = matchesRaw instanceof List ? (List<?>) matchesRaw : List.of(matchesRaw);
+        if (matches.isEmpty()) {
+            throw new IllegalStateException("JSONPath did not match any nodes: " + edit.getJsonPath() + " in file " + edit.getFile());
+        }
+        if (matches.size() != 1) {
+            throw new IllegalStateException("JSONPath matched multiple nodes (" + matches.size() + ") for " + edit.getJsonPath() + " in file " + edit.getFile());
+        }
+        var current = matches.get(0);
+        return current;
+    }
+
+    private boolean isTypeCompatible(Object current, Object replacement) {
+        if (current == null || replacement == null) {
+            // Allow setting null or replacing a null with any type
+            return true;
+        }
+        var currentClass = current.getClass();
+        var replClass = replacement.getClass();
+        // Allow numeric replacements across numeric types
+        if (Number.class.isAssignableFrom(currentClass) && Number.class.isAssignableFrom(replClass)) {
+            return true;
+        }
+        // Allow boolean to boolean
+        if (current instanceof Boolean && replacement instanceof Boolean) {
+            return true;
+        }
+        // Allow string to string
+        if (current instanceof CharSequence && replacement instanceof CharSequence) {
+            return true;
+        }
+        // Allow map to map
+        if (current instanceof java.util.Map && replacement instanceof java.util.Map) {
+            return true;
+        }
+        // Allow list to list
+        if (current instanceof java.util.List && replacement instanceof java.util.List) {
+            return true;
+        }
+        // Otherwise, types are incompatible
+        return false;
+    }
+
+    private List<RootExtensionsInitEdit> getRootExtensionsInitEdits() {
+        return rootExtensionsInitEdits != null ? rootExtensionsInitEdits : List.of();
     }
 }

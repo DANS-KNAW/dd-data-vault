@@ -17,21 +17,10 @@ package nl.knaw.dans.datavault.config;
 
 import lombok.Data;
 
-import javax.validation.constraints.NotNull;
-import java.nio.file.Path;
-import java.util.List;
-
-import nl.knaw.dans.datavault.config.RootExtensionsInitEdit;
-
 @Data
-public class OcflRepositoryConfig {
-    @NotNull
-    private Path workDir;
-
-    private Path rootExtensionsSourcePath;
-
-    private Path rootDocsSourcePath;
-
-    // Edits to apply to copied root extensions during initial initialization
-    private List<RootExtensionsInitEdit> rootExtensionsInit;
+public class RootExtensionsInitEdit {
+    private String file;      // relative path inside the extensions tree
+    private String jsonPath;  // JSONPath expression selecting exactly one node
+    private Object value;     // value to set
 }
+
