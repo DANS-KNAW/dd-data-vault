@@ -66,8 +66,23 @@ dataVault:
   #
   ocflRepository:
     workDir: /data/vault/tmp
-    rootExtensionsSourcePath: /etc/opt/dans.knaw.nl/dd-data-vault/ocfl-root-extensions
+    #
+    # A directory containing documentation files for the root extensions. These files will be copied to the OCFL repository root when it is initialized.
+    # Note that this directory must not contain subdirectories.
     rootDocsSourcePath: /etc/opt/dans.knaw.nl/dd-data-vault/ocfl-root-docs
+    #
+    # A directory containing configuration files for the root extensions. These files will be copied to the OCFL repository root extensions directory when it is initialized.
+    rootExtensionsSourcePath: /etc/opt/dans.knaw.nl/dd-data-vault/ocfl-root-extensions
+    #
+    # A list of edits to be performed on the configuration files for the root extensions when the OCFL repository is initialized. Each edit specifies a JSON file, a JSON path
+    # within that file, and a value to be set at that path. This is useful when you run multiple instances of the data vault that shared the same configuration directory for the root extensions
+    # but require different values for some of the configuration properties. (Alternatively, you could create a customized copy of the ocfl-root-extensions directory for each instance, but that would involve more duplication.)
+    #
+    # Note that each jsonPath must point to a single node and that the replacement value must be of a compatible type with the value at that node.
+    rootExtensionsInit:
+      - file: property-registry/config.json
+        jsonPath: $.propertyRegistry.dataset-version.required
+        value: true
 
   #
   # Settings for the layer store in which the data vault stores its data.
