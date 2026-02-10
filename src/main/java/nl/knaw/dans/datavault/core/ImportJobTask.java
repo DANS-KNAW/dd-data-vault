@@ -135,6 +135,16 @@ public class ImportJobTask implements Runnable {
                 }
             }
             else {
+                // Some tasks failed. With autoclean on, delete processed entries for successful objects only.
+                if (autoclean) {
+                    for (int i = 0; i < tasks.size(); i++) {
+                        var task = tasks.get(i);
+                        if (task.getStatus() == ObjectCreateOrUpdateTask.Status.SUCCESS) {
+                            var objectImportDir = objectImportDirs.get(i);
+                            deleteSilently(batchOutbox.resolve("processed").resolve(objectImportDir.getFileName()));
+                        }
+                    }
+                }
                 failed("One or more tasks failed. Check error documents in '" + batchOutbox + "'.");
             }
         }

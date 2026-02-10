@@ -328,11 +328,11 @@ public class ImportJobTaskTest extends AbstractTestFixture {
 
         // Then
         assertThat(importJob.getStatus()).isEqualTo(ImportJob.Status.FAILED);
-        // processed entry for the simple-object should exist and not be deleted
-        assertDirectoriesEqual(getTestInput("simple-object"), outbox.resolve("processed/simple-object"));
+        // processed entry for the simple-object should be deleted with autoclean
+        assertThat(outbox.resolve("processed").resolve("simple-object")).doesNotExist();
         // failed entry for the multi-version-object should exist and not be deleted
         assertDirectoriesEqual(getTestInput("multi-version-object"), outbox.resolve("failed/multi-version-object"));
-        // batch outbox root should still exist
+        // batch outbox root should still exist (no full batch cleanup when failures occur)
         assertThat(outbox).exists();
         // inbox batch dir should still exist
         assertThat(testDir.resolve("batchAutoFail")).exists();
