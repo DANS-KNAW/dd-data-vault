@@ -288,4 +288,54 @@ public class ImportJobTaskTest extends AbstractTestFixture {
         assertThat(simpleObject.getParent()).exists();
     }
 
+    @Test
+    public void autoclean_true_should_not_delete_anything_when_batch_fails() throws Exception {
+        // Given
+        copyToTestDir("simple-object", "batchAutoFail");
+        var multiVersionObject = copyToTestDir("multi-version-object", "batchAutoFail");
+        var outbox = testDir.resolve("outbox");
+        Files.createDirectories(outbox);
+
+        var id = UUID.randomUUID();
+        var importJob = new ImportJob();
+        importJob.setId(id);
+        importJob.setPath(testDir.resolve("batchAutoFail").toString());
+        importJob.setSingleObject(false);
+        importJob.setAcceptTimestampVersionDirectories(false);
+        importJob.setStatus(ImportJob.Status.PENDING);
+
+        var importBatchDao = Mockito.mock(ImportJobDao.class);
+        Mockito.when(importBatchDao.get(id)).thenReturn(importJob);
+
+        // Make the second version of the multi-version-object fail
+        doThrow(new RuntimeException("Failed to add version"))
+            .when(repositoryProvider)
+            .addVersion(eq("multi-version-object"), eq(2), eq(multiVersionObject.resolve("v2")));
+
+        // When
+        var task = new ImportJobTask(
+            id,
+            testDir.resolve("batchAutoFail"),
+            outbox,
+            importBatchDao,
+            executorService,
+            repositoryProvider,
+            Pattern.compile(".+"),
+            layerThresholdHandler,
+            true // autoclean enabled
+        );
+        task.run();
+
+        // Then
+        assertThat(importJob.getStatus()).isEqualTo(ImportJob.Status.FAILED);
+        // processed entry for the simple-object should exist and not be deleted
+        assertDirectoriesEqual(getTestInput("simple-object"), outbox.resolve("processed/simple-object"));
+        // failed entry for the multi-version-object should exist and not be deleted
+        assertDirectoriesEqual(getTestInput("multi-version-object"), outbox.resolve("failed/multi-version-object"));
+        // batch outbox root should still exist
+        assertThat(outbox).exists();
+        // inbox batch dir should still exist
+        assertThat(testDir.resolve("batchAutoFail")).exists();
+    }
+
 }
