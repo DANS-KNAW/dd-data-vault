@@ -59,6 +59,11 @@ dataVault:
     # /var/opt/dans.knaw.nl/tmp/data-vault/outbox/batch-1/processed or /var/opt/dans.knaw.nl/tmp/data-vault/outbox/batch-1/failed.
     #
     outbox: /var/opt/dans.knaw.nl/tmp/dd-data-vault/outbox
+    #
+    # Automatically remove successfully ingested Object Import Directories, and automatically remove the
+    # entire batch directories from inbox and outbox if the batch had no failures.
+    #
+    autoclean: true
 
   #
   #

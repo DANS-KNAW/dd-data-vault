@@ -28,6 +28,7 @@ import io.dropwizard.hibernate.UnitOfWorkAwareProxyFactory;
 import lombok.extern.slf4j.Slf4j;
 import nl.knaw.dans.datavault.config.DdDataVaultConfig;
 import nl.knaw.dans.datavault.core.ConsistencyCheckTaskFactory;
+import nl.knaw.dans.datavault.core.ImportJob;
 import nl.knaw.dans.datavault.core.ImportJobTaskFactory;
 import nl.knaw.dans.datavault.core.LayerThresholdHandler;
 import nl.knaw.dans.datavault.core.OcflRepositoryProvider;
@@ -114,7 +115,7 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
                 consistencyCheckDao,
                 new ConsistencyCheckTaskFactory(consistencyCheckDao, layeredItemStore))));
         environment.lifecycle().manage(createUnitOfWorkAwareProxy(uowFactory,
-            new PollingTaskExecutor<>(
+            new PollingTaskExecutor<ImportJob>(
                 "import-executor-task-executor",
                 environment.lifecycle().scheduledExecutorService("import-executor").build(),
                 configuration.getDataVault().getIngest().getPollingInterval().toJavaDuration(),
@@ -126,7 +127,11 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
                     environment.lifecycle().executorService("import-worker").build(),
                     ocflRepositoryProvider,
                     Pattern.compile(configuration.getDataVault().getValidObjectIdentifierPattern()),
-                    createUnitOfWorkAwareProxy(uowFactory, layeredItemStore, configuration.getDataVault().getLayerStore().getLayerArchivingThreshold().toBytes())))));
+                    createUnitOfWorkAwareProxy(uowFactory, layeredItemStore, configuration.getDataVault().getLayerStore().getLayerArchivingThreshold().toBytes()),
+                    configuration.getDataVault().getIngest().isAutoclean()
+                )
+            )
+        ));
 
     }
 

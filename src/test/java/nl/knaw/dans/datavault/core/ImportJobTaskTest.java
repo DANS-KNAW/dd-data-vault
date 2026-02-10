@@ -62,7 +62,8 @@ public class ImportJobTaskTest extends AbstractTestFixture {
             executorService,
             repositoryProvider,
             Pattern.compile(".+"),
-            layerThresholdHandler
+            layerThresholdHandler,
+            false
         );
         task.run();
 
@@ -101,7 +102,8 @@ public class ImportJobTaskTest extends AbstractTestFixture {
             executorService,
             repositoryProvider,
             Pattern.compile(".+"),
-            layerThresholdHandler
+            layerThresholdHandler,
+            false
         );
         task.run();
 
@@ -141,7 +143,8 @@ public class ImportJobTaskTest extends AbstractTestFixture {
             executorService,
             repositoryProvider,
             Pattern.compile("urn:nbn:nl:ui:13-.*"),
-            layerThresholdHandler
+            layerThresholdHandler,
+            false
         );
         task.run();
 
@@ -188,7 +191,8 @@ public class ImportJobTaskTest extends AbstractTestFixture {
             executorService,
             repositoryProvider,
             Pattern.compile(".+"),
-            layerThresholdHandler
+            layerThresholdHandler,
+            false
         );
         task.run();
 

@@ -32,6 +32,7 @@ public class ImportJobTaskFactory implements TaskFactory<ImportJob> {
     private final RepositoryProvider repositoryProvider;
     private final Pattern validObjectIdentifierPattern;
     private final LayerThresholdHandler layerThresholdHandler;
+    private final boolean autoclean;
 
     @Override
     public Runnable create(ImportJob record) {
@@ -45,7 +46,8 @@ public class ImportJobTaskFactory implements TaskFactory<ImportJob> {
             executorService,
             repositoryProvider,
             validObjectIdentifierPattern,
-            layerThresholdHandler);
+            layerThresholdHandler,
+            autoclean);
     }
 
     private void initializeBatchOutbox(Path batchOutbox) {

@@ -15,6 +15,7 @@
  */
 package nl.knaw.dans.datavault.core;
 
+import org.apache.commons.io.FileUtils;
 import io.dropwizard.hibernate.UnitOfWork;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
@@ -31,7 +32,6 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -51,6 +51,7 @@ public class ImportJobTask implements Runnable {
     private final RepositoryProvider repositoryProvider;
     private final Pattern validObjectIdentifierPattern;
     private final LayerThresholdHandler layerThresholdHandler;
+    private final boolean autoclean;
 
     private ImportJob importJob;
 
@@ -89,11 +90,17 @@ public class ImportJobTask implements Runnable {
         log.info("Import batch task {} finished", id);
     }
 
-    private void createOrUpdateObject() throws IOException, ExecutionException, InterruptedException {
+    private void createOrUpdateObject() throws IOException {
         checkBatchLayout(batchOrObjectImportDir.getParent());
         var future = executorService.submit(new ObjectCreateOrUpdateTask(batchOrObjectImportDir, batchOutbox, repositoryProvider, importJob.isAcceptTimestampVersionDirectories()));
         if (checkFuture(future)) {
             success();
+            if (autoclean) {
+                // object directory was moved to outbox/processed; delete the processed entry
+                deleteSilently(batchOutbox.resolve("processed").resolve(batchOrObjectImportDir.getFileName()));
+                // And if the whole batch corresponds to a single object directory, clean the batch directories
+                deleteBatchDirsIfSucceeded();
+            }
         }
         else {
             failed("Updated failed. Check error documents in '" + batchOutbox + "'.");
@@ -103,9 +110,11 @@ public class ImportJobTask implements Runnable {
     private void createOrUpdateObjects() throws IOException, InterruptedException {
         checkBatchLayout(batchOrObjectImportDir);
         List<ObjectCreateOrUpdateTask> tasks = new LinkedList<>();
+        List<Path> objectImportDirs = new LinkedList<>();
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(batchOrObjectImportDir)) {
             for (Path path : stream) {
                 tasks.add(new ObjectCreateOrUpdateTask(path, batchOutbox, repositoryProvider, importJob.isAcceptTimestampVersionDirectories()));
+                objectImportDirs.add(path);
             }
         }
         log.info("Starting {} tasks for batch directory {}", tasks.size(), batchOrObjectImportDir);
@@ -116,6 +125,14 @@ public class ImportJobTask implements Runnable {
                 success();
                 log.info("All tasks for batch directory {} finished successfully", batchOrObjectImportDir);
                 layerThresholdHandler.newTopLayerIfThresholdReached();
+                if (autoclean) {
+                    for (var objectImportDir : objectImportDirs) {
+                        // object directories were moved to outbox/processed; delete the processed entries
+                        deleteSilently(batchOutbox.resolve("processed").resolve(objectImportDir.getFileName()));
+                    }
+                    // remove entire batch directories from inbox and outbox
+                    deleteBatchDirsIfSucceeded();
+                }
             }
             else {
                 failed("One or more tasks failed. Check error documents in '" + batchOutbox + "'.");
@@ -219,4 +236,30 @@ public class ImportJobTask implements Runnable {
         return fileName.matches("v\\d+\\.json");
     }
 
+    private void deleteBatchDirsIfSucceeded() {
+        try {
+            deleteSilently(batchOrObjectImportDir);
+            deleteSilently(batchOutbox);
+        }
+        catch (Exception e) {
+            log.warn("Autoclean failed to delete batch directories for {}", importJob.getPath(), e);
+        }
+    }
+
+    private void deleteSilently(Path path) {
+        try {
+            if (Files.exists(path)) {
+                var file = path.toFile();
+                if (file.isDirectory()) {
+                    FileUtils.deleteDirectory(file);
+                }
+                else {
+                    Files.deleteIfExists(path);
+                }
+            }
+        }
+        catch (IOException e) {
+            log.debug("Failed to delete {}", path, e);
+        }
+    }
 }

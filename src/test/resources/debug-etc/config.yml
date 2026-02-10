@@ -1,4 +1,3 @@
-
 server:
   applicationContextPath: /
   adminContextPath: /
@@ -52,6 +51,7 @@ dataVault:
     # /var/opt/dans.knaw.nl/tmp/data-vault/outbox/batch-1/processed or /var/opt/dans.knaw.nl/tmp/data-vault/outbox/batch-1/failed.
     #
     outbox: data/ingest/outbox
+    autoclean: true
 
 
   #

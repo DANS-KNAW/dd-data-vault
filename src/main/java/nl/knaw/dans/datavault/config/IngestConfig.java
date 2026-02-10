@@ -29,4 +29,6 @@ public class IngestConfig {
     private Path outbox;
 
     private Duration pollingInterval = Duration.seconds(10);
+    // Automatically remove successfully ingested object import directories and clean batch directories when all succeeded.
+    private boolean autoclean = true;
 }
