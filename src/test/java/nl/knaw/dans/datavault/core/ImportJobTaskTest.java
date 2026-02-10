@@ -20,6 +20,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -201,6 +202,90 @@ public class ImportJobTaskTest extends AbstractTestFixture {
         assertThat(importJob.getMessage()).isEqualTo(String.format("One or more tasks failed. Check error documents in '%s'.", outbox));
         assertDirectoriesEqual(getTestInput("simple-object"), outbox.resolve("processed/simple-object"));
         assertDirectoriesEqual(getTestInput("multi-version-object"), outbox.resolve("failed/multi-version-object"));
+    }
+
+    @Test
+    public void autoclean_true_should_remove_processed_entries_and_batch_dirs() throws Exception {
+        // Given
+        var simpleObject = copyToTestDir("simple-object", "batchAuto1");
+        var outbox = testDir.resolve("outbox");
+        Files.createDirectories(outbox);
+
+        var id = UUID.randomUUID();
+        var importJob = new ImportJob();
+        importJob.setId(id);
+        importJob.setPath(simpleObject.getParent().toString());
+        importJob.setSingleObject(false);
+        importJob.setAcceptTimestampVersionDirectories(false);
+        importJob.setStatus(ImportJob.Status.PENDING);
+
+        var importBatchDao = Mockito.mock(ImportJobDao.class);
+        Mockito.when(importBatchDao.get(id)).thenReturn(importJob);
+
+        // When
+        var task = new ImportJobTask(
+            id,
+            simpleObject.getParent(),
+            outbox,
+            importBatchDao,
+            executorService,
+            repositoryProvider,
+            Pattern.compile(".+"),
+            layerThresholdHandler,
+            true // autoclean enabled
+        );
+        task.run();
+
+        // Then
+        assertThat(importJob.getStatus()).isEqualTo(ImportJob.Status.SUCCESS);
+        // processed entry should be deleted
+        assertThat(outbox.resolve("processed").resolve("simple-object")).doesNotExist();
+        // batch outbox root should be deleted
+        assertThat(outbox.resolve(Path.of(simpleObject.getParent().getFileName().toString()))).doesNotExist();
+        // inbox batch dir should be deleted
+        assertThat(simpleObject.getParent()).doesNotExist();
+    }
+
+    @Test
+    public void autoclean_false_should_keep_processed_entries_and_batch_dirs() throws Exception {
+        // Given
+        var simpleObject = copyToTestDir("simple-object", "batchAuto2");
+        var outbox = testDir.resolve("outbox");
+        Files.createDirectories(outbox);
+
+        var id = UUID.randomUUID();
+        var importJob = new ImportJob();
+        importJob.setId(id);
+        importJob.setPath(simpleObject.getParent().toString());
+        importJob.setSingleObject(false);
+        importJob.setAcceptTimestampVersionDirectories(false);
+        importJob.setStatus(ImportJob.Status.PENDING);
+
+        var importBatchDao = Mockito.mock(ImportJobDao.class);
+        Mockito.when(importBatchDao.get(id)).thenReturn(importJob);
+
+        // When
+        var task = new ImportJobTask(
+            id,
+            simpleObject.getParent(),
+            outbox,
+            importBatchDao,
+            executorService,
+            repositoryProvider,
+            Pattern.compile(".+"),
+            layerThresholdHandler,
+            false // autoclean disabled
+        );
+        task.run();
+
+        // Then
+        assertThat(importJob.getStatus()).isEqualTo(ImportJob.Status.SUCCESS);
+        // processed entry should exist
+        assertDirectoriesEqual(getTestInput("simple-object"), outbox.resolve("processed/simple-object"));
+        // outbox batch root should exist (since we didn't clean)
+        assertThat(outbox).exists();
+        // inbox batch dir should still exist (since we didn't clean it)
+        assertThat(simpleObject.getParent()).exists();
     }
 
 }
