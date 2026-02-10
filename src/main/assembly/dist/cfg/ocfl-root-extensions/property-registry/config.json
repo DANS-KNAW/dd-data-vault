@@ -28,6 +28,12 @@
           "required": true
         }
       }
+    },
+    "retention-end-date": {
+      "description": "The date after which the object version must be deleted.",
+      "type": "string",
+      "constraints": "a date in ISO 8601 YYYY-MM-DD format",
+      "required": false
     }
   }
 }
