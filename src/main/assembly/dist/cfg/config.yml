@@ -47,7 +47,6 @@ dataVault:
   # Settings for the ingest area
   #
   ingest:
-    # TODO: rename dir data-vault to dd-data-vault
     #
     # Object import directories must be located under the inbox directory, possibly in a batch subdirectory.
     #

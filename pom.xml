@@ -36,7 +36,7 @@
     <properties>
         <!-- TODO: move to dd-parent -->
         <commons-validator.version>1.7</commons-validator.version>
-        <dans-ocfl-extensions.version>0.1.0</dans-ocfl-extensions.version>
+        <dans-ocfl-extensions.version>1.0.0</dans-ocfl-extensions.version>
         <main-class>nl.knaw.dans.datavault.DdDataVaultApplication</main-class>
     </properties>
 

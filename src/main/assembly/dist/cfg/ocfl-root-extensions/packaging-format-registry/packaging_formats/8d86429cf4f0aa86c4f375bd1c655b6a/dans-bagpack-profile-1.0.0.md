@@ -64,7 +64,7 @@ Requirements
 
 The following items are required by the [RDA BagPack]{:target=_blank} specifications:
 
-1. A DANS BagPack MUST be valid according to [BagIt v1.0]{:target=_blank}.
+1. A DANS BagPack MUST be valid according to [BagIt v1.0]{:target=_blank} or [BagIt v0.97]{:target=_blank}.
 2. (a) A DANS BagPack MUST contain a file `metadata/datacite.xml` (b) this file MUST be valid according to the
    [DataCite schema version 4.0 or later]{:target=_blank}, except for the requirement that there MUST be a DOI present: a DOI is not required for a DANS
    BagPack; (c) [DataCite's recommended properties]{:target=_blank} SHOULD be present.
@@ -90,6 +90,7 @@ The following items are required by the DANS BagPack Profile, in addition to the
 
 [RFC 2119]: https://www.ietf.org/rfc/rfc2119.txt
 [BagIt v1.0]: https://www.rfc-editor.org/rfc/rfc8493
+[BagIt v0.97]: https://tools.ietf.org/html/draft-kunze-bagit-14
 [RDA BagPack]: http://doi.org/10.15497/RDA00025
 [DataCite schema version 4.0 or later]: https://schema.datacite.org/meta/kernel-4.0/
 [DANS BagPack BagIt Profile]: dans-bagpack-profile-1.0.0.json

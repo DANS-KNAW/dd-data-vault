@@ -46,7 +46,7 @@
   "Manifests-Required": [
     "sha1"
   ],
-  "Allow-Fetch.txt": false,
+  "Allow-Fetch.txt": true,
   "Serialization": "optional",
   "Accept-Serialization": [
     "application/zip"
