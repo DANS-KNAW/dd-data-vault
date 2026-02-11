@@ -34,4 +34,7 @@ public class LayerStoreConfig {
     private ConsistencyCheckExecutorConfig consistencyCheckExecutor;
     @NotNull
     private DataSize layerArchivingThreshold;
+    @Valid
+    @NotNull
+    private InitChecksConfig initChecks;
 }

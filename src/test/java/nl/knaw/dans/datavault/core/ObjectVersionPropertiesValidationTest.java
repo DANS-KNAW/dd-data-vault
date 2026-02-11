@@ -17,6 +17,7 @@ package nl.knaw.dans.datavault.core;
 
 import io.dropwizard.testing.junit5.DAOTestExtension;
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
+import nl.knaw.dans.datavault.config.InitChecksConfig;
 import nl.knaw.dans.layerstore.DirectLayerArchiver;
 import nl.knaw.dans.layerstore.ItemRecord;
 import nl.knaw.dans.layerstore.ItemsMatchDbConsistencyChecker;
@@ -69,6 +70,7 @@ public class ObjectVersionPropertiesValidationTest extends AbstractTestFixture {
             .rootExtensionsSourcePath(Path.of("src/main/assembly/dist/cfg/ocfl-root-extensions"))
             .rootDocsSourcePath(rootDocsPath)
             .workDir(testDir.resolve(WORK_DIR))
+            .initChecks(new InitChecksConfig())
             .build();
         provider.start();
     }

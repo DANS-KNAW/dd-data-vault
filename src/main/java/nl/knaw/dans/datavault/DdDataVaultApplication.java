@@ -96,7 +96,8 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
             layerConsistencyChecker,
             configuration.getDataVault().getOcflRepository().getRootExtensionsSourcePath(),
             configuration.getDataVault().getOcflRepository().getRootDocsSourcePath(),
-            configuration.getDataVault().getOcflRepository().getRootExtensionsInit()
+            configuration.getDataVault().getOcflRepository().getRootExtensionsInit(),
+            configuration.getDataVault().getLayerStore().getInitChecks()
         ));
         environment.lifecycle().manage(ocflRepositoryProvider);
         var importBatchDao = new ImportJobDao(hibernateBundle.getSessionFactory());

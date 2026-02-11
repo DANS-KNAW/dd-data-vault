@@ -134,6 +134,15 @@ dataVault:
       # How often to poll for scheduled consistency checks. The oldest unfinished check will be executed.
       pollingInterval: 10 seconds
 
+    #
+    # The consistency checks to perform on service startup.
+    #
+    initChecks:
+      # Check that the layer IDs found in the database are the same as the ones found on storage. This may be slow if the layers are stored on a remote storage.
+      layerIds: true
+      # Check that the listing records for the top layer found in the database correspond one-to-one with entries in that layer.
+      topLayerListingRecords: true
+
 
 #
 # See https://www.dropwizard.io/en/latest/manual/configuration.html#logging

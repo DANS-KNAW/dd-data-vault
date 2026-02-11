@@ -18,6 +18,7 @@ package nl.knaw.dans.datavault.core;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.dropwizard.testing.junit5.DAOTestExtension;
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
+import nl.knaw.dans.datavault.config.InitChecksConfig;
 import nl.knaw.dans.datavault.config.RootExtensionsInitEdit;
 import nl.knaw.dans.layerstore.DirectLayerArchiver;
 import nl.knaw.dans.layerstore.ItemRecord;
@@ -95,6 +96,7 @@ public class OcflRepositoryProviderTest extends AbstractTestFixture {
             .rootExtensionsSourcePath(Path.of("src/main/assembly/dist/cfg/ocfl-root-extensions"))
             .rootDocsSourcePath(rootDocsPath)
             .workDir(testDir.resolve(WORK_DIR))
+            .initChecks(new InitChecksConfig())
             .build();
 
         ocflRepositoryProvider.start();
@@ -116,6 +118,7 @@ public class OcflRepositoryProviderTest extends AbstractTestFixture {
             .rootDocsSourcePath(rootDocsPath)
             .workDir(testDir.resolve(WORK_DIR))
             .rootExtensionsInitEdits(edits)
+            .initChecks(new nl.knaw.dans.datavault.config.InitChecksConfig())
             .build();
     }
 
@@ -257,6 +260,7 @@ public class OcflRepositoryProviderTest extends AbstractTestFixture {
             .rootDocsSourcePath(rootDocsPath)
             .workDir(testDir.resolve(WORK_DIR))
             .rootExtensionsInitEdits(List.of(edit))
+            .initChecks(new nl.knaw.dans.datavault.config.InitChecksConfig())
             .build();
 
         // When

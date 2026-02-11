@@ -29,8 +29,10 @@ public class DataVaultConfig {
     private IngestConfig ingest;
 
     @NotNull
+    @Valid
     private OcflRepositoryConfig ocflRepository;
 
     @NotNull
+    @Valid
     private LayerStoreConfig layerStore;
 }

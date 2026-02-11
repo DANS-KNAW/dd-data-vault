@@ -16,9 +16,8 @@
 package nl.knaw.dans.datavault.core;
 
 import com.jayway.jsonpath.Configuration;
-import com.jayway.jsonpath.Option;
 import com.jayway.jsonpath.JsonPath;
-import nl.knaw.dans.datavault.config.RootExtensionsInitEdit;
+import com.jayway.jsonpath.Option;
 import io.dropwizard.lifecycle.Managed;
 import io.ocfl.api.OcflRepository;
 import io.ocfl.api.exception.NotFoundException;
@@ -34,14 +33,16 @@ import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import nl.knaw.dans.datavault.api.OcflObjectVersionDto;
+import nl.knaw.dans.datavault.config.InitChecksConfig;
+import nl.knaw.dans.datavault.config.RootExtensionsInitEdit;
 import nl.knaw.dans.layerstore.ItemsMismatchException;
 import nl.knaw.dans.layerstore.LayerConsistencyChecker;
+import nl.knaw.dans.layerstore.LayerIdsMismatchException;
 import nl.knaw.dans.layerstore.LayeredItemStore;
 import nl.knaw.dans.lib.ocflext.LayeredStorage;
 import org.apache.commons.io.FileUtils;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -79,6 +80,7 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
     private final Path rootExtensionsSourcePath;
     private final Path rootDocsSourcePath;
     private final List<RootExtensionsInitEdit> rootExtensionsInitEdits;
+    private final InitChecksConfig initChecks;
 
     private OcflRepository ocflRepository;
     private OcflStorage ocflStorage;
@@ -87,8 +89,8 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
 
     @Builder
     public static OcflRepositoryProvider create(LayeredItemStore itemStore, Path workDir, LayerConsistencyChecker layerConsistencyChecker,
-        Path rootExtensionsSourcePath, Path rootDocsSourcePath, List<RootExtensionsInitEdit> rootExtensionsInitEdits) {
-        return new OcflRepositoryProvider(itemStore, workDir, layerConsistencyChecker, rootExtensionsSourcePath, rootDocsSourcePath, rootExtensionsInitEdits);
+        Path rootExtensionsSourcePath, Path rootDocsSourcePath, List<RootExtensionsInitEdit> rootExtensionsInitEdits, InitChecksConfig initChecks) {
+        return new OcflRepositoryProvider(itemStore, workDir, layerConsistencyChecker, rootExtensionsSourcePath, rootDocsSourcePath, rootExtensionsInitEdits, initChecks);
     }
 
     @Override
@@ -142,7 +144,8 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
     @Override
     public void start() {
         log.info("Starting OCFL repository provider");
-        var layeredStorage = new LayeredStorage(initAndCheckTopLayer(layeredItemStore));
+        var layeredStorage = new LayeredStorage(initTopLayer(layeredItemStore));
+        performInitChecks(layeredItemStore);
         ocflStorage = new OcflStorageBuilder().storage(layeredStorage).build();
         var layoutConfig = new NTupleOmitPrefixStorageLayoutConfig().setDelimiter(":").setTupleSize(3); // TODO: make configurable
         try {
@@ -171,16 +174,32 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
         }
     }
 
-    private LayeredItemStore initAndCheckTopLayer(LayeredItemStore layeredItemStore) {
+    private LayeredItemStore initTopLayer(LayeredItemStore layeredItemStore) {
         try {
             if (layeredItemStore.getTopLayer() == null) {
                 layeredItemStore.newTopLayer();
             }
-            layerConsistencyChecker.check(layeredItemStore.getTopLayer());
             return layeredItemStore;
         }
-        catch (IOException | ItemsMismatchException e) {
+        catch (IOException e) {
             throw new RuntimeException("Failed to initialize top layer", e);
+        }
+    }
+
+    private void performInitChecks(LayeredItemStore layeredItemStore) {
+        try {
+            if (initChecks.isLayerIds()) {
+                log.info("Checking layer IDs consistency between storage and database...");
+                layeredItemStore.checkSameLayersOnStorageAndDb();
+                log.info("Layer IDs OK.");
+            }
+            if (initChecks.isTopLayerListingRecords()) {
+                log.info("Checking top layer listing records consistency...");
+                layerConsistencyChecker.check(layeredItemStore.getTopLayer());
+                log.info("Top layer listing records OK.");
+            }
+        } catch (IOException | LayerIdsMismatchException | ItemsMismatchException e) {
+            throw new IllegalStateException("Initialization check revealed consistency issues", e);
         }
     }
 
