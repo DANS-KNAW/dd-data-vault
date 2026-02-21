@@ -124,7 +124,7 @@ public class VersionPropertiesReaderTest extends AbstractTestFixture {
 
         // When
         var reader = new VersionPropertiesReader(vJson);
-        var customProps = reader.getCustomProperties();
+        var customProps = reader.getObjectVersionProperties();
 
         // Then
         assertThat(customProps).hasSize(2);
@@ -151,7 +151,7 @@ public class VersionPropertiesReaderTest extends AbstractTestFixture {
 
         // When
         var reader = new VersionPropertiesReader(vJson);
-        var customProps = reader.getCustomProperties();
+        var customProps = reader.getObjectVersionProperties();
 
         // Then
         assertThat(customProps).isEmpty();
@@ -255,7 +255,7 @@ public class VersionPropertiesReaderTest extends AbstractTestFixture {
 
         // When
         var reader = new VersionPropertiesReader(vJson);
-        var customProps = reader.getCustomProperties();
+        var customProps = reader.getObjectVersionProperties();
 
         // Then
         assertThat(customProps).hasSize(1);

@@ -102,13 +102,13 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
         var versionInfoFile = objectVersionDirectory.resolveSibling(objectVersionDirectory.getFileName().toString() + ".json");
         var reader = createVersionPropertiesReader(versionInfoFile);
         // Validate custom properties against the storage-root property registry before writing anything
-        propertyRegistryValidator.validate(reader.getCustomProperties());
+        propertyRegistryValidator.validate(reader.getObjectVersionProperties());
 
         // Precompute candidate object_version_properties for the new version and validate against schema
         var ovp = new ObjectVersionProperties(layeredItemStore, ocflStorage.objectRootPath(objectId));
         try {
             ovp.load();
-            reader.getCustomProperties().forEach((key, value) -> ovp.putProperty(version, key, value));
+            reader.getObjectVersionProperties().forEach((key, value) -> ovp.putProperty(version, key, value));
             objectVersionPropertiesValidator.validate(ovp.getProperties());
         }
         catch (IOException e) {

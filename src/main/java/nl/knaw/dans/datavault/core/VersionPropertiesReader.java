@@ -56,7 +56,7 @@ public class VersionPropertiesReader {
         }
     }
 
-    public Map<String, JsonNode> getCustomProperties() {
+    public Map<String, JsonNode> getObjectVersionProperties() {
         var customNode = root.get("object-version-properties");
         if (customNode == null) {
             return Map.of();
