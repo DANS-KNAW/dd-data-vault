@@ -179,7 +179,7 @@ public class VersionPropertiesReaderTest extends AbstractTestFixture {
         var ex = assertThrows(IllegalArgumentException.class, () -> {
             new VersionPropertiesReader(v2Json).getVersionInfo();
         });
-        assertThat(ex.getMessage()).isEqualTo("Unknown property in version info file: unknown.property");
+        assertThat(ex.getMessage()).isEqualTo("Unknown property in version properties JSON file: unknown.property");
     }
 
     @Test
@@ -207,22 +207,18 @@ public class VersionPropertiesReaderTest extends AbstractTestFixture {
     }
 
     @Test
-    public void should_throw_exception_when_no_file_provided() throws Exception {
-        var ex = assertThrows(NullPointerException.class, () -> {
-            new VersionPropertiesReader(null).getVersionInfo();
-        });
+    public void should_throw_exception_when_no_file_provided() {
+        assertThrows(NullPointerException.class, () -> new VersionPropertiesReader(null).getVersionInfo());
     }
 
     @Test
-    public void should_throw_exception_when_file_does_not_exist() throws Exception {
+    public void should_throw_exception_when_file_does_not_exist() {
         // Given
         var nonExistentFile = testDir.resolve("nonexistent.json");
 
         // When / Then
-        var ex = assertThrows(IllegalArgumentException.class, () -> {
-            new VersionPropertiesReader(nonExistentFile).getVersionInfo();
-        });
-        assertThat(ex.getMessage()).isEqualTo("Version info file does not exist: " + nonExistentFile);
+        var ex = assertThrows(IllegalArgumentException.class, () -> new VersionPropertiesReader(nonExistentFile).getVersionInfo());
+        assertThat(ex.getMessage()).isEqualTo("Version properties JSON does not exist: " + nonExistentFile);
     }
 
     @Test

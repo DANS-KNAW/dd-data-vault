@@ -34,27 +34,36 @@ import java.util.stream.StreamSupport;
 
 public class VersionPropertiesReader {
     private static final String MAILTO_PREFIX = "mailto:";
-    private static final Set<String> VERSION_INFO_KEYS = Set.of("version-info", "object-version-properties");
+    private static final String KEY_VERSION_INFO = "version-info";
+    private static final String KEY_OBJECT_VERSION_PROPERTIES = "object-version-properties";
+    private static final Set<String> VERSION_PROPERTY_NAMES = Set.of(KEY_VERSION_INFO, KEY_OBJECT_VERSION_PROPERTIES);
 
     private final JsonNode root;
 
     public VersionPropertiesReader(@NonNull Path file) throws IOException {
         if (!Files.exists(file)) {
-            throw new IllegalArgumentException("Version info file does not exist: " + file);
+            throw new IllegalArgumentException("Version properties JSON does not exist: " + file);
         }
         var mapper = new ObjectMapper();
         try (var in = Files.newInputStream(file)) {
             this.root = mapper.readTree(in);
         }
         if (root == null || !root.isObject()) {
-            throw new IllegalArgumentException("Version info JSON must be an object at root");
+            throw new IllegalArgumentException("Version properties JSON must be an object at root");
         }
         // Validate top-level keys
+        boolean hasVersionInfo = false;
         for (var it = root.fieldNames(); it.hasNext(); ) {
             var key = it.next();
-            if (!VERSION_INFO_KEYS.contains(key)) {
-                throw new IllegalArgumentException("Unknown property in version info file: " + key);
+            if (!VERSION_PROPERTY_NAMES.contains(key)) {
+                throw new IllegalArgumentException("Unknown property in version properties JSON file: " + key);
             }
+            if (KEY_VERSION_INFO.equals(key)) {
+                hasVersionInfo = true;
+            }
+        }
+        if (!hasVersionInfo) {
+            throw new IllegalArgumentException("Missing required property: " + KEY_VERSION_INFO);
         }
     }
 
