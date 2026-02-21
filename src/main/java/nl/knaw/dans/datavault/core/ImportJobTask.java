@@ -29,6 +29,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.UUID;
@@ -212,15 +213,41 @@ public class ImportJobTask implements Runnable {
         String objectDirName = objectDir.getFileName().toString();
 
         if (validObjectIdentifierPattern.matcher(objectDirName).matches()) {
-            // Only bother to check the version directories if the object directory name is valid.
             result.setObjectImportDirNameIsValid(true);
+            List<String> versionDirNames = new ArrayList<>();
+            List<String> versionInfoBaseNames = new ArrayList<>();
+            List<Path> unknownEntries = new ArrayList<>();
             try (DirectoryStream<Path> versionStream = Files.newDirectoryStream(objectDir)) {
-                for (Path versionDir : versionStream) {
-                    if (!isValidObjectVersionImportDirName(versionDir.getFileName().toString()) && !isValidVersionPropertiesFileName(versionDir.getFileName().toString())) {
-                        result.getInvalidVersionDirectories().add(versionDir);
+                for (Path entry : versionStream) {
+                    String name = entry.getFileName().toString();
+                    if (isValidObjectVersionImportDirName(name)) {
+                        versionDirNames.add(name);
+                    } else if (isValidVersionPropertiesFileName(name)) {
+                        // Strip .json extension
+                        versionInfoBaseNames.add(name.substring(0, name.length() - ".json".length()));
+                    } else {
+                        unknownEntries.add(entry);
                     }
                 }
             }
+            // Sets must match exactly
+            var versionDirSet = new HashSet<>(versionDirNames);
+            var versionInfoSet = new HashSet<>(versionInfoBaseNames);
+            if (!versionDirSet.equals(versionInfoSet)) {
+                // Add all mismatched version directories and info files to invalidVersionDirectories
+                for (String dir : versionDirSet) {
+                    if (!versionInfoSet.contains(dir)) {
+                        result.getInvalidVersionDirectories().add(objectDir.resolve(dir));
+                    }
+                }
+                for (String info : versionInfoSet) {
+                    if (!versionDirSet.contains(info)) {
+                        result.getInvalidVersionDirectories().add(objectDir.resolve(info + ".json"));
+                    }
+                }
+            }
+            // Add unknown entries
+            result.getInvalidVersionDirectories().addAll(unknownEntries);
         }
         return result;
     }
