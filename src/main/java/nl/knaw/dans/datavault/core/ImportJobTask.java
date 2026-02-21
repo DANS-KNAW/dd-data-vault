@@ -127,32 +127,34 @@ public class ImportJobTask implements Runnable {
 
     private void processBatchObjectImport() throws IOException, InterruptedException {
         checkBatchLayout(batchOrObjectImportDir);
-        var tasks = createObjectTasks(batchOrObjectImportDir);
-        var objectImportDirs = getObjectImportDirs(batchOrObjectImportDir);
+        var objectImportDirs = getOrderedObjectImportDirs(batchOrObjectImportDir);
+        var tasks = createObjectTasksFromDirs(objectImportDirs);
         log.info("Starting {} tasks for batch directory {}", tasks.size(), batchOrObjectImportDir);
         @SuppressWarnings("unchecked")
         var futures = (List<Future<?>>)(List<?>)executorService.invokeAll(tasks.stream().map(Executors::callable).toList());
         handleBatchImportResults(tasks, objectImportDirs, futures);
     }
 
-    private List<ObjectCreateOrUpdateTask> createObjectTasks(Path batchDir) throws IOException {
-        var tasks = new LinkedList<ObjectCreateOrUpdateTask>();
+    private List<Path> getOrderedObjectImportDirs(Path batchDir) throws IOException {
+        var dirs = new ArrayList<Path>();
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(batchDir)) {
             for (Path path : stream) {
-                tasks.add(new ObjectCreateOrUpdateTask(path, batchOutbox, repositoryProvider));
+                var name = path.getFileName().toString();
+                if (Files.isDirectory(path) && validObjectIdentifierPattern.matcher(name).matches()) {
+                    dirs.add(path);
+                }
             }
         }
-        return tasks;
+        dirs.sort((a, b) -> a.getFileName().toString().compareTo(b.getFileName().toString()));
+        return dirs;
     }
 
-    private List<Path> getObjectImportDirs(Path batchDir) throws IOException {
-        var dirs = new LinkedList<Path>();
-        try (DirectoryStream<Path> stream = Files.newDirectoryStream(batchDir)) {
-            for (Path path : stream) {
-                dirs.add(path);
-            }
+    private List<ObjectCreateOrUpdateTask> createObjectTasksFromDirs(List<Path> objectImportDirs) {
+        var tasks = new ArrayList<ObjectCreateOrUpdateTask>();
+        for (var path : objectImportDirs) {
+            tasks.add(new ObjectCreateOrUpdateTask(path, batchOutbox, repositoryProvider));
         }
-        return dirs;
+        return tasks;
     }
 
     private void handleBatchImportResults(List<ObjectCreateOrUpdateTask> tasks, List<Path> objectImportDirs, List<Future<?>> futures) {
