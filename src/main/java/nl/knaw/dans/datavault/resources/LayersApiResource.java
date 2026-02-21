@@ -30,6 +30,10 @@ import static javax.ws.rs.core.Response.Status.CREATED;
 public class LayersApiResource implements LayersApi {
     private final LayeredItemStore layeredItemStore;
 
+    /*
+     * The @UnitOfWork annotation will do no good here, as the archiving process is off-loaded to a separate thread. The part that interacts with the database is the LayerConsistencyChecker which
+     * is wrapped in a UnitOfWorkAwareProxy on app initialization.
+     */
     @Override
     public Response layersIdArchivePost(Long layerId) {
         try {
