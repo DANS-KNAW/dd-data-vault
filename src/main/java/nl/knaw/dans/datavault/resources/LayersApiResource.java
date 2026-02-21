@@ -23,11 +23,23 @@ import nl.knaw.dans.layerstore.LayeredItemStore;
 import javax.ws.rs.core.Response;
 import java.io.IOException;
 
+import static javax.ws.rs.core.Response.Status.ACCEPTED;
 import static javax.ws.rs.core.Response.Status.CREATED;
 
 @AllArgsConstructor
 public class LayersApiResource implements LayersApi {
     private final LayeredItemStore layeredItemStore;
+
+    @Override
+    public Response layersIdArchivePost(Long layerId) {
+        try {
+            layeredItemStore.archiveLayer(layerId);
+            return Response.status(ACCEPTED).build();
+        }
+        catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.NOT_FOUND).build();
+        }
+    }
 
     @Override
     @UnitOfWork

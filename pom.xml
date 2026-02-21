@@ -38,6 +38,7 @@
         <commons-validator.version>1.7</commons-validator.version>
         <dans-ocfl-extensions.version>1.0.0</dans-ocfl-extensions.version>
         <dd-data-vault-api.version>1.0.0-SNAPSHOT</dd-data-vault-api.version>
+        <dans-layer-store-lib.version>1.0.1-SNAPSHOT</dans-layer-store-lib.version>
         <main-class>nl.knaw.dans.datavault.DdDataVaultApplication</main-class>
     </properties>
 
