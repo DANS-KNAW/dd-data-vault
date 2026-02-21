@@ -214,16 +214,15 @@ public class ImportJobTask implements Runnable {
 
         if (validObjectIdentifierPattern.matcher(objectDirName).matches()) {
             result.setObjectImportDirNameIsValid(true);
-            List<String> versionDirNames = new ArrayList<>();
-            List<String> versionInfoBaseNames = new ArrayList<>();
-            List<Path> unknownEntries = new ArrayList<>();
+            var versionDirNames = new ArrayList<String>();
+            var versionInfoBaseNames = new ArrayList<String>();
+            var unknownEntries = new ArrayList<Path>();
             try (DirectoryStream<Path> versionStream = Files.newDirectoryStream(objectDir)) {
-                for (Path entry : versionStream) {
-                    String name = entry.getFileName().toString();
+                for (var entry : versionStream) {
+                    var name = entry.getFileName().toString();
                     if (isValidObjectVersionImportDirName(name)) {
                         versionDirNames.add(name);
                     } else if (isValidVersionPropertiesFileName(name)) {
-                        // Strip .json extension
                         versionInfoBaseNames.add(name.substring(0, name.length() - ".json".length()));
                     } else {
                         unknownEntries.add(entry);
@@ -234,13 +233,12 @@ public class ImportJobTask implements Runnable {
             var versionDirSet = new HashSet<>(versionDirNames);
             var versionInfoSet = new HashSet<>(versionInfoBaseNames);
             if (!versionDirSet.equals(versionInfoSet)) {
-                // Add all mismatched version directories and info files to invalidVersionDirectories
-                for (String dir : versionDirSet) {
+                for (var dir : versionDirSet) {
                     if (!versionInfoSet.contains(dir)) {
                         result.getInvalidVersionDirectories().add(objectDir.resolve(dir));
                     }
                 }
-                for (String info : versionInfoSet) {
+                for (var info : versionInfoSet) {
                     if (!versionDirSet.contains(info)) {
                         result.getInvalidVersionDirectories().add(objectDir.resolve(info + ".json"));
                     }
@@ -248,6 +246,25 @@ public class ImportJobTask implements Runnable {
             }
             // Add unknown entries
             result.getInvalidVersionDirectories().addAll(unknownEntries);
+
+            // Stricter check: version directories must be a consecutive numeric range
+            if (!versionDirNames.isEmpty()) {
+                var versionNumbers = new ArrayList<Integer>();
+                for (var dirName : versionDirNames) {
+                    try {
+                        versionNumbers.add(Integer.parseInt(dirName.substring(1))); // skip 'v'
+                    } catch (NumberFormatException e) {
+                        result.getInvalidVersionDirectories().add(objectDir.resolve(dirName));
+                    }
+                }
+                versionNumbers.sort(Integer::compareTo);
+                for (int i = 1; i < versionNumbers.size(); i++) {
+                    if (versionNumbers.get(i) != versionNumbers.get(i - 1) + 1) {
+                        // Add all version directories that break the sequence
+                        result.getInvalidVersionDirectories().add(objectDir.resolve("v" + versionNumbers.get(i)));
+                    }
+                }
+            }
         }
         return result;
     }

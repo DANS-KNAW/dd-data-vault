@@ -331,4 +331,47 @@ public class ImportJobTaskTest extends AbstractTestFixture {
         assertThat(testDir.resolve("batchAutoFail")).exists();
     }
 
+    @Test
+    public void run_should_reject_object_with_non_consecutive_versions() throws Exception {
+        // Given
+        var objectDir = testDir.resolve("batchGap").resolve("urn:nbn:nl:ui:13-gap-object");
+        Files.createDirectories(objectDir);
+        Files.createDirectory(objectDir.resolve("v1"));
+        Files.createDirectory(objectDir.resolve("v3")); // v2 is missing
+        Files.writeString(objectDir.resolve("v1.json"), "{}\n");
+        Files.writeString(objectDir.resolve("v3.json"), "{}\n");
+        var outbox = testDir.resolve("outbox");
+        Files.createDirectories(outbox);
+
+        var id = UUID.randomUUID();
+        var importJob = new ImportJob();
+        importJob.setId(id);
+        importJob.setPath(objectDir.getParent().toString());
+        importJob.setSingleObject(false);
+        importJob.setStatus(ImportJob.Status.PENDING);
+
+        var importBatchDao = Mockito.mock(ImportJobDao.class);
+        Mockito.when(importBatchDao.get(id)).thenReturn(importJob);
+
+        // When
+        var task = new ImportJobTask(
+            id,
+            objectDir.getParent(),
+            outbox,
+            importBatchDao,
+            executorService,
+            repositoryProvider,
+            Pattern.compile("urn:nbn:nl:ui:13-.*"),
+            layerThresholdHandler,
+            false
+        );
+        task.run();
+
+        // Then
+        assertThat(importJob.getStatus()).isEqualTo(ImportJob.Status.FAILED);
+        assertThat(importJob.getMessage())
+            .contains("invalid version directories")
+            .contains("v3");
+        assertThat(outbox.resolve("failed/urn:nbn:nl:ui:13-gap-object")).doesNotExist();
+    }
 }
