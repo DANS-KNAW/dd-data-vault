@@ -59,6 +59,7 @@ public class ImportJobTask implements Runnable {
     @Data
     private static class ObjectValidationResult {
         private boolean objectImportDirNameIsValid;
+        private boolean hasNonConsecutiveVersions;
         private final List<Path> invalidVersionDirectories = new ArrayList<>();
     }
 
@@ -221,6 +222,7 @@ public class ImportJobTask implements Runnable {
         log.debug("Validating batch layout for batch directory {}", path);
         List<Path> invalidObjectImportDirectories = new LinkedList<>();
         List<Path> invalidVersionDirectories = new LinkedList<>();
+        List<Path> nonConsecutiveVersionDirs = new LinkedList<>();
 
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(path)) {
             for (Path objectDir : stream) {
@@ -228,26 +230,34 @@ public class ImportJobTask implements Runnable {
                 if (!result.isObjectImportDirNameIsValid()) {
                     invalidObjectImportDirectories.add(objectDir);
                 }
-                else if (!result.getInvalidVersionDirectories().isEmpty()) {
-                    invalidVersionDirectories.addAll(result.getInvalidVersionDirectories());
+                else {
+                    if (!result.getInvalidVersionDirectories().isEmpty()) {
+                        invalidVersionDirectories.addAll(result.getInvalidVersionDirectories());
+                    }
+                    if (result.isHasNonConsecutiveVersions()) {
+                        nonConsecutiveVersionDirs.add(objectDir);
+                    }
                 }
             }
         }
 
-        if (!invalidObjectImportDirectories.isEmpty() || !invalidVersionDirectories.isEmpty()) {
-            List<String> parts = getErrorParts(invalidObjectImportDirectories, invalidVersionDirectories);
+        if (!invalidObjectImportDirectories.isEmpty() || !invalidVersionDirectories.isEmpty() || !nonConsecutiveVersionDirs.isEmpty()) {
+            List<String> parts = getErrorParts(invalidObjectImportDirectories, invalidVersionDirectories, nonConsecutiveVersionDirs);
             throw new IllegalArgumentException("Invalid batch layout: " + String.join(", ", parts));
         }
         log.debug("Batch layout for batch directory {} is valid", path);
     }
 
-    private List<String> getErrorParts(List<Path> invalidObjectDirectories, List<Path> invalidVersionDirectories) {
+    private List<String> getErrorParts(List<Path> invalidObjectDirectories, List<Path> invalidVersionDirectories, List<Path> nonConsecutiveVersionDirs) {
         List<String> parts = new ArrayList<>();
         if (!invalidObjectDirectories.isEmpty()) {
             parts.add("invalid object directories (name must match configured pattern '" + validObjectIdentifierPattern + "'): " + invalidObjectDirectories);
         }
         if (!invalidVersionDirectories.isEmpty()) {
             parts.add("invalid version directories (name must follow vN pattern or be a number, depending on configuration): " + invalidVersionDirectories);
+        }
+        if (!nonConsecutiveVersionDirs.isEmpty()) {
+            parts.add("non-consecutive version directories: " + nonConsecutiveVersionDirs);
         }
         return parts;
     }
@@ -321,11 +331,13 @@ public class ImportJobTask implements Runnable {
                 }
             }
             versionNumbers.sort(Integer::compareTo);
+            boolean foundNonConsecutive = false;
             for (int i = 1; i < versionNumbers.size(); i++) {
                 if (versionNumbers.get(i) != versionNumbers.get(i - 1) + 1) {
-                    result.getInvalidVersionDirectories().add(objectDir.resolve("v" + versionNumbers.get(i)));
+                    foundNonConsecutive = true;
                 }
             }
+            result.setHasNonConsecutiveVersions(foundNonConsecutive);
         }
     }
 

@@ -370,8 +370,7 @@ public class ImportJobTaskTest extends AbstractTestFixture {
         // Then
         assertThat(importJob.getStatus()).isEqualTo(ImportJob.Status.FAILED);
         assertThat(importJob.getMessage())
-            .contains("invalid version directories")
-            .contains("v3");
+            .contains("java.lang.IllegalArgumentException: Invalid batch layout: non-consecutive version directories");
         assertThat(outbox.resolve("failed/urn:nbn:nl:ui:13-gap-object")).doesNotExist();
     }
 }
