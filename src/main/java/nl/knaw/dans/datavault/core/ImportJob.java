@@ -54,9 +54,6 @@ public class ImportJob {
     @Column
     private boolean singleObject;
 
-    @Column
-    private boolean acceptTimestampVersionDirectories;
-
     @Column(nullable = false)
     private OffsetDateTime created;
 

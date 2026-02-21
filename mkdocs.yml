@@ -35,6 +35,9 @@ nav:
 
 extra:
   object_version_properties_ext: https://dans-knaw.github.io/dans-ocfl-extensions/object-version-properties/object-version-properties/
+  config_file_url: https://github.com/DANS-KNAW/dd-data-vault/blob/master/src/main/assembly/dist/cfg/config.yml
+  dans_dev_scripts_url: https://github.com/DANS-KNAW/dans-dev-scripts
+  local_testing_setup: https://dans-knaw.github.io/dans-datastation-architecture/dev-common-practices/#debugging
 
 plugins:
   - markdownextradata

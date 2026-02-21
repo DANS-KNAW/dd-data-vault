@@ -19,7 +19,6 @@ import lombok.Getter;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import nl.knaw.dans.datavault.core.util.TimestampDirectoryComparator;
 import nl.knaw.dans.datavault.core.util.VersionDirectoryComparator;
 
 import java.io.IOException;
@@ -50,8 +49,6 @@ public class ObjectCreateOrUpdateTask implements Runnable {
     @NonNull
     private final RepositoryProvider repositoryProvider;
 
-    private final boolean acceptTimestampVersionDirectories;
-
     @Getter
     private Status status = Status.PENDING;
 
@@ -81,12 +78,12 @@ public class ObjectCreateOrUpdateTask implements Runnable {
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(objectDirectory)) {
             return StreamSupport.stream(stream.spliterator(), false)
                 .filter(Files::isDirectory)
-                .sorted(acceptTimestampVersionDirectories ? TimestampDirectoryComparator.INSTANCE : VersionDirectoryComparator.INSTANCE)
+                .sorted(VersionDirectoryComparator.INSTANCE)
                 .toList();
         }
     }
 
-    private void addVersionsToRepository(List<Path> versions) throws IOException {
+    private void addVersionsToRepository(List<Path> versions) {
         for (var version : versions) {
             var versionName = version.getFileName().toString();
             var objectId = objectDirectory.getFileName().toString();
@@ -97,9 +94,7 @@ public class ObjectCreateOrUpdateTask implements Runnable {
     }
 
     private int parseVersionNumber(String name) {
-        return acceptTimestampVersionDirectories
-            ? Integer.parseInt(name)
-            : Integer.parseInt(name.substring(1));
+        return Integer.parseInt(name.substring(1));
     }
 
     private void moveDirectoryToOutbox(String subdir, Exception exception) throws IOException {

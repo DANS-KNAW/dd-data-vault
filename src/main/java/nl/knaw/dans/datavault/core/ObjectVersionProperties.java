@@ -52,7 +52,6 @@ public class ObjectVersionProperties {
      */
     public void load() throws IOException {
         var propertiesJsonFile = getExtensionDir().resolve(VERSION_PROPERTIES_FILE);
-        itemStore.createDirectory(propertiesJsonFile.getParent().toString());
         if (!itemStore.existsPathLike(propertiesJsonFile.toString())) {
             properties = new HashMap<>();
         }

@@ -100,15 +100,15 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
             throw new IllegalStateException("OCFL repository is not yet started");
         }
         var versionInfoFile = objectVersionDirectory.resolveSibling(objectVersionDirectory.getFileName().toString() + ".json");
-        var reader = createVersionPropertiesReader(versionInfoFile);
+        var reader = createVersionInfoJsonReader(versionInfoFile);
         // Validate custom properties against the storage-root property registry before writing anything
-        propertyRegistryValidator.validate(reader.getCustomProperties());
+        propertyRegistryValidator.validate(reader.getObjectVersionProperties());
 
         // Precompute candidate object_version_properties for the new version and validate against schema
         var ovp = new ObjectVersionProperties(layeredItemStore, ocflStorage.objectRootPath(objectId));
         try {
             ovp.load();
-            reader.getCustomProperties().forEach((key, value) -> ovp.putProperty(version, key, value));
+            reader.getObjectVersionProperties().forEach((key, value) -> ovp.putProperty(version, key, value));
             objectVersionPropertiesValidator.validate(ovp.getProperties());
         }
         catch (IOException e) {
@@ -132,12 +132,12 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
         }
     }
 
-    private VersionPropertiesReader createVersionPropertiesReader(Path versionPropertiesFile) {
+    private VersionInfoJsonReader createVersionInfoJsonReader(Path versionPropertiesFile) {
         try {
-            return new VersionPropertiesReader(versionPropertiesFile);
+            return new VersionInfoJsonReader(versionPropertiesFile);
         }
         catch (IOException e) {
-            throw new RuntimeException("Failed to read version info from " + versionPropertiesFile, e);
+            throw new RuntimeException("Failed to read version info JSON file from " + versionPropertiesFile, e);
         }
     }
 
@@ -250,6 +250,10 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
                     for (Path entry : stream.toList()) {
                         if (Files.isDirectory(entry)) {
                             throw new IllegalStateException("Root docs source path must contain only files, found subdirectory: " + entry.getFileName());
+                        }
+                        if (layeredItemStore.existsPathLike(entry.getFileName().toString())) {
+                            log.info("Skipping root doc file {} because it already exists in the OCFL repository", entry.getFileName());
+                            continue;
                         }
                         var destFileName = entry.getFileName().toString();
                         try (var is = Files.newInputStream(entry)) {
