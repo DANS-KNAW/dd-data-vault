@@ -93,7 +93,7 @@ public class ImportJobTask implements Runnable {
 
     private void createOrUpdateObject() throws IOException {
         checkBatchLayout(batchOrObjectImportDir.getParent());
-        var future = executorService.submit(new ObjectCreateOrUpdateTask(batchOrObjectImportDir, batchOutbox, repositoryProvider, importJob.isAcceptTimestampVersionDirectories()));
+        var future = executorService.submit(new ObjectCreateOrUpdateTask(batchOrObjectImportDir, batchOutbox, repositoryProvider));
         if (checkFuture(future)) {
             success();
             if (autoclean) {
@@ -114,7 +114,7 @@ public class ImportJobTask implements Runnable {
         List<Path> objectImportDirs = new LinkedList<>();
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(batchOrObjectImportDir)) {
             for (Path path : stream) {
-                tasks.add(new ObjectCreateOrUpdateTask(path, batchOutbox, repositoryProvider, importJob.isAcceptTimestampVersionDirectories()));
+                tasks.add(new ObjectCreateOrUpdateTask(path, batchOutbox, repositoryProvider));
                 objectImportDirs.add(path);
             }
         }
@@ -253,20 +253,9 @@ public class ImportJobTask implements Runnable {
     }
 
     private boolean isValidObjectVersionImportDirName(String dirName) {
-        if (importJob.isAcceptTimestampVersionDirectories()) {
-            try {
-                long timestamp = Long.parseLong(dirName);
-                return timestamp >= 0;
-            }
-            catch (NumberFormatException e) {
-                return false;
-            }
-        }
-        else {
-            return dirName.startsWith("v") &&
-                dirName.length() > 1 &&
-                dirName.substring(1).matches("\\d+");
-        }
+        return dirName.startsWith("v") &&
+            dirName.length() > 1 &&
+            dirName.substring(1).matches("\\d+");
     }
 
     private boolean isValidVersionPropertiesFileName(String fileName) {

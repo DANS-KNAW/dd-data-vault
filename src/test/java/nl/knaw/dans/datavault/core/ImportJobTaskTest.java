@@ -48,7 +48,6 @@ public class ImportJobTaskTest extends AbstractTestFixture {
         importJob.setId(id);
         importJob.setPath(simpleObject.getParent().toString());
         importJob.setSingleObject(false);
-        importJob.setAcceptTimestampVersionDirectories(false);
         importJob.setStatus(ImportJob.Status.PENDING);
 
         var importBatchDao = Mockito.mock(ImportJobDao.class);
@@ -88,7 +87,6 @@ public class ImportJobTaskTest extends AbstractTestFixture {
         importJob.setId(id);
         importJob.setPath(simpleObject.getParent().toString());
         importJob.setSingleObject(false);
-        importJob.setAcceptTimestampVersionDirectories(false);
         importJob.setStatus(ImportJob.Status.PENDING);
 
         var importBatchDao = Mockito.mock(ImportJobDao.class);
@@ -129,7 +127,6 @@ public class ImportJobTaskTest extends AbstractTestFixture {
         importJob.setId(id);
         importJob.setPath(invalidObject.getParent().toString());
         importJob.setSingleObject(false);
-        importJob.setAcceptTimestampVersionDirectories(false);
         importJob.setStatus(ImportJob.Status.PENDING);
 
         var importBatchDao = Mockito.mock(ImportJobDao.class);
@@ -172,7 +169,6 @@ public class ImportJobTaskTest extends AbstractTestFixture {
         importJob.setId(id);
         importJob.setPath(testDir.resolve("batch4").toString());
         importJob.setSingleObject(false);
-        importJob.setAcceptTimestampVersionDirectories(false);
         importJob.setStatus(ImportJob.Status.PENDING);
 
         var importBatchDao = Mockito.mock(ImportJobDao.class);
@@ -216,7 +212,6 @@ public class ImportJobTaskTest extends AbstractTestFixture {
         importJob.setId(id);
         importJob.setPath(simpleObject.getParent().toString());
         importJob.setSingleObject(false);
-        importJob.setAcceptTimestampVersionDirectories(false);
         importJob.setStatus(ImportJob.Status.PENDING);
 
         var importBatchDao = Mockito.mock(ImportJobDao.class);
@@ -258,7 +253,6 @@ public class ImportJobTaskTest extends AbstractTestFixture {
         importJob.setId(id);
         importJob.setPath(simpleObject.getParent().toString());
         importJob.setSingleObject(false);
-        importJob.setAcceptTimestampVersionDirectories(false);
         importJob.setStatus(ImportJob.Status.PENDING);
 
         var importBatchDao = Mockito.mock(ImportJobDao.class);
@@ -301,7 +295,6 @@ public class ImportJobTaskTest extends AbstractTestFixture {
         importJob.setId(id);
         importJob.setPath(testDir.resolve("batchAutoFail").toString());
         importJob.setSingleObject(false);
-        importJob.setAcceptTimestampVersionDirectories(false);
         importJob.setStatus(ImportJob.Status.PENDING);
 
         var importBatchDao = Mockito.mock(ImportJobDao.class);
