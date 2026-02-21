@@ -251,6 +251,10 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
                         if (Files.isDirectory(entry)) {
                             throw new IllegalStateException("Root docs source path must contain only files, found subdirectory: " + entry.getFileName());
                         }
+                        if (layeredItemStore.existsPathLike(entry.getFileName().toString())) {
+                            log.info("Skipping root doc file {} because it already exists in the OCFL repository", entry.getFileName());
+                            continue;
+                        }
                         var destFileName = entry.getFileName().toString();
                         try (var is = Files.newInputStream(entry)) {
                             layeredItemStore.writeFile(destFileName, is);
