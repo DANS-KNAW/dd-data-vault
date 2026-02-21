@@ -70,7 +70,9 @@ dataVault:
     # /var/opt/dans.knaw.nl/tmp/data-vault/outbox/batch-1/processed or /var/opt/dans.knaw.nl/tmp/data-vault/outbox/batch-1/failed.
     #
     outbox: data/ingest/outbox
-    autoclean: true
+    # Set to true if you want processed object import directories to be deleted after processing.
+    # In a debugging setting this is probably not what you want.
+    autoclean: false
 
   #
   #
@@ -79,10 +81,11 @@ dataVault:
     workDir: data/ocfl-work
     rootExtensionsSourcePath: etc/ocfl-root-extensions
     rootDocsSourcePath: etc/ocfl-root-docs
-    rootExtensionsInit:
-      - file: property-registry/config.json
-        jsonPath: $.propertyRegistry.dataset-version.required
-        value: true
+#  Uncomment if you want to test with 'dataset-version' as a required property.
+#    rootExtensionsInit:
+#      - file: property-registry/config.json
+#        jsonPath: $.propertyRegistry.dataset-version.required
+#        value: true
 
   #
   # Settings for the layer store in which the data vault stores its data.

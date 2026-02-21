@@ -29,6 +29,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 public class VersionPropertiesReader {
     private static final String MAILTO_PREFIX = "mailto:";
@@ -128,8 +130,8 @@ public class VersionPropertiesReader {
         return node.asText();
     }
 
-    private static java.util.stream.Stream<Map.Entry<String, JsonNode>> iterableToStream(java.util.Iterator<Map.Entry<String, JsonNode>> it) {
+    private static Stream<Entry<String, JsonNode>> iterableToStream(java.util.Iterator<Map.Entry<String, JsonNode>> it) {
         Iterable<Map.Entry<String, JsonNode>> iterable = () -> it;
-        return java.util.stream.StreamSupport.stream(iterable.spliterator(), false);
+        return StreamSupport.stream(iterable.spliterator(), false);
     }
 }
