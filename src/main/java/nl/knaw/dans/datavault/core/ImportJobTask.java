@@ -277,6 +277,15 @@ public class ImportJobTask implements Runnable {
                 result.getInvalidVersionDirectories().add(unknown + ": unknown entry");
             }
             addNonConsecutiveVersionDirs(objectImportDir, versionDirNames, result);
+            // Validate that every version properties JSON file can be loaded by VersionPropertiesReader
+            for (var baseName : versionInfoBaseNames) {
+                var jsonFile = objectImportDir.resolve(baseName + ".json");
+                try {
+                    new VersionPropertiesReader(jsonFile); // Constructor validates file
+                } catch (Exception e) {
+                    result.getInvalidVersionDirectories().add(jsonFile + ": invalid version properties JSON file: " + e.getClass().getSimpleName() + ": " + e.getMessage());
+                }
+            }
         } else {
             result.setHasInvalidObjectImportDirName(true);
         }

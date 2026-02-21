@@ -1,5 +1,13 @@
 {
-  "version": 2,
-  "info": "dummy info for v2"
+  "version-info": {
+    "user": {
+      "name": "Test User",
+      "email": "test.user@example.com"
+    },
+    "message": "Test commit message"
+  },
+  "object-version-properties": {
+    "dataset-version": "2.0",
+    "packaging-format": "DANS RDA BagPack/1.0.0"
+  }
 }
-

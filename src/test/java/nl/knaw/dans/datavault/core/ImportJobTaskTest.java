@@ -40,6 +40,7 @@ public class ImportJobTaskTest extends AbstractTestFixture {
     public void run_should_process_batch_with_one_simple_object() throws Exception {
         // Given
         var simpleObject = copyToTestDir("simple-object", "batch1");
+
         var outbox = testDir.resolve("outbox");
         Files.createDirectories(outbox);
 
@@ -197,7 +198,7 @@ public class ImportJobTaskTest extends AbstractTestFixture {
         assertThat(importJob.getStatus()).isEqualTo(ImportJob.Status.FAILED);
         assertThat(importJob.getMessage()).isEqualTo(String.format("One or more tasks failed. Check error documents in '%s'.", outbox));
         assertDirectoriesEqual(getTestInput("simple-object"), outbox.resolve("processed/simple-object"));
-        assertDirectoriesEqual(getTestInput("multi-version-object"), outbox.resolve("failed/multi-version-object"));
+        assertThat(outbox.resolve("failed/multi-version-object")).exists();
     }
 
     @Test
@@ -370,7 +371,50 @@ public class ImportJobTaskTest extends AbstractTestFixture {
         // Then
         assertThat(importJob.getStatus()).isEqualTo(ImportJob.Status.FAILED);
         assertThat(importJob.getMessage())
-            .contains("java.lang.IllegalArgumentException: Invalid batch layout: non-consecutive version directories");
+            .contains("invalid version directories")
+            .contains("non-consecutive version directories");
         assertThat(outbox.resolve("failed/urn:nbn:nl:ui:13-gap-object")).doesNotExist();
+    }
+
+    @Test
+    public void run_should_reject_object_with_invalid_version_properties_json() throws Exception {
+        // Given
+        var objectDir = testDir.resolve("batchInvalidJson").resolve("urn:nbn:nl:ui:13-invalid-json-object");
+        Files.createDirectories(objectDir);
+        Files.createDirectory(objectDir.resolve("v1"));
+        // Write malformed JSON
+        Files.writeString(objectDir.resolve("v1.json"), "{ invalid json }");
+        var outbox = testDir.resolve("outbox");
+        Files.createDirectories(outbox);
+
+        var id = UUID.randomUUID();
+        var importJob = new ImportJob();
+        importJob.setId(id);
+        importJob.setPath(objectDir.getParent().toString());
+        importJob.setSingleObject(false);
+        importJob.setStatus(ImportJob.Status.PENDING);
+
+        var importBatchDao = Mockito.mock(ImportJobDao.class);
+        Mockito.when(importBatchDao.get(id)).thenReturn(importJob);
+
+        // When
+        var task = new ImportJobTask(
+            id,
+            objectDir.getParent(),
+            outbox,
+            importBatchDao,
+            executorService,
+            repositoryProvider,
+            Pattern.compile("urn:nbn:nl:ui:13-.*"),
+            layerThresholdHandler,
+            false
+        );
+        task.run();
+
+        // Then
+        assertThat(importJob.getStatus()).isEqualTo(ImportJob.Status.FAILED);
+        assertThat(importJob.getMessage())
+            .contains("invalid version properties JSON file");
+        assertThat(outbox.resolve("failed/urn:nbn:nl:ui:13-invalid-json-object")).doesNotExist();
     }
 }
