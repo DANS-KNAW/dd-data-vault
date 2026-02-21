@@ -39,7 +39,8 @@ This service has the following interfaces:
 
 * _Protocol type_: Local command invocation
 * _Internal or external_: **external**
-* _Purpose_: to create DMFTAR archives in the [SURF Data Archive]{:target=_blank}
+* _Purpose_: to create DMFTAR archives in the [SURF Data Archive]{:target=_blank}. This interface is optional because it is only used if the DMFTAR
+  archive provider has been configured. (The other archive providers use Java code to create the archives and do not require an external interface.)
 
 ### Object Import Directories
 
