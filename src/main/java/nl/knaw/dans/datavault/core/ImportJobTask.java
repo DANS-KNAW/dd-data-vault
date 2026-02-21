@@ -58,7 +58,7 @@ public class ImportJobTask implements Runnable {
 
     @Data
     private static class ObjectValidationResult {
-        private boolean objectImportDirNameIsValid;
+        private boolean hasInvalidObjectImportDirName;
         private boolean hasNonConsecutiveVersions;
         private final List<Path> invalidVersionDirectories = new ArrayList<>();
     }
@@ -227,7 +227,7 @@ public class ImportJobTask implements Runnable {
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(path)) {
             for (Path objectDir : stream) {
                 var result = validateObjectImportDirectoryLayout(objectDir);
-                if (!result.isObjectImportDirNameIsValid()) {
+                if (result.isHasInvalidObjectImportDirName()) {
                     invalidObjectImportDirectories.add(objectDir);
                 }
                 else {
@@ -267,7 +267,6 @@ public class ImportJobTask implements Runnable {
         String objectImportDirName = objectImportDir.getFileName().toString();
 
         if (validObjectIdentifierPattern.matcher(objectImportDirName).matches()) {
-            result.setObjectImportDirNameIsValid(true);
             var entryClassification = classifyObjectDirEntries(objectImportDir);
             var versionDirNames = entryClassification.versionDirNames;
             var versionInfoBaseNames = entryClassification.versionInfoBaseNames;
@@ -276,6 +275,8 @@ public class ImportJobTask implements Runnable {
             addSetMismatchInvalidEntries(objectImportDir, versionDirNames, versionInfoBaseNames, result);
             result.getInvalidVersionDirectories().addAll(unknownEntries);
             addNonConsecutiveVersionDirs(objectImportDir, versionDirNames, result);
+        } else {
+            result.setHasInvalidObjectImportDirName(true);
         }
         return result;
     }
@@ -335,6 +336,7 @@ public class ImportJobTask implements Runnable {
             for (int i = 1; i < versionNumbers.size(); i++) {
                 if (versionNumbers.get(i) != versionNumbers.get(i - 1) + 1) {
                     foundNonConsecutive = true;
+                    break;
                 }
             }
             result.setHasNonConsecutiveVersions(foundNonConsecutive);
