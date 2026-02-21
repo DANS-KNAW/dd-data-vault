@@ -1,3 +1,6 @@
+#
+# dd-data-vault configuration file
+#
 server:
   applicationContextPath: /
   adminContextPath: /
@@ -7,17 +10,22 @@ server:
   adminConnectors:
     - type: http
       port: 20366
+  requestLog:
+    appenders:
+      - type: file
+        archive: false
+        timeZone: system
+        currentLogFilename: data/request.log
 
 database:
   driverClass: org.postgresql.Driver
-  logValidationErrors: true
-  properties:
-    hibernate.dialect: org.hibernate.dialect.PostgreSQL95Dialect
-    hibernate.hbm2ddl.auto: update
   url: jdbc:postgresql://dev.transfer.dans-data.nl:5432/dd_data_vault_local_test
   user: dd_data_vault_local_test
   password: dd_data_vault_local_test
-
+  logValidationErrors: true
+  properties:
+    hibernate.dialect: 'org.hibernate.dialect.PostgreSQL95Dialect'
+    hibernate.hbm2ddl.auto: update
 
 #database:
 #  driverClass: org.hsqldb.jdbcDriver
@@ -28,6 +36,17 @@ database:
 #  properties:
 #    hibernate.dialect: 'org.hibernate.dialect.HSQLDialect'
 #    hibernate.hbm2ddl.auto: update
+
+
+executorService:
+  nameFormat: "create-or-update-object-worker-%d"
+  maxQueueSize: 5000
+  # Number of threads will be increased when maxQueueSize is exceeded.
+  minThreads: 2
+  # No more than maxThreads will be created though
+  maxThreads: 5
+  # Threads will die after 60 seconds of idleness
+  keepAliveTime: 60 seconds
 
 dataVault:
   #
@@ -53,7 +72,6 @@ dataVault:
     outbox: data/ingest/outbox
     autoclean: true
 
-
   #
   #
   #
@@ -61,6 +79,10 @@ dataVault:
     workDir: data/ocfl-work
     rootExtensionsSourcePath: etc/ocfl-root-extensions
     rootDocsSourcePath: etc/ocfl-root-docs
+    rootExtensionsInit:
+      - file: property-registry/config.json
+        jsonPath: $.propertyRegistry.dataset-version.required
+        value: true
 
   #
   # Settings for the layer store in which the data vault stores its data.
@@ -86,7 +108,6 @@ dataVault:
     #
     layerArchivingThreshold: 1G
 
-
     #   type: ZIP
     #   archiveRoot: data/vault/archive
 
@@ -109,16 +130,14 @@ dataVault:
       # How often to poll for scheduled consistency checks. The oldest unfinished check will be executed.
       pollingInterval: 10 seconds
 
-executorService:
-  nameFormat: "create-or-update-object-worker-%d"
-  maxQueueSize: 5000
-  # Number of threads will be increased when maxQueueSize is exceeded.
-  minThreads: 2
-  # No more than maxThreads will be created though
-  maxThreads: 5
-  # Threads will die after 60 seconds of idleness
-  keepAliveTime: 60 seconds
-
+    #
+    # The consistency checks to perform on service startup.
+    #
+    initChecks:
+      # Check that the layer IDs found in the database are the same as the ones found on storage. This may be slow if the layers are stored on a remote storage.
+      layerIds: true
+      # Check that the listing records for the top layer found in the database correspond one-to-one with entries in that layer.
+      topLayerListingRecords: true
 
 
 #

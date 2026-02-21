@@ -60,7 +60,7 @@ public class ImportJobTask implements Runnable {
     private static class ObjectValidationResult {
         private boolean hasInvalidObjectImportDirName;
         private boolean hasNonConsecutiveVersions;
-        private final List<Path> invalidVersionDirectories = new ArrayList<>();
+        private final List<String> invalidVersionDirectories = new ArrayList<>(); // Now stores error messages with reasons
     }
 
     @UnitOfWork
@@ -221,7 +221,7 @@ public class ImportJobTask implements Runnable {
     private void checkBatchLayout(Path path) throws IOException {
         log.debug("Validating batch layout for batch directory {}", path);
         List<Path> invalidObjectImportDirectories = new LinkedList<>();
-        List<Path> invalidVersionDirectories = new LinkedList<>();
+        List<String> invalidVersionDirectories = new LinkedList<>();
         List<Path> nonConsecutiveVersionDirs = new LinkedList<>();
 
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(path)) {
@@ -248,13 +248,13 @@ public class ImportJobTask implements Runnable {
         log.debug("Batch layout for batch directory {} is valid", path);
     }
 
-    private List<String> getErrorParts(List<Path> invalidObjectDirectories, List<Path> invalidVersionDirectories, List<Path> nonConsecutiveVersionDirs) {
+    private List<String> getErrorParts(List<Path> invalidObjectDirectories, List<String> invalidVersionDirectories, List<Path> nonConsecutiveVersionDirs) {
         List<String> parts = new ArrayList<>();
         if (!invalidObjectDirectories.isEmpty()) {
             parts.add("invalid object directories (name must match configured pattern '" + validObjectIdentifierPattern + "'): " + invalidObjectDirectories);
         }
         if (!invalidVersionDirectories.isEmpty()) {
-            parts.add("invalid version directories (name must follow vN pattern or be a number, depending on configuration): " + invalidVersionDirectories);
+            parts.add("invalid version directories: " + invalidVersionDirectories);
         }
         if (!nonConsecutiveVersionDirs.isEmpty()) {
             parts.add("non-consecutive version directories: " + nonConsecutiveVersionDirs);
@@ -273,7 +273,9 @@ public class ImportJobTask implements Runnable {
             var unknownEntries = entryClassification.unknownEntries;
 
             addSetMismatchInvalidEntries(objectImportDir, versionDirNames, versionInfoBaseNames, result);
-            result.getInvalidVersionDirectories().addAll(unknownEntries);
+            for (var unknown : unknownEntries) {
+                result.getInvalidVersionDirectories().add(unknown + ": unknown entry");
+            }
             addNonConsecutiveVersionDirs(objectImportDir, versionDirNames, result);
         } else {
             result.setHasInvalidObjectImportDirName(true);
@@ -310,12 +312,12 @@ public class ImportJobTask implements Runnable {
         if (!versionDirSet.equals(versionInfoSet)) {
             for (var dir : versionDirSet) {
                 if (!versionInfoSet.contains(dir)) {
-                    result.getInvalidVersionDirectories().add(objectDir.resolve(dir));
+                    result.getInvalidVersionDirectories().add(objectDir.resolve(dir) + ": missing version info JSON file");
                 }
             }
             for (var info : versionInfoSet) {
                 if (!versionDirSet.contains(info)) {
-                    result.getInvalidVersionDirectories().add(objectDir.resolve(info + ".json"));
+                    result.getInvalidVersionDirectories().add(objectDir.resolve(info + ".json") + ": missing version directory");
                 }
             }
         }
@@ -328,7 +330,7 @@ public class ImportJobTask implements Runnable {
                 try {
                     versionNumbers.add(Integer.parseInt(dirName.substring(1))); // skip 'v'
                 } catch (NumberFormatException e) {
-                    result.getInvalidVersionDirectories().add(objectDir.resolve(dirName));
+                    result.getInvalidVersionDirectories().add(objectDir.resolve(dirName) + ": invalid version directory name");
                 }
             }
             versionNumbers.sort(Integer::compareTo);
