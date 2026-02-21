@@ -69,88 +69,132 @@ public class ImportJobTask implements Runnable {
         importJob.setStarted(OffsetDateTime.now());
         log.info("Starting import batch task {}", id);
         try {
-            if (importJob.isSingleObject()) {
-                createOrUpdateObject();
-            }
-            else {
-                createOrUpdateObjects();
-            }
+            processImportJob();
         }
         catch (IllegalArgumentException e) {
-            log.error("Invalid batch layout for batch directory {}. Leaving input in place.", importJob.getPath(), e);
-            failed(e.getClass().getName() + ": " + e.getMessage());
+            handleBatchLayoutError(e);
         }
         catch (Exception e) {
-            log.error("Error processing import batch {}", id, e);
-            failed(e.getClass().getName() + ": " + e.getMessage());
+            handleProcessingError(e);
         }
         finally {
-            importJob.setFinished(OffsetDateTime.now());
-            importJobDao.update(importJob);
+            finishImportJob();
         }
         log.info("Import batch task {} finished", id);
     }
 
-    private void createOrUpdateObject() throws IOException {
+    private void processImportJob() throws IOException, InterruptedException {
+        if (importJob.isSingleObject()) {
+            processSingleObjectImport();
+        } else {
+            processBatchObjectImport();
+        }
+    }
+
+    private void handleBatchLayoutError(IllegalArgumentException e) {
+        log.error("Invalid batch layout for batch directory {}. Leaving input in place.", importJob.getPath(), e);
+        failed(e.getClass().getName() + ": " + e.getMessage());
+    }
+
+    private void handleProcessingError(Exception e) {
+        log.error("Error processing import batch {}", id, e);
+        failed(e.getClass().getName() + ": " + e.getMessage());
+    }
+
+    private void finishImportJob() {
+        importJob.setFinished(OffsetDateTime.now());
+        importJobDao.update(importJob);
+    }
+
+    private void processSingleObjectImport() throws IOException {
         checkBatchLayout(batchOrObjectImportDir.getParent());
         var future = executorService.submit(new ObjectCreateOrUpdateTask(batchOrObjectImportDir, batchOutbox, repositoryProvider));
+        handleObjectImportResult(future);
+    }
+
+    private void handleObjectImportResult(Future<?> future) {
         if (checkFuture(future)) {
             success();
             if (autoclean) {
-                // object directory was moved to outbox/processed; delete the processed entry
-                deleteSilently(batchOutbox.resolve("processed").resolve(batchOrObjectImportDir.getFileName()));
-                // And if the whole batch corresponds to a single object directory, clean the batch directories
+                cleanProcessedObject(batchOrObjectImportDir);
                 deleteBatchDirsIfSucceeded();
             }
-        }
-        else {
+        } else {
             failed("Updated failed. Check error documents in '" + batchOutbox + "'.");
         }
     }
 
-    private void createOrUpdateObjects() throws IOException, InterruptedException {
+    private void processBatchObjectImport() throws IOException, InterruptedException {
         checkBatchLayout(batchOrObjectImportDir);
-        List<ObjectCreateOrUpdateTask> tasks = new LinkedList<>();
-        List<Path> objectImportDirs = new LinkedList<>();
-        try (DirectoryStream<Path> stream = Files.newDirectoryStream(batchOrObjectImportDir)) {
+        var tasks = createObjectTasks(batchOrObjectImportDir);
+        var objectImportDirs = getObjectImportDirs(batchOrObjectImportDir);
+        log.info("Starting {} tasks for batch directory {}", tasks.size(), batchOrObjectImportDir);
+        @SuppressWarnings("unchecked")
+        var futures = (List<Future<?>>)(List<?>)executorService.invokeAll(tasks.stream().map(Executors::callable).toList());
+        handleBatchImportResults(tasks, objectImportDirs, futures);
+    }
+
+    private List<ObjectCreateOrUpdateTask> createObjectTasks(Path batchDir) throws IOException {
+        var tasks = new LinkedList<ObjectCreateOrUpdateTask>();
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(batchDir)) {
             for (Path path : stream) {
                 tasks.add(new ObjectCreateOrUpdateTask(path, batchOutbox, repositoryProvider));
-                objectImportDirs.add(path);
             }
         }
-        log.info("Starting {} tasks for batch directory {}", tasks.size(), batchOrObjectImportDir);
-        var futures = executorService.invokeAll(tasks.stream().map(Executors::callable).toList());
+        return tasks;
+    }
 
+    private List<Path> getObjectImportDirs(Path batchDir) throws IOException {
+        var dirs = new LinkedList<Path>();
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(batchDir)) {
+            for (Path path : stream) {
+                dirs.add(path);
+            }
+        }
+        return dirs;
+    }
+
+    private void handleBatchImportResults(List<ObjectCreateOrUpdateTask> tasks, List<Path> objectImportDirs, List<Future<?>> futures) {
         if (futures.stream().allMatch(this::checkFuture)) {
             if (tasks.stream().allMatch(task -> task.getStatus() == ObjectCreateOrUpdateTask.Status.SUCCESS)) {
                 success();
                 log.info("All tasks for batch directory {} finished successfully", batchOrObjectImportDir);
-                layerThresholdHandler.newTopLayerIfThresholdReached();
+                try {
+                    layerThresholdHandler.newTopLayerIfThresholdReached();
+                } catch (IOException e) {
+                    log.error("Error updating top layer after threshold reached", e);
+                }
                 if (autoclean) {
-                    for (var objectImportDir : objectImportDirs) {
-                        // object directories were moved to outbox/processed; delete the processed entries
-                        deleteSilently(batchOutbox.resolve("processed").resolve(objectImportDir.getFileName()));
-                    }
-                    // remove entire batch directories from inbox and outbox
+                    cleanProcessedObjects(objectImportDirs);
                     deleteBatchDirsIfSucceeded();
                 }
-            }
-            else {
-                // Some tasks failed. With autoclean on, delete processed entries for successful objects only.
+            } else {
                 if (autoclean) {
-                    for (int i = 0; i < tasks.size(); i++) {
-                        var task = tasks.get(i);
-                        if (task.getStatus() == ObjectCreateOrUpdateTask.Status.SUCCESS) {
-                            var objectImportDir = objectImportDirs.get(i);
-                            deleteSilently(batchOutbox.resolve("processed").resolve(objectImportDir.getFileName()));
-                        }
-                    }
+                    cleanSuccessfulProcessedObjects(tasks, objectImportDirs);
                 }
                 failed("One or more tasks failed. Check error documents in '" + batchOutbox + "'.");
             }
-        }
-        else {
+        } else {
             failed("One or more tasks threw an exception. Check the logs for more information.");
+        }
+    }
+
+    private void cleanProcessedObject(Path objectImportDir) {
+        deleteSilently(batchOutbox.resolve("processed").resolve(objectImportDir.getFileName()));
+    }
+
+    private void cleanProcessedObjects(List<Path> objectImportDirs) {
+        for (var objectImportDir : objectImportDirs) {
+            cleanProcessedObject(objectImportDir);
+        }
+    }
+
+    private void cleanSuccessfulProcessedObjects(List<ObjectCreateOrUpdateTask> tasks, List<Path> objectImportDirs) {
+        for (int i = 0; i < tasks.size(); i++) {
+            var task = tasks.get(i);
+            if (task.getStatus() == ObjectCreateOrUpdateTask.Status.SUCCESS) {
+                cleanProcessedObject(objectImportDirs.get(i));
+            }
         }
     }
 
@@ -175,14 +219,14 @@ public class ImportJobTask implements Runnable {
 
     private void checkBatchLayout(Path path) throws IOException {
         log.debug("Validating batch layout for batch directory {}", path);
-        List<Path> invalidObjectDirectories = new LinkedList<>();
+        List<Path> invalidObjectImportDirectories = new LinkedList<>();
         List<Path> invalidVersionDirectories = new LinkedList<>();
 
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(path)) {
             for (Path objectDir : stream) {
                 var result = validateObjectImportDirectoryLayout(objectDir);
                 if (!result.isObjectImportDirNameIsValid()) {
-                    invalidObjectDirectories.add(objectDir);
+                    invalidObjectImportDirectories.add(objectDir);
                 }
                 else if (!result.getInvalidVersionDirectories().isEmpty()) {
                     invalidVersionDirectories.addAll(result.getInvalidVersionDirectories());
@@ -190,8 +234,8 @@ public class ImportJobTask implements Runnable {
             }
         }
 
-        if (!invalidObjectDirectories.isEmpty() || !invalidVersionDirectories.isEmpty()) {
-            List<String> parts = getErrorParts(invalidObjectDirectories, invalidVersionDirectories);
+        if (!invalidObjectImportDirectories.isEmpty() || !invalidVersionDirectories.isEmpty()) {
+            List<String> parts = getErrorParts(invalidObjectImportDirectories, invalidVersionDirectories);
             throw new IllegalArgumentException("Invalid batch layout: " + String.join(", ", parts));
         }
         log.debug("Batch layout for batch directory {} is valid", path);
@@ -208,65 +252,81 @@ public class ImportJobTask implements Runnable {
         return parts;
     }
 
-    private ObjectValidationResult validateObjectImportDirectoryLayout(Path objectDir) throws IOException {
-        var result = new ObjectValidationResult();
-        String objectDirName = objectDir.getFileName().toString();
+    private ObjectValidationResult validateObjectImportDirectoryLayout(Path objectImportDir) throws IOException {
+        var result = new ObjectValidationResult(); // Invalid to start with
+        String objectImportDirName = objectImportDir.getFileName().toString();
 
-        if (validObjectIdentifierPattern.matcher(objectDirName).matches()) {
+        if (validObjectIdentifierPattern.matcher(objectImportDirName).matches()) {
             result.setObjectImportDirNameIsValid(true);
-            var versionDirNames = new ArrayList<String>();
-            var versionInfoBaseNames = new ArrayList<String>();
-            var unknownEntries = new ArrayList<Path>();
-            try (DirectoryStream<Path> versionStream = Files.newDirectoryStream(objectDir)) {
-                for (var entry : versionStream) {
-                    var name = entry.getFileName().toString();
-                    if (isValidObjectVersionImportDirName(name)) {
-                        versionDirNames.add(name);
-                    } else if (isValidVersionPropertiesFileName(name)) {
-                        versionInfoBaseNames.add(name.substring(0, name.length() - ".json".length()));
-                    } else {
-                        unknownEntries.add(entry);
-                    }
-                }
-            }
-            // Sets must match exactly
-            var versionDirSet = new HashSet<>(versionDirNames);
-            var versionInfoSet = new HashSet<>(versionInfoBaseNames);
-            if (!versionDirSet.equals(versionInfoSet)) {
-                for (var dir : versionDirSet) {
-                    if (!versionInfoSet.contains(dir)) {
-                        result.getInvalidVersionDirectories().add(objectDir.resolve(dir));
-                    }
-                }
-                for (var info : versionInfoSet) {
-                    if (!versionDirSet.contains(info)) {
-                        result.getInvalidVersionDirectories().add(objectDir.resolve(info + ".json"));
-                    }
-                }
-            }
-            // Add unknown entries
-            result.getInvalidVersionDirectories().addAll(unknownEntries);
+            var entryClassification = classifyObjectDirEntries(objectImportDir);
+            var versionDirNames = entryClassification.versionDirNames;
+            var versionInfoBaseNames = entryClassification.versionInfoBaseNames;
+            var unknownEntries = entryClassification.unknownEntries;
 
-            // Stricter check: version directories must be a consecutive numeric range
-            if (!versionDirNames.isEmpty()) {
-                var versionNumbers = new ArrayList<Integer>();
-                for (var dirName : versionDirNames) {
-                    try {
-                        versionNumbers.add(Integer.parseInt(dirName.substring(1))); // skip 'v'
-                    } catch (NumberFormatException e) {
-                        result.getInvalidVersionDirectories().add(objectDir.resolve(dirName));
-                    }
-                }
-                versionNumbers.sort(Integer::compareTo);
-                for (int i = 1; i < versionNumbers.size(); i++) {
-                    if (versionNumbers.get(i) != versionNumbers.get(i - 1) + 1) {
-                        // Add all version directories that break the sequence
-                        result.getInvalidVersionDirectories().add(objectDir.resolve("v" + versionNumbers.get(i)));
-                    }
+            addSetMismatchInvalidEntries(objectImportDir, versionDirNames, versionInfoBaseNames, result);
+            result.getInvalidVersionDirectories().addAll(unknownEntries);
+            addNonConsecutiveVersionDirs(objectImportDir, versionDirNames, result);
+        }
+        return result;
+    }
+
+    private static class EntryClassification {
+        List<String> versionDirNames = new ArrayList<>();
+        List<String> versionInfoBaseNames = new ArrayList<>();
+        List<Path> unknownEntries = new ArrayList<>();
+    }
+
+    private EntryClassification classifyObjectDirEntries(Path objectDir) throws IOException {
+        var classification = new EntryClassification();
+        try (DirectoryStream<Path> versionStream = Files.newDirectoryStream(objectDir)) {
+            for (var entry : versionStream) {
+                var name = entry.getFileName().toString();
+                if (isValidObjectVersionImportDirName(name)) {
+                    classification.versionDirNames.add(name);
+                } else if (isValidVersionPropertiesFileName(name)) {
+                    classification.versionInfoBaseNames.add(name.substring(0, name.length() - ".json".length()));
+                } else {
+                    classification.unknownEntries.add(entry);
                 }
             }
         }
-        return result;
+        return classification;
+    }
+
+    private void addSetMismatchInvalidEntries(Path objectDir, List<String> versionDirNames, List<String> versionInfoBaseNames, ObjectValidationResult result) {
+        var versionDirSet = new HashSet<>(versionDirNames);
+        var versionInfoSet = new HashSet<>(versionInfoBaseNames);
+        if (!versionDirSet.equals(versionInfoSet)) {
+            for (var dir : versionDirSet) {
+                if (!versionInfoSet.contains(dir)) {
+                    result.getInvalidVersionDirectories().add(objectDir.resolve(dir));
+                }
+            }
+            for (var info : versionInfoSet) {
+                if (!versionDirSet.contains(info)) {
+                    result.getInvalidVersionDirectories().add(objectDir.resolve(info + ".json"));
+                }
+            }
+        }
+    }
+
+    private void addNonConsecutiveVersionDirs(Path objectDir, List<String> versionDirNames, ObjectValidationResult result) {
+        if (!versionDirNames.isEmpty()) {
+            var versionNumbers = new ArrayList<Integer>();
+            for (var dirName : versionDirNames) {
+                try {
+                    versionNumbers.add(Integer.parseInt(dirName.substring(1))); // skip 'v'
+                } catch (NumberFormatException e) {
+                    result.getInvalidVersionDirectories().add(objectDir.resolve(dirName));
+                }
+            }
+            versionNumbers.sort(Integer::compareTo);
+            for (int i = 1; i < versionNumbers.size(); i++) {
+                if (versionNumbers.get(i) != versionNumbers.get(i - 1) + 1) {
+                    result.getInvalidVersionDirectories().add(objectDir.resolve("v" + versionNumbers.get(i)));
+                }
+            }
+        }
     }
 
     private boolean isValidObjectVersionImportDirName(String dirName) {
