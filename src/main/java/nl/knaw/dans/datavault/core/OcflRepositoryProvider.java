@@ -100,7 +100,7 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
             throw new IllegalStateException("OCFL repository is not yet started");
         }
         var versionInfoFile = objectVersionDirectory.resolveSibling(objectVersionDirectory.getFileName().toString() + ".json");
-        var reader = createVersionPropertiesReader(versionInfoFile);
+        var reader = createVersionInfoJsonReader(versionInfoFile);
         // Validate custom properties against the storage-root property registry before writing anything
         propertyRegistryValidator.validate(reader.getObjectVersionProperties());
 
@@ -132,12 +132,12 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
         }
     }
 
-    private VersionPropertiesReader createVersionPropertiesReader(Path versionPropertiesFile) {
+    private VersionInfoJsonReader createVersionInfoJsonReader(Path versionPropertiesFile) {
         try {
-            return new VersionPropertiesReader(versionPropertiesFile);
+            return new VersionInfoJsonReader(versionPropertiesFile);
         }
         catch (IOException e) {
-            throw new RuntimeException("Failed to read version info from " + versionPropertiesFile, e);
+            throw new RuntimeException("Failed to read version info JSON file from " + versionPropertiesFile, e);
         }
     }
 

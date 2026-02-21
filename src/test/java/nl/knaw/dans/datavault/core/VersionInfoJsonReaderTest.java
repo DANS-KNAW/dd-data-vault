@@ -22,14 +22,14 @@ import java.nio.file.Files;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-public class VersionPropertiesReaderTest extends AbstractTestFixture {
+public class VersionInfoJsonReaderTest extends AbstractTestFixture {
 
     @Test
     public void should_read_version_info_from_properties_file() throws Exception {
         // Given
         var json = """
-            { 
-               "version-info" : {
+            {
+               "version-info": {
                      "user": {
                         "name": "Test User",
                         "email": "test.user@mail.com"
@@ -38,11 +38,11 @@ public class VersionPropertiesReaderTest extends AbstractTestFixture {
                }
             }
             """;
-        var v1Json = testDir.resolve("v1.json");
+        var v1Json = testDir.resolve("v1.json"); // version info JSON file
         Files.writeString(v1Json, json);
 
         // When
-        var info = new VersionPropertiesReader(v1Json).getVersionInfo();
+        var info = new VersionInfoJsonReader(v1Json).getVersionInfo();
 
         // Then
         assertThat(info.getUser().getName()).isEqualTo("Test User");
@@ -68,7 +68,7 @@ public class VersionPropertiesReaderTest extends AbstractTestFixture {
         Files.writeString(v1Json, json);
 
         // When
-        var info = new VersionPropertiesReader(v1Json).getVersionInfo();
+        var info = new VersionInfoJsonReader(v1Json).getVersionInfo();
 
         // Then
         assertThat(info.getUser().getName()).isEqualTo("Test User");
@@ -95,7 +95,7 @@ public class VersionPropertiesReaderTest extends AbstractTestFixture {
 
         // When / Then
         var ex = assertThrows(IllegalArgumentException.class, () -> {
-            new VersionPropertiesReader(v1Json).getVersionInfo();
+            new VersionInfoJsonReader(v1Json).getVersionInfo();
         });
         assertThat(ex.getMessage()).isEqualTo("Invalid email address: mailto:invalid-email");
     }
@@ -123,7 +123,7 @@ public class VersionPropertiesReaderTest extends AbstractTestFixture {
         Files.writeString(vJson, json);
 
         // When
-        var reader = new VersionPropertiesReader(vJson);
+        var reader = new VersionInfoJsonReader(vJson);
         var customProps = reader.getObjectVersionProperties();
 
         // Then
@@ -150,7 +150,7 @@ public class VersionPropertiesReaderTest extends AbstractTestFixture {
         Files.writeString(vJson, json);
 
         // When
-        var reader = new VersionPropertiesReader(vJson);
+        var reader = new VersionInfoJsonReader(vJson);
         var customProps = reader.getObjectVersionProperties();
 
         // Then
@@ -161,8 +161,8 @@ public class VersionPropertiesReaderTest extends AbstractTestFixture {
     public void should_throw_exception_for_unknown_property() throws Exception {
         // Given
         var json = """
-            { 
-               "version-info" : {
+            {
+               "version-info": {
                      "user": {
                         "name": "Test User"
                      },
@@ -172,14 +172,14 @@ public class VersionPropertiesReaderTest extends AbstractTestFixture {
             }
             """;
 
-        var v2Json = testDir.resolve("v2.json");
+        var v2Json = testDir.resolve("v2.json"); // version info JSON file
         Files.writeString(v2Json, json);
 
         // When / Then
         var ex = assertThrows(IllegalArgumentException.class, () -> {
-            new VersionPropertiesReader(v2Json).getVersionInfo();
+            new VersionInfoJsonReader(v2Json).getVersionInfo();
         });
-        assertThat(ex.getMessage()).isEqualTo("Unknown property in version properties JSON file: unknown.property");
+        assertThat(ex.getMessage()).isEqualTo("Unknown property in version info JSON file: unknown.property");
     }
 
     @Test
@@ -201,14 +201,14 @@ public class VersionPropertiesReaderTest extends AbstractTestFixture {
 
         // When / Then
         var ex = assertThrows(IllegalArgumentException.class, () -> {
-            new VersionPropertiesReader(v3Json).getVersionInfo();
+            new VersionInfoJsonReader(v3Json).getVersionInfo();
         });
         assertThat(ex.getMessage()).isEqualTo("Missing required property: version-info.user.email");
     }
 
     @Test
     public void should_throw_exception_when_no_file_provided() {
-        assertThrows(NullPointerException.class, () -> new VersionPropertiesReader(null).getVersionInfo());
+        assertThrows(NullPointerException.class, () -> new VersionInfoJsonReader(null).getVersionInfo());
     }
 
     @Test
@@ -217,8 +217,8 @@ public class VersionPropertiesReaderTest extends AbstractTestFixture {
         var nonExistentFile = testDir.resolve("nonexistent.json");
 
         // When / Then
-        var ex = assertThrows(IllegalArgumentException.class, () -> new VersionPropertiesReader(nonExistentFile).getVersionInfo());
-        assertThat(ex.getMessage()).isEqualTo("Version properties JSON does not exist: " + nonExistentFile);
+        var ex = assertThrows(IllegalArgumentException.class, () -> new VersionInfoJsonReader(nonExistentFile).getVersionInfo());
+        assertThat(ex.getMessage()).isEqualTo("Version info JSON file does not exist: " + nonExistentFile);
     }
 
     @Test
@@ -250,7 +250,7 @@ public class VersionPropertiesReaderTest extends AbstractTestFixture {
         java.nio.file.Files.writeString(vJson, json);
 
         // When
-        var reader = new VersionPropertiesReader(vJson);
+        var reader = new VersionInfoJsonReader(vJson);
         var customProps = reader.getObjectVersionProperties();
 
         // Then

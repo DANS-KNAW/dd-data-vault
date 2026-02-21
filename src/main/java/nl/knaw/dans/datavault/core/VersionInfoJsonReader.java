@@ -32,7 +32,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-public class VersionPropertiesReader {
+public class VersionInfoJsonReader {
     private static final String MAILTO_PREFIX = "mailto:";
     private static final String KEY_VERSION_INFO = "version-info";
     private static final String KEY_OBJECT_VERSION_PROPERTIES = "object-version-properties";
@@ -40,30 +40,30 @@ public class VersionPropertiesReader {
 
     private final JsonNode root;
 
-    public VersionPropertiesReader(@NonNull Path file) throws IOException {
+    public VersionInfoJsonReader(@NonNull Path file) throws IOException {
         if (!Files.exists(file)) {
-            throw new IllegalArgumentException("Version properties JSON does not exist: " + file);
+            throw new IllegalArgumentException("Version info JSON file does not exist: " + file);
         }
         var mapper = new ObjectMapper();
         try (var in = Files.newInputStream(file)) {
             this.root = mapper.readTree(in);
         }
         if (root == null || !root.isObject()) {
-            throw new IllegalArgumentException("Version properties JSON must be an object at root");
+            throw new IllegalArgumentException("Version info JSON file must be a JSON object at root");
         }
         // Validate top-level keys
         boolean hasVersionInfo = false;
         for (var it = root.fieldNames(); it.hasNext(); ) {
             var key = it.next();
             if (!VERSION_PROPERTY_NAMES.contains(key)) {
-                throw new IllegalArgumentException("Unknown property in version properties JSON file: " + key);
+                throw new IllegalArgumentException("Unknown property in version info JSON file: " + key);
             }
             if (KEY_VERSION_INFO.equals(key)) {
                 hasVersionInfo = true;
             }
         }
         if (!hasVersionInfo) {
-            throw new IllegalArgumentException("Missing required property: " + KEY_VERSION_INFO);
+            throw new IllegalArgumentException("Missing required property: " + KEY_VERSION_INFO + " in version info JSON file");
         }
     }
 

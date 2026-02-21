@@ -377,13 +377,17 @@ public class ImportJobTaskTest extends AbstractTestFixture {
     }
 
     @Test
-    public void run_should_reject_object_with_invalid_version_properties_json() throws Exception {
+    public void run_should_reject_object_with_invalid_version_info_json() throws Exception {
         // Given
         var objectDir = testDir.resolve("batchInvalidJson").resolve("urn:nbn:nl:ui:13-invalid-json-object");
         Files.createDirectories(objectDir);
         Files.createDirectory(objectDir.resolve("v1"));
         // Write malformed JSON
-        Files.writeString(objectDir.resolve("v1.json"), "{ invalid json }");
+        Files.writeString(objectDir.resolve("v1.json"), """
+            {
+            "key": "value"
+            }
+            """);
         var outbox = testDir.resolve("outbox");
         Files.createDirectories(outbox);
 
@@ -414,7 +418,7 @@ public class ImportJobTaskTest extends AbstractTestFixture {
         // Then
         assertThat(importJob.getStatus()).isEqualTo(ImportJob.Status.FAILED);
         assertThat(importJob.getMessage())
-            .contains("invalid version properties JSON file");
+            .contains("Unknown property in version info JSON file: key");
         assertThat(outbox.resolve("failed/urn:nbn:nl:ui:13-invalid-json-object")).doesNotExist();
     }
 }

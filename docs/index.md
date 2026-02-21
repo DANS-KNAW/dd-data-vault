@@ -73,12 +73,12 @@ batch-dir
   identifier must match can be [configured]{:target=_blank}.
 * `v1`, `v2`, `v3` - The version directories contain the content of the object versions. The version directories must be named `v1`, `v2`, `v3`, etc.
   The first version directory must be named after the next version to be created in the OCFL object.
-* A version directory must be accompanied by a JSON file named `vN.json`, where `N` is the version number (e.g., `v2.json` for
-  version 2). This file is required for every version. It must have a structure as in the example below.
+* A version directory must be accompanied by a version info JSON file named `vN.json`, where `N` is the version number (e.g., `v2.json` for
+  version 2). This version info JSON file is required for every version. It must have a structure as in the example below.
 
 [configured]: {{ config_file_url }}
 
-##### Example version info file
+##### Example version info JSON file
 
 ```json      
 {
@@ -101,7 +101,7 @@ Requirements and notes:
 - The `version-info` object is mandatory and must include `user.name`, `user.email`, and `message`.
 - `version-info.user.email` may be specified with or without the `mailto:` prefix; the service will normalize it to `mailto:`.
 - The `object-version-properties` object is optional and may contain any custom properties to be stored for the object version. These are written to the
-  Object Version Properties extension.
+  [Object Version Properties]{:target=_blank} extension.
 
 [Object Version Properties]: {{ object_version_properties_ext }}
 
