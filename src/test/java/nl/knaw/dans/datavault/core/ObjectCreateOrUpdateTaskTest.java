@@ -40,7 +40,7 @@ public class ObjectCreateOrUpdateTaskTest extends AbstractTestFixture {
     public void simple_object_should_be_added() throws Exception {
         String objectName = "simple-object";
         var simpleObject = copyToTestDir(objectName);
-        var task = new ObjectCreateOrUpdateTask(simpleObject, testDir.resolve("out"), repositoryProvider, false);
+        var task = new ObjectCreateOrUpdateTask(simpleObject, testDir.resolve("out"), repositoryProvider);
         task.run();
         Mockito.verify(repositoryProvider).addVersion(
             objectName,
@@ -55,7 +55,7 @@ public class ObjectCreateOrUpdateTaskTest extends AbstractTestFixture {
     public void multi_version_object_should_add_multiple_versions() throws Exception {
         String objectName = "multi-version-object";
         var multiVersionObject = copyToTestDir(objectName);
-        var task = new ObjectCreateOrUpdateTask(multiVersionObject, testDir.resolve("out"), repositoryProvider, false);
+        var task = new ObjectCreateOrUpdateTask(multiVersionObject, testDir.resolve("out"), repositoryProvider);
         task.run();
         Mockito.verify(repositoryProvider).addVersion(
             objectName,
@@ -77,7 +77,7 @@ public class ObjectCreateOrUpdateTaskTest extends AbstractTestFixture {
         // also checked at a higher level, so this is not a problem.
         var objectName = "invalid-version-object-NaN";
         var invalidVersionObject = copyToTestDir(objectName);
-        var task = new ObjectCreateOrUpdateTask(invalidVersionObject, testDir.resolve("out"), repositoryProvider, false);
+        var task = new ObjectCreateOrUpdateTask(invalidVersionObject, testDir.resolve("out"), repositoryProvider);
         task.run();
         assertDirectoriesEqual(getTestInput(objectName), testDir.resolve("out/failed/").resolve(objectName));
         assertThat(task.getStatus()).isEqualTo(ObjectCreateOrUpdateTask.Status.FAILED);
@@ -95,7 +95,7 @@ public class ObjectCreateOrUpdateTaskTest extends AbstractTestFixture {
         // also checked at a higher level, so this is not a problem.
         var objectName = "invalid-version-object-no-v";
         var invalidVersionObject = copyToTestDir(objectName);
-        var task = new ObjectCreateOrUpdateTask(invalidVersionObject, testDir.resolve("out"), repositoryProvider, false);
+        var task = new ObjectCreateOrUpdateTask(invalidVersionObject, testDir.resolve("out"), repositoryProvider);
         task.run();
         assertDirectoriesEqual(getTestInput(objectName), testDir.resolve("out/failed/").resolve(objectName));
         assertThat(task.getStatus()).isEqualTo(ObjectCreateOrUpdateTask.Status.FAILED);

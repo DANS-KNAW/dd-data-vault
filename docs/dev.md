@@ -7,6 +7,11 @@ Local testing
 -------------
 Local testing uses the same [set-up]{:target=_blank} as other DANS microservices.
 
-[set-up]: https://dans-knaw.github.io/dans-module-archetype/common-practices/#debugging
+### Creating Object Import Directories
 
+If you want to create object import directories for testing, you can use the helper script
+`create-object-import-dir.py` from [dans-dev-scripts]{:target=_blank}.
+
+[set-up]: {{ local_testing_setup }}
+[dans-dev-scripts]: {{ dans_dev_scripts_url }}
 

@@ -26,7 +26,7 @@
     </parent>
 
     <artifactId>dd-data-vault</artifactId>
-    <version>3.4.1-SNAPSHOT</version>
+    <version>4.0.0-SNAPSHOT</version>
 
     <name>DD Data Vault</name>
     <url>https://github.com/DANS-KNAW/dd-data-vault</url>
@@ -37,6 +37,9 @@
         <!-- TODO: move to dd-parent -->
         <commons-validator.version>1.7</commons-validator.version>
         <dans-ocfl-extensions.version>1.0.0</dans-ocfl-extensions.version>
+        <dans-ocfl-java-extensions-lib.version>1.1.0</dans-ocfl-java-extensions-lib.version>
+        <dans-layer-store-lib.version>1.1.0</dans-layer-store-lib.version>
+        <dd-data-vault-api.version>1.0.0</dd-data-vault-api.version>
         <main-class>nl.knaw.dans.datavault.DdDataVaultApplication</main-class>
     </properties>
 
