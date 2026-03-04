@@ -151,6 +151,7 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
         try {
             ocflRepository = new OcflRepositoryBuilder()
                 .unsupportedExtensionBehavior(UnsupportedExtensionBehavior.WARN)
+                .ignoreUnsupportedExtensions(Set.of("object-version-properties", "property-registry", "packaging-format-registry"))
                 .defaultLayoutConfig(layoutConfig)
                 .inventoryCache(null)
                 .storage(ocflStorage)
