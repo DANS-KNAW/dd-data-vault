@@ -36,7 +36,7 @@ public class LayerThresholdHandler {
         if (layeredItemStore.getTopLayer().getSizeInBytes() >= layerArchivingThreshold) {
             log.info("Archiving threshold reached, creating new top layer");
             layeredItemStore.newTopLayer();
-            log.info("New top layer created");
+            log.info("New top layer created with id {}", layeredItemStore.getTopLayer().getId());
         }
     }
 
