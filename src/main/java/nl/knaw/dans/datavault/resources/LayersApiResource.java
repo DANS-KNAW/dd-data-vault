@@ -37,7 +37,7 @@ public class LayersApiResource implements LayersApi {
     @Override
     public Response layersIdArchivePost(Long layerId) {
         try {
-            layeredItemStore.archiveLayer(layerId);
+            layeredItemStore.archiveLayer(layerId, false);
             return Response.status(ACCEPTED).build();
         }
         catch (IllegalArgumentException e) {

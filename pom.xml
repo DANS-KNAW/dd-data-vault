@@ -38,7 +38,7 @@
         <commons-validator.version>1.7</commons-validator.version>
         <dans-ocfl-extensions.version>1.0.0</dans-ocfl-extensions.version>
         <dans-ocfl-java-extensions-lib.version>1.1.0</dans-ocfl-java-extensions-lib.version>
-        <dans-layer-store-lib.version>1.1.1</dans-layer-store-lib.version>
+        <dans-layer-store-lib.version>1.1.2-SNAPSHOT</dans-layer-store-lib.version>
         <dd-data-vault-api.version>1.0.0</dd-data-vault-api.version>
         <main-class>nl.knaw.dans.datavault.DdDataVaultApplication</main-class>
     </properties>
@@ -76,6 +76,7 @@
         <dependency>
             <groupId>nl.knaw.dans</groupId>
             <artifactId>dans-ocfl-java-extensions-lib</artifactId>
+            <version>1.1.1-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>io.ocfl</groupId>
@@ -84,6 +85,7 @@
         <dependency>
             <groupId>io.ocfl</groupId>
             <artifactId>ocfl-java-core</artifactId>
+            <version>2.2.3</version>
         </dependency>
         <dependency>
             <groupId>nl.knaw.dans</groupId>
