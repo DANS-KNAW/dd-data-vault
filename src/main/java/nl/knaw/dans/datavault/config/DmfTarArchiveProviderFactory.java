@@ -42,8 +42,9 @@ public class DmfTarArchiveProviderFactory implements ArchiveProviderFactory {
 
     @Override
     public ArchiveProvider build() {
+        var ssh = new SshRunner(sshExecutable, user, host, archiveRoot);
         return new DmfTarArchiveProvider(
-            new DmfTarRunner(dmfTarExecutable, user, host, archiveRoot),
-            new SshRunner(sshExecutable, user, host, archiveRoot));
+            new DmfTarRunner(dmfTarExecutable, ssh, user, host, archiveRoot),
+            ssh);
     }
 }
