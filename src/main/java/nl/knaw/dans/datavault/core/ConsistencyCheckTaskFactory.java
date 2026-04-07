@@ -18,6 +18,7 @@ package nl.knaw.dans.datavault.core;
 import lombok.RequiredArgsConstructor;
 import nl.knaw.dans.datavault.db.ConsistencyCheckDao;
 import nl.knaw.dans.layerstore.LayeredItemStore;
+import nl.knaw.dans.lib.util.pollingtaskexec.TaskFactory;
 
 @RequiredArgsConstructor
 public class ConsistencyCheckTaskFactory implements TaskFactory<ConsistencyCheck> {

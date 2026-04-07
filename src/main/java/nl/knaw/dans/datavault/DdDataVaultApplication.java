@@ -32,7 +32,6 @@ import nl.knaw.dans.datavault.core.ImportJob;
 import nl.knaw.dans.datavault.core.ImportJobTaskFactory;
 import nl.knaw.dans.datavault.core.LayerThresholdHandler;
 import nl.knaw.dans.datavault.core.OcflRepositoryProvider;
-import nl.knaw.dans.datavault.core.PollingTaskExecutor;
 import nl.knaw.dans.datavault.core.RepositoryProvider;
 import nl.knaw.dans.datavault.core.UnitOfWorkDeclaringLayerConsistencyChecker;
 import nl.knaw.dans.datavault.core.UnitOfWorkDeclaringRepositoryProviderAdapter;
@@ -53,6 +52,7 @@ import nl.knaw.dans.layerstore.LayerManagerImpl;
 import nl.knaw.dans.layerstore.LayeredItemStore;
 import nl.knaw.dans.lib.ocflext.StoreInventoryDbBackedContentManager;
 import nl.knaw.dans.lib.util.PersistenceProviderImpl;
+import nl.knaw.dans.lib.util.pollingtaskexec.PollingTaskExecutor;
 
 import java.io.IOException;
 import java.util.regex.Pattern;
@@ -156,7 +156,6 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
             .create(UnitOfWorkDeclaringRepositoryProviderAdapter.class, new Class<?>[] { RepositoryProvider.class }, new Object[] { repositoryProvider });
     }
 
-    @SuppressWarnings("unchecked")
     private <R> PollingTaskExecutor<R> createUnitOfWorkAwareProxy(UnitOfWorkAwareProxyFactory uowFactory, PollingTaskExecutor<R> executor) {
         return uowFactory
             .create(PollingTaskExecutor.class, new Class<?>[] { PollingTaskExecutor.class }, new Object[] { executor });

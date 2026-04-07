@@ -17,6 +17,7 @@ package nl.knaw.dans.datavault.core;
 
 import lombok.RequiredArgsConstructor;
 import nl.knaw.dans.datavault.db.ImportJobDao;
+import nl.knaw.dans.lib.util.pollingtaskexec.TaskFactory;
 
 import java.nio.file.Files;
 import java.nio.file.Path;

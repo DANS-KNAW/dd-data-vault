@@ -17,6 +17,7 @@ package nl.knaw.dans.datavault.db;
 
 import io.dropwizard.hibernate.AbstractDAO;
 import nl.knaw.dans.datavault.core.ConsistencyCheck;
+import nl.knaw.dans.lib.util.pollingtaskexec.TaskSource;
 import org.hibernate.SessionFactory;
 
 import java.time.OffsetDateTime;
