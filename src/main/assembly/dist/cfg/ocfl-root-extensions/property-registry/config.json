@@ -40,7 +40,7 @@
           "required": true
         },
         "lobs": {
-          "description": "The list of large objects that are required by this object version. Each entry is the hexadecimal digest of the large object file in the LOB-store, calculated using the algorithm given above in 'checksum-algorithm'.",
+          "description": "The list of large objects that are required by this object version. Each entry is the hexadecimal digest of the large object file in the LOB-store, calculated using the algorithm given above in 'checksum-algorithm'. How to combine the large objects with the object version is defined in the packaging format of the object version.",
           "type": "array",
           "item-type": "string",
           "required": true
