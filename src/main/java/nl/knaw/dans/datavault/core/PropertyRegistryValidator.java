@@ -109,6 +109,22 @@ public class PropertyRegistryValidator {
                     throw new IllegalArgumentException("Property '" + path + "' must be of type boolean");
                 }
             }
+            case "array" -> {
+                if (!value.isArray()) {
+                    throw new IllegalArgumentException("Property '" + path + "' must be of type array");
+                }
+                String itemType = descriptor.hasNonNull("item-type") ? descriptor.get("item-type").asText() : "string";
+                if (!itemType.equals("string") && !itemType.equals("number") && !itemType.equals("boolean")) {
+                    throw new IllegalArgumentException("Unsupported item-type for array property '" + path + "': " + itemType);
+                }
+
+                // Create a synthetic descriptor for the items
+                ObjectNode itemDescriptor = mapper.createObjectNode();
+                itemDescriptor.put("type", itemType);
+                for (int i = 0; i < value.size(); i++) {
+                    validateValueAgainstDescriptor(path + "[" + i + "]", value.get(i), itemDescriptor);
+                }
+            }
             case "object" -> {
                 if (!value.isObject()) {
                     throw new IllegalArgumentException("Property '" + path + "' must be of type object");

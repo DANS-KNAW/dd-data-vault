@@ -29,6 +29,24 @@
         }
       }
     },
+    "external-large-objects": {
+      "description": "If present, this version of the object requires files from the companion large object store (LOB-store). The LOB-store is located in the same directory as the Vault Storage Root and has the same name, but with the extension '.lobs'. The large objects have as base names their digest in hexadecimal.",
+      "type": "object",
+      "required": false,
+      "properties": {
+        "checksum-algorithm": {
+          "description": "The name of the algorithm used to calculate the digests of the large objects. One of the names given in the OCFL specification or its extensions must be used.",
+          "type": "string",
+          "required": true
+        },
+        "lobs": {
+          "description": "The list of large objects that are required by this object version. Each entry is the hexadecimal digest of the large object file in the LOB-store, calculated using the algorithm given above in 'checksum-algorithm'.",
+          "type": "array",
+          "item-type": "string",
+          "required": true
+        }
+      }
+    },
     "retention-end-date": {
       "description": "The date after which the object version must be deleted.",
       "type": "string",

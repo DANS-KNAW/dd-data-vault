@@ -36,7 +36,7 @@
     <properties>
         <!-- TODO: move to dd-parent -->
         <commons-validator.version>1.7</commons-validator.version>
-        <dans-ocfl-extensions.version>1.0.0</dans-ocfl-extensions.version>
+        <dans-ocfl-extensions.version>1.1.0-SNAPSHOT</dans-ocfl-extensions.version>
         <dans-ocfl-java-extensions-lib.version>2.0.0</dans-ocfl-java-extensions-lib.version>
         <dans-layer-store-lib.version>2.0.0</dans-layer-store-lib.version>
         <dd-data-vault-api.version>1.0.0</dd-data-vault-api.version>
