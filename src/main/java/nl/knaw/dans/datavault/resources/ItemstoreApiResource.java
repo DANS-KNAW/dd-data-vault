@@ -33,6 +33,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.UUID;
 
+import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static javax.ws.rs.core.Response.Status.NO_CONTENT;
@@ -52,6 +53,10 @@ public class ItemstoreApiResource implements ItemstoreApi {
         }
         try {
             var source = Paths.get(copyDirectoryIntoRequestDto.getSource());
+            if (!source.isAbsolute()) {
+                log.warn("Source path must be absolute: {}", source);
+                return Response.status(BAD_REQUEST).entity("Source path must be absolute").build();
+            }
             var stagingDir = Paths.get(itemstoreConfig.getWorkDir()).resolve(UUID.randomUUID().toString());
             Files.createDirectories(stagingDir);
             try {
@@ -84,6 +89,11 @@ public class ItemstoreApiResource implements ItemstoreApi {
             return Response.status(Response.Status.FORBIDDEN).build();
         }
         try {
+            var source = Paths.get(copyFileToRequestDto.getSource());
+            if (!source.isAbsolute()) {
+                log.warn("Source path must be absolute: {}", source);
+                return Response.status(BAD_REQUEST).entity("Source path must be absolute").build();
+            }
             try (var is = new FileInputStream(copyFileToRequestDto.getSource())) {
                 layeredItemStore.writeFile(removeLeadingSlashes(copyFileToRequestDto.getDestination()), is);
                 log.debug("Copied file {} to item store at {}", copyFileToRequestDto.getSource(), copyFileToRequestDto.getDestination());
