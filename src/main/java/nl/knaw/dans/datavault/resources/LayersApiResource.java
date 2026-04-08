@@ -17,14 +17,26 @@ package nl.knaw.dans.datavault.resources;
 
 import io.dropwizard.hibernate.UnitOfWork;
 import lombok.AllArgsConstructor;
+import nl.knaw.dans.datavault.api.CopyDirectoryIntoRequestDto;
+import nl.knaw.dans.datavault.api.CopyFileToRequestDto;
+import nl.knaw.dans.datavault.api.CreateDirectoryRequestDto;
+import nl.knaw.dans.datavault.api.DeleteDirectoryRequestDto;
+import nl.knaw.dans.datavault.api.DeleteFilesRequestDto;
 import nl.knaw.dans.datavault.api.LayerStatusDto;
 import nl.knaw.dans.layerstore.LayeredItemStore;
 
 import javax.ws.rs.core.Response;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.nio.file.Paths;
 
 import static javax.ws.rs.core.Response.Status.ACCEPTED;
+import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.CREATED;
+import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+import static javax.ws.rs.core.Response.Status.NO_CONTENT;
+import static javax.ws.rs.core.Response.Status.OK;
 
 @AllArgsConstructor
 public class LayersApiResource implements LayersApi {
@@ -41,7 +53,102 @@ public class LayersApiResource implements LayersApi {
             return Response.status(ACCEPTED).build();
         }
         catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.NOT_FOUND).build();
+            return Response.status(NOT_FOUND).build();
+        }
+        catch (IllegalStateException e) {
+            return Response.status(CONFLICT).build();
+        }
+    }
+
+    @Override
+    public Response layersIdCopyDirectoryIntoPost(Long layerId, CopyDirectoryIntoRequestDto copyDirectoryIntoRequestDto) {
+        try {
+            var layer = layeredItemStore.getLayer(layerId);
+            layer.moveDirectoryInto(Paths.get(copyDirectoryIntoRequestDto.getSource()), copyDirectoryIntoRequestDto.getDestination());
+            return Response.status(OK).build();
+        }
+        catch (IllegalArgumentException e) {
+            return Response.status(NOT_FOUND).build();
+        }
+        catch (IllegalStateException e) {
+            return Response.status(CONFLICT).build();
+        }
+        catch (IOException e) {
+            return Response.status(INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @Override
+    public Response layersIdCopyFileToPost(Long layerId, CopyFileToRequestDto copyFileToRequestDto) {
+        try {
+            var layer = layeredItemStore.getLayer(layerId);
+            try (var is = new FileInputStream(copyFileToRequestDto.getSource())) {
+                layer.writeFile(copyFileToRequestDto.getDestination(), is);
+            }
+            return Response.status(OK).build();
+        }
+        catch (IllegalArgumentException e) {
+            return Response.status(NOT_FOUND).build();
+        }
+        catch (IllegalStateException e) {
+            return Response.status(CONFLICT).build();
+        }
+        catch (IOException e) {
+            return Response.status(INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @Override
+    public Response layersIdCreateDirectoryPost(Long layerId, CreateDirectoryRequestDto createDirectoryRequestDto) {
+        try {
+            var layer = layeredItemStore.getLayer(layerId);
+            layer.createDirectory(createDirectoryRequestDto.getPath());
+            return Response.status(OK).build();
+        }
+        catch (IllegalArgumentException e) {
+            return Response.status(NOT_FOUND).build();
+        }
+        catch (IllegalStateException e) {
+            return Response.status(CONFLICT).build();
+        }
+        catch (IOException e) {
+            return Response.status(INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @Override
+    public Response layersIdDeleteDirectoryPost(Long layerId, DeleteDirectoryRequestDto deleteDirectoryRequestDto) {
+        try {
+            var layer = layeredItemStore.getLayer(layerId);
+            layer.deleteDirectory(deleteDirectoryRequestDto.getPath());
+            return Response.status(NO_CONTENT).build();
+        }
+        catch (IllegalArgumentException e) {
+            return Response.status(NOT_FOUND).build();
+        }
+        catch (IllegalStateException e) {
+            return Response.status(CONFLICT).build();
+        }
+        catch (IOException e) {
+            return Response.status(INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @Override
+    public Response layersIdDeleteFilesPost(Long layerId, DeleteFilesRequestDto deleteFilesRequestDto) {
+        try {
+            var layer = layeredItemStore.getLayer(layerId);
+            layer.deleteFiles(deleteFilesRequestDto.getPaths());
+            return Response.status(NO_CONTENT).build();
+        }
+        catch (IllegalArgumentException e) {
+            return Response.status(NOT_FOUND).build();
+        }
+        catch (IllegalStateException e) {
+            return Response.status(CONFLICT).build();
+        }
+        catch (IOException e) {
+            return Response.status(INTERNAL_SERVER_ERROR).build();
         }
     }
 
@@ -56,10 +163,10 @@ public class LayersApiResource implements LayersApi {
                 .build();
         }
         catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.NOT_FOUND).build();
+            return Response.status(NOT_FOUND).build();
         }
         catch (IOException e) {
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+            return Response.status(INTERNAL_SERVER_ERROR).build();
         }
     }
 
@@ -71,7 +178,7 @@ public class LayersApiResource implements LayersApi {
                 .build();
         }
         catch (IOException e) {
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+            return Response.status(INTERNAL_SERVER_ERROR).build();
         }
     }
 
@@ -82,7 +189,7 @@ public class LayersApiResource implements LayersApi {
             return Response.status(CREATED).entity(new LayerStatusDto().layerId(layeredItemStore.newTopLayer().getId())).build();
         }
         catch (IOException e) {
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+            return Response.status(INTERNAL_SERVER_ERROR).build();
         }
     }
 
@@ -97,7 +204,7 @@ public class LayersApiResource implements LayersApi {
                 .build();
         }
         catch (IOException e) {
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+            return Response.status(INTERNAL_SERVER_ERROR).build();
         }
     }
 }
