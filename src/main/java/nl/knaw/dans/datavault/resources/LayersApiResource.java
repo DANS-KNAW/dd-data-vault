@@ -61,14 +61,10 @@ public class LayersApiResource implements LayersApi {
     }
 
     @Override
-    public Response layersIdCopyDirectoryIntoPost(Long layerId, CopyDirectoryIntoRequestDto copyDirectoryIntoRequestDto) {
+    public Response layersTopCopyDirectoryIntoPost(CopyDirectoryIntoRequestDto copyDirectoryIntoRequestDto) {
         try {
-            var layer = layeredItemStore.getLayer(layerId);
-            layer.moveDirectoryInto(Paths.get(copyDirectoryIntoRequestDto.getSource()), copyDirectoryIntoRequestDto.getDestination());
+            layeredItemStore.moveDirectoryInto(Paths.get(copyDirectoryIntoRequestDto.getSource()), copyDirectoryIntoRequestDto.getDestination());
             return Response.status(OK).build();
-        }
-        catch (IllegalArgumentException e) {
-            return Response.status(NOT_FOUND).build();
         }
         catch (IllegalStateException e) {
             return Response.status(CONFLICT).build();
@@ -79,17 +75,13 @@ public class LayersApiResource implements LayersApi {
     }
 
     @Override
-    public Response layersIdCopyFileToPost(Long layerId, CopyFileToRequestDto copyFileToRequestDto) {
+    public Response layersTopCopyFileToPost(CopyFileToRequestDto copyFileToRequestDto) {
         try {
-            var layer = layeredItemStore.getLayer(layerId);
             try (var is = new FileInputStream(copyFileToRequestDto.getSource())) {
-                layer.writeFile(copyFileToRequestDto.getDestination(), is);
+                layeredItemStore.writeFile(copyFileToRequestDto.getDestination(), is);
             }
             return Response.status(OK).build();
         }
-        catch (IllegalArgumentException e) {
-            return Response.status(NOT_FOUND).build();
-        }
         catch (IllegalStateException e) {
             return Response.status(CONFLICT).build();
         }
@@ -99,50 +91,10 @@ public class LayersApiResource implements LayersApi {
     }
 
     @Override
-    public Response layersIdCreateDirectoryPost(Long layerId, CreateDirectoryRequestDto createDirectoryRequestDto) {
+    public Response layersTopCreateDirectoryPost(CreateDirectoryRequestDto createDirectoryRequestDto) {
         try {
-            var layer = layeredItemStore.getLayer(layerId);
-            layer.createDirectory(createDirectoryRequestDto.getPath());
+            layeredItemStore.createDirectory(createDirectoryRequestDto.getPath());
             return Response.status(OK).build();
-        }
-        catch (IllegalArgumentException e) {
-            return Response.status(NOT_FOUND).build();
-        }
-        catch (IllegalStateException e) {
-            return Response.status(CONFLICT).build();
-        }
-        catch (IOException e) {
-            return Response.status(INTERNAL_SERVER_ERROR).build();
-        }
-    }
-
-    @Override
-    public Response layersIdDeleteDirectoryPost(Long layerId, DeleteDirectoryRequestDto deleteDirectoryRequestDto) {
-        try {
-            var layer = layeredItemStore.getLayer(layerId);
-            layer.deleteDirectory(deleteDirectoryRequestDto.getPath());
-            return Response.status(NO_CONTENT).build();
-        }
-        catch (IllegalArgumentException e) {
-            return Response.status(NOT_FOUND).build();
-        }
-        catch (IllegalStateException e) {
-            return Response.status(CONFLICT).build();
-        }
-        catch (IOException e) {
-            return Response.status(INTERNAL_SERVER_ERROR).build();
-        }
-    }
-
-    @Override
-    public Response layersIdDeleteFilesPost(Long layerId, DeleteFilesRequestDto deleteFilesRequestDto) {
-        try {
-            var layer = layeredItemStore.getLayer(layerId);
-            layer.deleteFiles(deleteFilesRequestDto.getPaths());
-            return Response.status(NO_CONTENT).build();
-        }
-        catch (IllegalArgumentException e) {
-            return Response.status(NOT_FOUND).build();
         }
         catch (IllegalStateException e) {
             return Response.status(CONFLICT).build();
