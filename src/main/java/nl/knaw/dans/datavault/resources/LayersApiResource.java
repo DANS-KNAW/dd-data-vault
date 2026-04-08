@@ -17,25 +17,17 @@ package nl.knaw.dans.datavault.resources;
 
 import io.dropwizard.hibernate.UnitOfWork;
 import lombok.AllArgsConstructor;
-import nl.knaw.dans.datavault.api.CopyDirectoryIntoRequestDto;
-import nl.knaw.dans.datavault.api.CopyFileToRequestDto;
-import nl.knaw.dans.datavault.api.CreateDirectoryRequestDto;
-import nl.knaw.dans.datavault.api.DeleteDirectoryRequestDto;
-import nl.knaw.dans.datavault.api.DeleteFilesRequestDto;
 import nl.knaw.dans.datavault.api.LayerStatusDto;
 import nl.knaw.dans.layerstore.LayeredItemStore;
 
 import javax.ws.rs.core.Response;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.nio.file.Paths;
 
 import static javax.ws.rs.core.Response.Status.ACCEPTED;
 import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.CREATED;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static javax.ws.rs.core.Response.Status.NO_CONTENT;
 import static javax.ws.rs.core.Response.Status.OK;
 
 @AllArgsConstructor
@@ -57,80 +49,6 @@ public class LayersApiResource implements LayersApi {
         }
         catch (IllegalStateException e) {
             return Response.status(CONFLICT).build();
-        }
-    }
-
-    @Override
-    public Response layersTopCopyDirectoryIntoPost(CopyDirectoryIntoRequestDto copyDirectoryIntoRequestDto) {
-        try {
-            layeredItemStore.moveDirectoryInto(Paths.get(copyDirectoryIntoRequestDto.getSource()), copyDirectoryIntoRequestDto.getDestination());
-            return Response.status(OK).build();
-        }
-        catch (IllegalStateException e) {
-            return Response.status(CONFLICT).build();
-        }
-        catch (IOException e) {
-            return Response.status(INTERNAL_SERVER_ERROR).build();
-        }
-    }
-
-    @Override
-    public Response layersTopCopyFileToPost(CopyFileToRequestDto copyFileToRequestDto) {
-        try {
-            try (var is = new FileInputStream(copyFileToRequestDto.getSource())) {
-                layeredItemStore.writeFile(copyFileToRequestDto.getDestination(), is);
-            }
-            return Response.status(OK).build();
-        }
-        catch (IllegalStateException e) {
-            return Response.status(CONFLICT).build();
-        }
-        catch (IOException e) {
-            return Response.status(INTERNAL_SERVER_ERROR).build();
-        }
-    }
-
-    @Override
-    public Response layersTopCreateDirectoryPost(CreateDirectoryRequestDto createDirectoryRequestDto) {
-        try {
-            layeredItemStore.createDirectory(createDirectoryRequestDto.getPath());
-            return Response.status(OK).build();
-        }
-        catch (IllegalStateException e) {
-            return Response.status(CONFLICT).build();
-        }
-        catch (IOException e) {
-            return Response.status(INTERNAL_SERVER_ERROR).build();
-        }
-    }
-
-    @Override
-    public Response layersTopDeleteDirectoryPost(DeleteDirectoryRequestDto deleteDirectoryRequestDto) {
-        try {
-            var layer = layeredItemStore.getTopLayer();
-            layer.deleteDirectory(deleteDirectoryRequestDto.getPath());
-            return Response.status(NO_CONTENT).build();
-        }
-        catch (IllegalStateException e) {
-            return Response.status(CONFLICT).build();
-        }
-        catch (IOException e) {
-            return Response.status(INTERNAL_SERVER_ERROR).build();
-        }
-    }
-
-    @Override
-    public Response layersTopDeleteFilesPost(DeleteFilesRequestDto deleteFilesRequestDto) {
-        try {
-            var layer = layeredItemStore.getTopLayer();
-            layer.deleteFiles(deleteFilesRequestDto.getPaths());
-            return Response.status(NO_CONTENT).build();
-        }
-        catch (IllegalStateException e) {
-            return Response.status(CONFLICT).build();
-        }
-        catch (IOException e) {
-            return Response.status(INTERNAL_SERVER_ERROR).build();
         }
     }
 
