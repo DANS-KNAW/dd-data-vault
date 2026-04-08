@@ -105,6 +105,36 @@ public class LayersApiResource implements LayersApi {
     }
 
     @Override
+    public Response layersTopDeleteDirectoryPost(DeleteDirectoryRequestDto deleteDirectoryRequestDto) {
+        try {
+            var layer = layeredItemStore.getTopLayer();
+            layer.deleteDirectory(deleteDirectoryRequestDto.getPath());
+            return Response.status(NO_CONTENT).build();
+        }
+        catch (IllegalStateException e) {
+            return Response.status(CONFLICT).build();
+        }
+        catch (IOException e) {
+            return Response.status(INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @Override
+    public Response layersTopDeleteFilesPost(DeleteFilesRequestDto deleteFilesRequestDto) {
+        try {
+            var layer = layeredItemStore.getTopLayer();
+            layer.deleteFiles(deleteFilesRequestDto.getPaths());
+            return Response.status(NO_CONTENT).build();
+        }
+        catch (IllegalStateException e) {
+            return Response.status(CONFLICT).build();
+        }
+        catch (IOException e) {
+            return Response.status(INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @Override
     @UnitOfWork
     public Response layersIdGet(Long layerId) {
         try {
