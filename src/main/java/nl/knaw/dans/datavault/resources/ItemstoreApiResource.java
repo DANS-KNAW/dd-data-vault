@@ -47,7 +47,7 @@ public class ItemstoreApiResource implements ItemstoreApi {
             return Response.status(Response.Status.FORBIDDEN).build();
         }
         try {
-            layeredItemStore.moveDirectoryInto(Paths.get(copyDirectoryIntoRequestDto.getSource()), copyDirectoryIntoRequestDto.getDestination());
+            layeredItemStore.moveDirectoryInto(Paths.get(copyDirectoryIntoRequestDto.getSource()), removeLeadingSlashes(copyDirectoryIntoRequestDto.getDestination()));
             return Response.status(OK).build();
         }
         catch (IllegalStateException e) {
@@ -58,6 +58,11 @@ public class ItemstoreApiResource implements ItemstoreApi {
         }
     }
 
+    private String removeLeadingSlashes(String path) {
+        return path.stripLeading().replaceFirst("^/+", "").trim();
+    }
+
+
     @Override
     public Response itemstoreCopyFileToPost(CopyFileToRequestDto copyFileToRequestDto) {
         if (!Boolean.TRUE.equals(itemstoreConfig.getEnableEndpoints().getCopyFileTo())) {
@@ -66,7 +71,7 @@ public class ItemstoreApiResource implements ItemstoreApi {
         }
         try {
             try (var is = new FileInputStream(copyFileToRequestDto.getSource())) {
-                layeredItemStore.writeFile(copyFileToRequestDto.getDestination(), is);
+                layeredItemStore.writeFile(removeLeadingSlashes(copyFileToRequestDto.getDestination()), is);
                 log.debug("Copied file {} to item store at {}", copyFileToRequestDto.getSource(), copyFileToRequestDto.getDestination());
             }
             return Response.status(OK).build();
@@ -86,7 +91,7 @@ public class ItemstoreApiResource implements ItemstoreApi {
             return Response.status(Response.Status.FORBIDDEN).build();
         }
         try {
-            layeredItemStore.createDirectory(createDirectoryRequestDto.getPath());
+            layeredItemStore.createDirectory(removeLeadingSlashes(createDirectoryRequestDto.getPath()));
             log.debug("Created directory in item store at {}", createDirectoryRequestDto.getPath());
             return Response.status(OK).build();
         }
@@ -105,7 +110,7 @@ public class ItemstoreApiResource implements ItemstoreApi {
             return Response.status(Response.Status.FORBIDDEN).build();
         }
         try {
-            layeredItemStore.deleteDirectory(deleteDirectoryRequestDto.getPath());
+            layeredItemStore.deleteDirectory(removeLeadingSlashes(deleteDirectoryRequestDto.getPath()));
             log.debug("Deleted directory from item store at {}", deleteDirectoryRequestDto.getPath());
             return Response.status(NO_CONTENT).build();
         }
@@ -124,7 +129,7 @@ public class ItemstoreApiResource implements ItemstoreApi {
             return Response.status(Response.Status.FORBIDDEN).build();
         }
         try {
-            layeredItemStore.deleteFiles(deleteFilesRequestDto.getPaths());
+            layeredItemStore.deleteFiles(deleteFilesRequestDto.getPaths().stream().map(this::removeLeadingSlashes).toList());
             log.debug("Deleted files from item store at {}", deleteFilesRequestDto.getPaths());
             return Response.status(NO_CONTENT).build();
         }
