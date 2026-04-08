@@ -54,6 +54,7 @@ public class ItemstoreApiResource implements ItemstoreApi {
             return Response.status(CONFLICT).build();
         }
         catch (IOException e) {
+            log.error("Internal server error", e);
             return Response.status(INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -80,6 +81,7 @@ public class ItemstoreApiResource implements ItemstoreApi {
             return Response.status(CONFLICT).build();
         }
         catch (IOException e) {
+            log.error("Internal server error", e);
             return Response.status(INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -99,6 +101,7 @@ public class ItemstoreApiResource implements ItemstoreApi {
             return Response.status(CONFLICT).build();
         }
         catch (IOException e) {
+            log.error("Internal server error", e);
             return Response.status(INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -118,6 +121,7 @@ public class ItemstoreApiResource implements ItemstoreApi {
             return Response.status(CONFLICT).build();
         }
         catch (IOException e) {
+            log.error("Internal server error", e);
             return Response.status(INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -137,6 +141,7 @@ public class ItemstoreApiResource implements ItemstoreApi {
             return Response.status(CONFLICT).build();
         }
         catch (IOException e) {
+            log.error("Internal server error", e);
             return Response.status(INTERNAL_SERVER_ERROR).build();
         }
     }
