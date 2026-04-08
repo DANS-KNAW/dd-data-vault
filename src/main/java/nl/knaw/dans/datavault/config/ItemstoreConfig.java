@@ -21,22 +21,8 @@ import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 
 @Data
-public class DataVaultConfig {
-    @NotNull
-    private String validObjectIdentifierPattern;
+public class ItemstoreConfig {
     @NotNull
     @Valid
-    private IngestConfig ingest;
-
-    @NotNull
-    @Valid
-    private OcflRepositoryConfig ocflRepository;
-
-    @NotNull
-    @Valid
-    private LayerStoreConfig layerStore;
-
-    @NotNull
-    @Valid
-    private ItemstoreConfig itemstore;
+    private ItemstoreEndpointsConfig enableEndpoints;
 }

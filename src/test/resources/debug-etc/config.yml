@@ -88,6 +88,18 @@ dataVault:
 #        value: true
 
   #
+  # Enable/disable low-level editing end-points. Since these changes made through these end-points can potentially corrupt the OCFL structure, it is recommended to keep them disabled
+  # except temporarily, when needed to fix problems or when file deletion is required by law.
+  #
+  itemstore:
+    enableEndpoints:
+      copyDirectoryInto: true
+      copyFileTo: true
+      createDirectory: true
+      deleteDirectory: true
+      deleteFiles: true
+
+  #
   # Settings for the layer store in which the data vault stores its data.
   #
   layerStore:

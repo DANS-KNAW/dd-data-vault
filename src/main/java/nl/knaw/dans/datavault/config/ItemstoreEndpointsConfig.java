@@ -17,26 +17,18 @@ package nl.knaw.dans.datavault.config;
 
 import lombok.Data;
 
-import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 
 @Data
-public class DataVaultConfig {
+public class ItemstoreEndpointsConfig {
     @NotNull
-    private String validObjectIdentifierPattern;
+    private Boolean copyDirectoryInto;
     @NotNull
-    @Valid
-    private IngestConfig ingest;
-
+    private Boolean copyFileTo;
     @NotNull
-    @Valid
-    private OcflRepositoryConfig ocflRepository;
-
+    private Boolean createDirectory;
     @NotNull
-    @Valid
-    private LayerStoreConfig layerStore;
-
+    private Boolean deleteDirectory;
     @NotNull
-    @Valid
-    private ItemstoreConfig itemstore;
+    private Boolean deleteFiles;
 }

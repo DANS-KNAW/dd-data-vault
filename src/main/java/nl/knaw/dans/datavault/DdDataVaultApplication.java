@@ -106,7 +106,7 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
         var importBatchDao = new ImportJobDao(hibernateBundle.getSessionFactory());
         environment.jersey().register(new ImportsApiResource(importBatchDao, configuration.getDataVault().getIngest().getInbox()));
         environment.jersey().register(new LayersApiResource(layeredItemStore));
-        environment.jersey().register(new ItemstoreApiResource(createUnitOfWorkAwareProxy(uowFactory, layeredItemStore)));
+        environment.jersey().register(new ItemstoreApiResource(createUnitOfWorkAwareProxy(uowFactory, layeredItemStore), configuration.getDataVault().getItemstore()));
         environment.jersey().register(new ObjectsApiResource(ocflRepositoryProvider));
         environment.jersey().register(new DefaultApiResource());
 
