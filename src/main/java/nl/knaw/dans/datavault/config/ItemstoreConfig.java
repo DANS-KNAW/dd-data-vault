@@ -23,6 +23,9 @@ import javax.validation.constraints.NotNull;
 @Data
 public class ItemstoreConfig {
     @NotNull
+    private String workDir;
+
+    @NotNull
     @Valid
     private ItemstoreEndpointsConfig enableEndpoints;
 }

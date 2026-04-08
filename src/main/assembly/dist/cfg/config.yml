@@ -69,7 +69,7 @@ dataVault:
   #
   #
   ocflRepository:
-    workDir: /data/vault/tmp
+    workDir: /data/vault/tmp/ocfl
     #
     # A directory containing documentation files for the root extensions. These files will be copied to the OCFL repository root when it is initialized.
     # Note that this directory must not contain subdirectories.
@@ -93,6 +93,7 @@ dataVault:
   # except temporarily, when needed to fix problems or when file deletion is required by law.
   #
   itemstore:
+    workDir: /data/vault/tmp/itemstore
     enableEndpoints:
       copyDirectoryInto: false
       copyFileTo: false

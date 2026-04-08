@@ -23,11 +23,15 @@ import nl.knaw.dans.datavault.api.CreateDirectoryRequestDto;
 import nl.knaw.dans.datavault.api.DeleteDirectoryRequestDto;
 import nl.knaw.dans.datavault.api.DeleteFilesRequestDto;
 import nl.knaw.dans.layerstore.ItemStore;
+import org.apache.commons.io.FileUtils;
 
 import javax.ws.rs.core.Response;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.UUID;
 
 import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
@@ -47,7 +51,16 @@ public class ItemstoreApiResource implements ItemstoreApi {
             return Response.status(Response.Status.FORBIDDEN).build();
         }
         try {
-            layeredItemStore.moveDirectoryInto(Paths.get(copyDirectoryIntoRequestDto.getSource()), removeLeadingSlashes(copyDirectoryIntoRequestDto.getDestination()));
+            var source = Paths.get(copyDirectoryIntoRequestDto.getSource());
+            var stagingDir = Paths.get(itemstoreConfig.getWorkDir()).resolve(UUID.randomUUID().toString());
+            Files.createDirectories(stagingDir);
+            try {
+                FileUtils.copyDirectory(source.toFile(), stagingDir.toFile());
+                layeredItemStore.moveDirectoryInto(stagingDir, removeLeadingSlashes(copyDirectoryIntoRequestDto.getDestination()));
+            }
+            finally {
+                FileUtils.deleteQuietly(stagingDir.toFile());
+            }
             return Response.status(OK).build();
         }
         catch (IllegalStateException e) {
