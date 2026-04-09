@@ -88,6 +88,15 @@ dataVault:
         jsonPath: $.propertyRegistry.dataset-version.required
         value: true
 
+    #
+    # Checks to perform on the root extension after the OCFL Storage Root has been created. It is recommended to keep these checks on always, except when trying to recover from an error created when using the itemstore API endpoints.
+    #
+    rootExtensionsInitChecks:
+      # Check that the property registry is valid
+      propertyRegistry: true
+      # Check that the packaging format registry is valid
+      packagingFormatRegistry: true
+
   #
   # Enable/disable low-level editing end-points. Since these changes made through these end-points can potentially corrupt the OCFL structure, it is recommended to keep them disabled
   # except temporarily, when needed to fix problems or when file deletion is required by law.

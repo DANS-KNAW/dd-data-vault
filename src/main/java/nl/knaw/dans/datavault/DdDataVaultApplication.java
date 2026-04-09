@@ -100,7 +100,8 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
             configuration.getDataVault().getOcflRepository().getRootExtensionsSourcePath(),
             configuration.getDataVault().getOcflRepository().getRootDocsSourcePath(),
             configuration.getDataVault().getOcflRepository().getRootExtensionsInit(),
-            configuration.getDataVault().getLayerStore().getInitChecks()
+            configuration.getDataVault().getLayerStore().getInitChecks(),
+            configuration.getDataVault().getOcflRepository().getRootExtensionsInitChecks()
         ));
         environment.lifecycle().manage(ocflRepositoryProvider);
         var importBatchDao = new ImportJobDao(hibernateBundle.getSessionFactory());
