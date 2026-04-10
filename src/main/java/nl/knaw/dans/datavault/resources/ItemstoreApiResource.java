@@ -29,7 +29,6 @@ import javax.ws.rs.core.Response;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.UUID;
 
@@ -71,6 +70,9 @@ public class ItemstoreApiResource implements ItemstoreApi {
         catch (IllegalStateException e) {
             return Response.status(CONFLICT).build();
         }
+        catch (IllegalArgumentException e) {
+            return Response.status(BAD_REQUEST).entity(e.getMessage()).build();
+        }
         catch (IOException e) {
             log.error("Internal server error", e);
             return Response.status(INTERNAL_SERVER_ERROR).build();
@@ -80,7 +82,6 @@ public class ItemstoreApiResource implements ItemstoreApi {
     private String removeLeadingSlashes(String path) {
         return path.stripLeading().replaceFirst("^/+", "").trim();
     }
-
 
     @Override
     public Response itemstoreCopyFileToPost(CopyFileToRequestDto copyFileToRequestDto) {
@@ -103,6 +104,9 @@ public class ItemstoreApiResource implements ItemstoreApi {
         catch (IllegalStateException e) {
             return Response.status(CONFLICT).build();
         }
+        catch (IllegalArgumentException e) {
+            return Response.status(BAD_REQUEST).entity(e.getMessage()).build();
+        }
         catch (IOException e) {
             log.error("Internal server error", e);
             return Response.status(INTERNAL_SERVER_ERROR).build();
@@ -122,6 +126,9 @@ public class ItemstoreApiResource implements ItemstoreApi {
         }
         catch (IllegalStateException e) {
             return Response.status(CONFLICT).build();
+        }
+        catch (IllegalArgumentException e) {
+            return Response.status(BAD_REQUEST).entity(e.getMessage()).build();
         }
         catch (IOException e) {
             log.error("Internal server error", e);
@@ -143,6 +150,9 @@ public class ItemstoreApiResource implements ItemstoreApi {
         catch (IllegalStateException e) {
             return Response.status(CONFLICT).build();
         }
+        catch (IllegalArgumentException e) {
+            return Response.status(BAD_REQUEST).entity(e.getMessage()).build();
+        }
         catch (IOException e) {
             log.error("Internal server error", e);
             return Response.status(INTERNAL_SERVER_ERROR).build();
@@ -162,6 +172,9 @@ public class ItemstoreApiResource implements ItemstoreApi {
         }
         catch (IllegalStateException e) {
             return Response.status(CONFLICT).build();
+        }
+        catch (IllegalArgumentException e) {
+            return Response.status(BAD_REQUEST).entity(e.getMessage()).build();
         }
         catch (IOException e) {
             log.error("Internal server error", e);
