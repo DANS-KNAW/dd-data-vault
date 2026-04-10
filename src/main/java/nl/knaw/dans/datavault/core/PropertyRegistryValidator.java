@@ -113,9 +113,9 @@ public class PropertyRegistryValidator {
                 if (!value.isArray()) {
                     throw new IllegalArgumentException("Property '" + path + "' must be of type array");
                 }
-                String itemType = descriptor.hasNonNull("item-type") ? descriptor.get("item-type").asText() : "string";
+                String itemType = descriptor.hasNonNull("itemType") ? descriptor.get("itemType").asText() : "string";
                 if (!itemType.equals("string") && !itemType.equals("number") && !itemType.equals("boolean")) {
-                    throw new IllegalArgumentException("Unsupported item-type for array property '" + path + "': " + itemType);
+                    throw new IllegalArgumentException("Unsupported itemType for array property '" + path + "': " + itemType);
                 }
 
                 // Create a synthetic descriptor for the items

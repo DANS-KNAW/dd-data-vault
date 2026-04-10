@@ -74,7 +74,7 @@ class PropertyRegistryValidatorTest {
                 "tags": {
                   "description": "List of tags",
                   "type": "array",
-                  "item-type": "string"
+                  "itemType": "string"
                 }
               }
             }""";
@@ -241,7 +241,7 @@ class PropertyRegistryValidatorTest {
 
     @Test
     void validate_arrayProperty_invalidItemType_throws() throws Exception {
-        // Mock a registry with an invalid item-type (object)
+        // Mock a registry with an invalid itemType (object)
         String registryJson = """
             {
               "extensionName": "property-registry",
@@ -249,7 +249,7 @@ class PropertyRegistryValidatorTest {
                 "badArray": {
                   "description": "Array with object items (unsupported)",
                   "type": "array",
-                  "item-type": "object"
+                  "itemType": "object"
                 }
               }
             }""";
@@ -266,7 +266,7 @@ class PropertyRegistryValidatorTest {
 
         assertThatThrownBy(() -> localValidator.validate(props))
             .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Unsupported item-type")
+            .hasMessageContaining("Unsupported itemType")
             .hasMessageContaining("object");
     }
 
