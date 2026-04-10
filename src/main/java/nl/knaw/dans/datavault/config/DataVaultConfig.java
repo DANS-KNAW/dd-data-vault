@@ -35,4 +35,8 @@ public class DataVaultConfig {
     @NotNull
     @Valid
     private LayerStoreConfig layerStore;
+
+    @NotNull
+    @Valid
+    private ItemstoreConfig itemstore;
 }

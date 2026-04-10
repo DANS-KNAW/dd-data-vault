@@ -24,6 +24,7 @@ repo_url: https://github.com/DANS-KNAW/dd-data-vault
 nav:
   - Manual:
       - Description: index.md
+      - Item store API: item-store-api.md
       - Installation: installation.md
       - Configuration: config.md
       - API: to-api.md

@@ -24,7 +24,11 @@ import javax.ws.rs.core.Response;
 import java.io.IOException;
 
 import static javax.ws.rs.core.Response.Status.ACCEPTED;
+import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.CREATED;
+import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+import static javax.ws.rs.core.Response.Status.OK;
 
 @AllArgsConstructor
 public class LayersApiResource implements LayersApi {
@@ -41,7 +45,10 @@ public class LayersApiResource implements LayersApi {
             return Response.status(ACCEPTED).build();
         }
         catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.NOT_FOUND).build();
+            return Response.status(NOT_FOUND).build();
+        }
+        catch (IllegalStateException e) {
+            return Response.status(CONFLICT).build();
         }
     }
 
@@ -56,10 +63,10 @@ public class LayersApiResource implements LayersApi {
                 .build();
         }
         catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.NOT_FOUND).build();
+            return Response.status(NOT_FOUND).build();
         }
         catch (IOException e) {
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+            return Response.status(INTERNAL_SERVER_ERROR).build();
         }
     }
 
@@ -71,7 +78,7 @@ public class LayersApiResource implements LayersApi {
                 .build();
         }
         catch (IOException e) {
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+            return Response.status(INTERNAL_SERVER_ERROR).build();
         }
     }
 
@@ -82,7 +89,7 @@ public class LayersApiResource implements LayersApi {
             return Response.status(CREATED).entity(new LayerStatusDto().layerId(layeredItemStore.newTopLayer().getId())).build();
         }
         catch (IOException e) {
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+            return Response.status(INTERNAL_SERVER_ERROR).build();
         }
     }
 
@@ -97,7 +104,7 @@ public class LayersApiResource implements LayersApi {
                 .build();
         }
         catch (IOException e) {
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+            return Response.status(INTERNAL_SERVER_ERROR).build();
         }
     }
 }

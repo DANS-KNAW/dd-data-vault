@@ -33,6 +33,7 @@ import nl.knaw.dans.datavault.core.ImportJobTaskFactory;
 import nl.knaw.dans.datavault.core.LayerThresholdHandler;
 import nl.knaw.dans.datavault.core.OcflRepositoryProvider;
 import nl.knaw.dans.datavault.core.RepositoryProvider;
+import nl.knaw.dans.datavault.core.UnitOfWorkDeclaringItemStore;
 import nl.knaw.dans.datavault.core.UnitOfWorkDeclaringLayerConsistencyChecker;
 import nl.knaw.dans.datavault.core.UnitOfWorkDeclaringRepositoryProviderAdapter;
 import nl.knaw.dans.datavault.db.ConsistencyCheckDao;
@@ -41,9 +42,11 @@ import nl.knaw.dans.datavault.resources.ConsistencyChecksApiResource;
 import nl.knaw.dans.datavault.resources.DefaultApiResource;
 import nl.knaw.dans.datavault.resources.ImportsApiResource;
 import nl.knaw.dans.datavault.resources.LayersApiResource;
+import nl.knaw.dans.datavault.resources.ItemstoreApiResource;
 import nl.knaw.dans.datavault.resources.ObjectsApiResource;
 import nl.knaw.dans.layerstore.ConsistencyCheckingAsyncLayerArchiver;
 import nl.knaw.dans.layerstore.ItemRecord;
+import nl.knaw.dans.layerstore.ItemStore;
 import nl.knaw.dans.layerstore.ItemsMatchDbConsistencyChecker;
 import nl.knaw.dans.layerstore.LayerConsistencyChecker;
 import nl.knaw.dans.layerstore.LayerDatabaseImpl;
@@ -97,12 +100,14 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
             configuration.getDataVault().getOcflRepository().getRootExtensionsSourcePath(),
             configuration.getDataVault().getOcflRepository().getRootDocsSourcePath(),
             configuration.getDataVault().getOcflRepository().getRootExtensionsInit(),
-            configuration.getDataVault().getLayerStore().getInitChecks()
+            configuration.getDataVault().getLayerStore().getInitChecks(),
+            configuration.getDataVault().getOcflRepository().getRootExtensionsInitChecks()
         ));
         environment.lifecycle().manage(ocflRepositoryProvider);
         var importBatchDao = new ImportJobDao(hibernateBundle.getSessionFactory());
         environment.jersey().register(new ImportsApiResource(importBatchDao, configuration.getDataVault().getIngest().getInbox()));
         environment.jersey().register(new LayersApiResource(layeredItemStore));
+        environment.jersey().register(new ItemstoreApiResource(createUnitOfWorkAwareProxy(uowFactory, layeredItemStore), configuration.getDataVault().getItemstore()));
         environment.jersey().register(new ObjectsApiResource(ocflRepositoryProvider));
         environment.jersey().register(new DefaultApiResource());
 
@@ -171,6 +176,11 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
         return uowFactory
             .create(LayerThresholdHandler.class, new Class<?>[] { LayeredItemStore.class, long.class },
                 new Object[] { layeredItemStore, threshold });
+    }
+
+    private ItemStore createUnitOfWorkAwareProxy(UnitOfWorkAwareProxyFactory uowFactory, LayeredItemStore layeredItemStore) {
+        return uowFactory
+            .create(UnitOfWorkDeclaringItemStore.class, new Class<?>[] { ItemStore.class }, new Object[] { layeredItemStore });
     }
 
 }

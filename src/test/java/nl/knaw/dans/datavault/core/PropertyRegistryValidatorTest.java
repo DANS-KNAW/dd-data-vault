@@ -70,6 +70,11 @@ class PropertyRegistryValidatorTest {
                       "type": "number"
                     }
                   }
+                },
+                "tags": {
+                  "description": "List of tags",
+                  "type": "array",
+                  "itemType": "string"
                 }
               }
             }""";
@@ -197,6 +202,72 @@ class PropertyRegistryValidatorTest {
                 """)
         );
         assertThatCode(() -> validator.validate(ok)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void validate_arrayProperty_rules() throws Exception {
+        // Happy path for array
+        Map<String, JsonNode> ok = Map.of(
+            "version", MAPPER.readTree("1"),
+            "tags", MAPPER.readTree("""
+                ["tag1", "tag2"]
+                """)
+        );
+        assertThatCode(() -> validator.validate(ok)).doesNotThrowAnyException();
+
+        // Type mismatch for array (not an array)
+        Map<String, JsonNode> notAnArray = Map.of(
+            "version", MAPPER.readTree("1"),
+            "tags", MAPPER.readTree("""
+                "not-an-array"
+                """)
+        );
+        assertThatThrownBy(() -> validator.validate(notAnArray))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("must be of type array");
+
+        // Type mismatch for array items
+        Map<String, JsonNode> badItemType = Map.of(
+            "version", MAPPER.readTree("1"),
+            "tags", MAPPER.readTree("""
+                ["tag1", 123]
+                """)
+        );
+        assertThatThrownBy(() -> validator.validate(badItemType))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("must be of type string")
+            .hasMessageContaining("tags[1]");
+    }
+
+    @Test
+    void validate_arrayProperty_invalidItemType_throws() throws Exception {
+        // Mock a registry with an invalid itemType (object)
+        String registryJson = """
+            {
+              "extensionName": "property-registry",
+              "propertyRegistry": {
+                "badArray": {
+                  "description": "Array with object items (unsupported)",
+                  "type": "array",
+                  "itemType": "object"
+                }
+              }
+            }""";
+
+        ItemStore itemStore = Mockito.mock(ItemStore.class);
+        when(itemStore.readFile("extensions/property-registry/config.json"))
+            .thenAnswer(invocation -> toStream(registryJson));
+
+        PropertyRegistryValidator localValidator = new PropertyRegistryValidator(itemStore);
+
+        Map<String, JsonNode> props = Map.of(
+            "badArray", MAPPER.readTree("[{}]")
+        );
+
+        assertThatThrownBy(() -> localValidator.validate(props))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Unsupported itemType")
+            .hasMessageContaining("object");
     }
 
     private static InputStream toStream(String json) {

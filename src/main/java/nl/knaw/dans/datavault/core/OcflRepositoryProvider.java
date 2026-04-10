@@ -34,6 +34,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import nl.knaw.dans.datavault.api.OcflObjectVersionDto;
 import nl.knaw.dans.datavault.config.InitChecksConfig;
+import nl.knaw.dans.datavault.config.RootExtensionsInitChecksConfig;
 import nl.knaw.dans.datavault.config.RootExtensionsInitEdit;
 import nl.knaw.dans.layerstore.ItemsMismatchException;
 import nl.knaw.dans.layerstore.LayerConsistencyChecker;
@@ -81,6 +82,7 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
     private final Path rootDocsSourcePath;
     private final List<RootExtensionsInitEdit> rootExtensionsInitEdits;
     private final InitChecksConfig initChecks;
+    private final RootExtensionsInitChecksConfig rootExtensionsInitChecks;
 
     private OcflRepository ocflRepository;
     private OcflStorage ocflStorage;
@@ -89,8 +91,10 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
 
     @Builder
     public static OcflRepositoryProvider create(LayeredItemStore itemStore, Path workDir, LayerConsistencyChecker layerConsistencyChecker,
-        Path rootExtensionsSourcePath, Path rootDocsSourcePath, List<RootExtensionsInitEdit> rootExtensionsInitEdits, InitChecksConfig initChecks) {
-        return new OcflRepositoryProvider(itemStore, workDir, layerConsistencyChecker, rootExtensionsSourcePath, rootDocsSourcePath, rootExtensionsInitEdits, initChecks);
+        Path rootExtensionsSourcePath, Path rootDocsSourcePath, List<RootExtensionsInitEdit> rootExtensionsInitEdits, InitChecksConfig initChecks,
+        RootExtensionsInitChecksConfig rootExtensionsInitChecks) {
+        return new OcflRepositoryProvider(itemStore, workDir, layerConsistencyChecker, rootExtensionsSourcePath, rootDocsSourcePath, rootExtensionsInitEdits, initChecks,
+            rootExtensionsInitChecks);
     }
 
     @Override
@@ -161,13 +165,24 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
             addRootDocs();
             propertyRegistryValidator = new PropertyRegistryValidator(layeredItemStore);
             objectVersionPropertiesValidator = new ObjectVersionPropertiesValidator(layeredItemStore);
-            log.info("Validating OCFL repository property registry");
-            propertyRegistryValidator.validate();
-            log.info("OCFL repository property registry OK");
-            PackagingFormatRegistryValidator packagingFormatRegistryValidator = new PackagingFormatRegistryValidator(layeredItemStore);
-            log.info("Validating OCFL repository packaging format registry");
-            packagingFormatRegistryValidator.validate();
-            log.info("OCFL repository packaging format registry OK");
+
+            if (getRootExtensionsInitChecks().isPropertyRegistry()) {
+                log.info("Validating OCFL repository property registry");
+                propertyRegistryValidator.validate();
+                log.info("OCFL repository property registry OK");
+            }
+            else {
+                log.warn("Validation of the root extension 'property-registry' has been disabled.");
+            }
+            if (getRootExtensionsInitChecks().isPackagingFormatRegistry()) {
+                PackagingFormatRegistryValidator packagingFormatRegistryValidator = new PackagingFormatRegistryValidator(layeredItemStore);
+                log.info("Validating OCFL repository packaging format registry");
+                packagingFormatRegistryValidator.validate();
+                log.info("OCFL repository packaging format registry OK");
+            }
+            else {
+                log.warn("Validation of the root extension 'packaging-format-registry' has been disabled.");
+            }
             log.info("OCFL repository provider started");
         }
         catch (Exception e) {
@@ -194,12 +209,19 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
                 layeredItemStore.checkSameLayersOnStorageAndDb();
                 log.info("Layer IDs OK.");
             }
+            else {
+                log.warn("Initial check of layer IDs consistency between storage and database has been disabled.");
+            }
             if (initChecks.isTopLayerListingRecords()) {
                 log.info("Checking top layer listing records consistency...");
                 layerConsistencyChecker.check(layeredItemStore.getTopLayer());
                 log.info("Top layer listing records OK.");
             }
-        } catch (IOException | LayerIdsMismatchException | ItemsMismatchException e) {
+            else {
+                log.warn("Initial check of top layer listing records consistency has been disabled.");
+            }
+        }
+        catch (IOException | LayerIdsMismatchException | ItemsMismatchException e) {
             throw new IllegalStateException("Initialization check revealed consistency issues", e);
         }
     }
@@ -372,5 +394,14 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
 
     private List<RootExtensionsInitEdit> getRootExtensionsInitEdits() {
         return rootExtensionsInitEdits != null ? rootExtensionsInitEdits : List.of();
+    }
+    private RootExtensionsInitChecksConfig getRootExtensionsInitChecks() {
+        if (rootExtensionsInitChecks == null) {
+            var defaults = new RootExtensionsInitChecksConfig();
+            defaults.setPropertyRegistry(true);
+            defaults.setPackagingFormatRegistry(true);
+            return defaults;
+        }
+        return rootExtensionsInitChecks;
     }
 }
