@@ -39,6 +39,7 @@ extra:
   config_file_url: https://github.com/DANS-KNAW/dd-data-vault/blob/master/src/main/assembly/dist/cfg/config.yml
   dans_dev_scripts_url: https://github.com/DANS-KNAW/dans-dev-scripts
   local_testing_setup: https://dans-knaw.github.io/dans-datastation-architecture/dev-common-practices/#debugging
+  surf_data_archive: https://dans-knaw.github.io/dans-datastation-architecture/data-archive/
 
 plugins:
   - markdownextradata

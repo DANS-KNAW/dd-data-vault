@@ -42,6 +42,8 @@ This service has the following interfaces:
 * _Purpose_: to create DMFTAR archives in the [SURF Data Archive]{:target=_blank}. This interface is optional because it is only used if the DMFTAR
   archive provider has been configured. (The other archive providers use Java code to create the archives and do not require an external interface.)
 
+[SURF Data Archive]: {{ surf_data_archive }}
+
 ### Object Import Directories
 
 Objects versions to be imported must be placed under the inbox in a batch directory. The layout of the batch directory is as follows:
