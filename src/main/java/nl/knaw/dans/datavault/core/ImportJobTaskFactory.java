@@ -21,6 +21,7 @@ import nl.knaw.dans.lib.util.pollingtaskexec.TaskFactory;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.regex.Pattern;
 
@@ -36,7 +37,12 @@ public class ImportJobTaskFactory implements TaskFactory<ImportJob> {
     private final boolean autoclean;
 
     @Override
-    public Runnable create(ImportJob record) {
+    public Runnable create(List<ImportJob> records) {
+        if (records.size() != 1) {
+            throw new IllegalArgumentException("Exactly one import job expected");
+        }
+
+        var record = records.get(0);
         var batchOutbox = outbox.resolve(record.getPath());
         initializeBatchOutbox(batchOutbox);
         return new ImportJobTask(

@@ -20,8 +20,8 @@ import nl.knaw.dans.datavault.core.ImportJob;
 import nl.knaw.dans.lib.util.pollingtaskexec.TaskSource;
 import org.hibernate.SessionFactory;
 
+import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 public class ImportJobDao extends AbstractDAO<ImportJob> implements TaskSource<ImportJob> {
@@ -43,7 +43,7 @@ public class ImportJobDao extends AbstractDAO<ImportJob> implements TaskSource<I
     }
 
     @Override
-    public Optional<ImportJob> nextTask() {
+    public List<ImportJob> nextInputs() {
         var criteria = currentSession().getCriteriaBuilder();
         var query = criteria.createQuery(ImportJob.class);
         var root = query.from(ImportJob.class);
@@ -55,7 +55,9 @@ public class ImportJobDao extends AbstractDAO<ImportJob> implements TaskSource<I
             .createQuery(query)
             .setMaxResults(1)
             .getResultStream()
-            .findFirst();
+            .findFirst()
+            .map(Collections::singletonList)
+            .orElse(Collections.emptyList());
     }
 
     public void update(ImportJob batch) {

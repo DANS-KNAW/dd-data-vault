@@ -21,7 +21,8 @@ import nl.knaw.dans.lib.util.pollingtaskexec.TaskSource;
 import org.hibernate.SessionFactory;
 
 import java.time.OffsetDateTime;
-import java.util.Optional;
+import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
 
 public class ConsistencyCheckDao extends AbstractDAO<ConsistencyCheck> implements TaskSource<ConsistencyCheck> {
@@ -54,7 +55,7 @@ public class ConsistencyCheckDao extends AbstractDAO<ConsistencyCheck> implement
         return super.persist(check);
     }
 
-    public Optional<ConsistencyCheck> nextTask() {
+    public List<ConsistencyCheck> nextInputs() {
         var criteriaBuilder = currentSession().getCriteriaBuilder();
         var criteriaQuery = criteriaBuilder.createQuery(ConsistencyCheck.class);
         var root = criteriaQuery.from(ConsistencyCheck.class);
@@ -69,6 +70,8 @@ public class ConsistencyCheckDao extends AbstractDAO<ConsistencyCheck> implement
         return currentSession()
             .createQuery(criteriaQuery)
             .setMaxResults(1)
-            .uniqueResultOptional();
+            .uniqueResultOptional()
+            .map(Collections::singletonList)
+            .orElse(Collections.emptyList());
     }
 }
