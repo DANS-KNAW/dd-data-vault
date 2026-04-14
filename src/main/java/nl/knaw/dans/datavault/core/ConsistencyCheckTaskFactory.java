@@ -20,13 +20,18 @@ import nl.knaw.dans.datavault.db.ConsistencyCheckDao;
 import nl.knaw.dans.layerstore.LayeredItemStore;
 import nl.knaw.dans.lib.util.pollingtaskexec.TaskFactory;
 
+import java.util.List;
+
 @RequiredArgsConstructor
 public class ConsistencyCheckTaskFactory implements TaskFactory<ConsistencyCheck> {
     private final ConsistencyCheckDao dao;
     private final LayeredItemStore layeredItemStore;
 
     @Override
-    public Runnable create(ConsistencyCheck record) {
-        return new ConsistencyCheckTask(dao, record, layeredItemStore);
+    public Runnable create(List<ConsistencyCheck> records) {
+        if (records.size() != 1) {
+            throw new IllegalArgumentException("Exactly one consistency check job expected");
+        }
+        return new ConsistencyCheckTask(dao, records.get(0), layeredItemStore);
     }
 }
