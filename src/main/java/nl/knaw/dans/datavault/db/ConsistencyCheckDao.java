@@ -54,7 +54,7 @@ public class ConsistencyCheckDao extends AbstractDAO<ConsistencyCheck> implement
         return super.persist(check);
     }
 
-    public Optional<ConsistencyCheck> nextTask() {
+    public Optional<ConsistencyCheck> nextInput() {
         var criteriaBuilder = currentSession().getCriteriaBuilder();
         var criteriaQuery = criteriaBuilder.createQuery(ConsistencyCheck.class);
         var root = criteriaQuery.from(ConsistencyCheck.class);

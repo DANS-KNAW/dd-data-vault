@@ -43,7 +43,7 @@ public class ImportJobDao extends AbstractDAO<ImportJob> implements TaskSource<I
     }
 
     @Override
-    public Optional<ImportJob> nextTask() {
+    public Optional<ImportJob> nextInput() {
         var criteria = currentSession().getCriteriaBuilder();
         var query = criteria.createQuery(ImportJob.class);
         var root = query.from(ImportJob.class);
