@@ -20,10 +20,16 @@ import lombok.AllArgsConstructor;
 import nl.knaw.dans.datavault.core.RepositoryProvider;
 
 import javax.ws.rs.core.Response;
+import java.util.Optional;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @AllArgsConstructor
 public class OcflApiResource implements OcflApi {
+    private static final Pattern V_PREFIXED_NUMBER_PATTERN = Pattern.compile("v\\d+");
+    private static final Pattern NUMBER_PATTERN = Pattern.compile("\\d+");
+    private static final String LATEST_FLAG = "latest";
+
     private final RepositoryProvider ocflRepositoryProvider;
 
     @UnitOfWork
@@ -50,7 +56,13 @@ public class OcflApiResource implements OcflApi {
     @UnitOfWork
     @Override
     public Response ocflObjectsIdVersionsNrDetailsGet(String id, String nr) {
-        return ocflRepositoryProvider.getVersionDetails(id, nr)
+        var versionNumber = validateAndFormatVersionNumber(nr);
+
+        if (versionNumber.isEmpty() && !LATEST_FLAG.equalsIgnoreCase(nr)) {
+            return Response.status(Response.Status.BAD_REQUEST).entity("Invalid version number").build();
+        }
+
+        return ocflRepositoryProvider.getVersionDetails(id, versionNumber.orElse(null))
             .map(Response::ok)
             .orElseGet(() -> Response.status(Response.Status.NOT_FOUND))
             .build();
@@ -58,10 +70,32 @@ public class OcflApiResource implements OcflApi {
 
     @UnitOfWork
     @Override
-    public Response ocflObjectsIdVersionsNrInventoryGet(String id, String nr) {
-        return ocflRepositoryProvider.getObject(id, nr)
+    public Response ocflObjectsIdVersionsNrFilesGet(String id, String nr) {
+        var versionNumber = validateAndFormatVersionNumber(nr);
+
+        if (versionNumber.isEmpty() && !LATEST_FLAG.equalsIgnoreCase(nr)) {
+            return Response.status(Response.Status.BAD_REQUEST).entity("Invalid version number").build();
+        }
+
+        return ocflRepositoryProvider.listFiles(id, versionNumber.orElse(null))
             .map(Response::ok)
             .orElseGet(() -> Response.status(Response.Status.NOT_FOUND))
             .build();
+    }
+
+    private Optional<String> validateAndFormatVersionNumber(String nr) {
+        if (LATEST_FLAG.equalsIgnoreCase(nr)) {
+            return Optional.empty();
+        }
+
+        if (V_PREFIXED_NUMBER_PATTERN.matcher(nr).matches()) {
+            return Optional.of(nr);
+        }
+
+        if (NUMBER_PATTERN.matcher(nr).matches()) {
+            return Optional.of("v" + nr);
+        }
+
+        return Optional.empty();
     }
 }

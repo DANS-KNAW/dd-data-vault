@@ -36,6 +36,7 @@ import lombok.Builder;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import nl.knaw.dans.datavault.api.OcflFileDetailsDto;
 import nl.knaw.dans.datavault.api.OcflObjectDetailsDto;
 import nl.knaw.dans.datavault.api.OcflObjectVersionDto;
 import nl.knaw.dans.datavault.api.OcflUserDto;
@@ -58,8 +59,10 @@ import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.PosixFilePermission;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static java.nio.file.StandardCopyOption.COPY_ATTRIBUTES;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
@@ -166,7 +169,9 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
     @Override
     public Optional<OcflVersionDetailsDto> getVersionDetails(String objectId, String versionNumber) {
         try {
-            var details = ocflRepository.describeVersion(ObjectVersionId.version(objectId, versionNumber));
+            var details = versionNumber == null ?
+                ocflRepository.describeVersion(ObjectVersionId.head(objectId)) :
+                ocflRepository.describeVersion(ObjectVersionId.version(objectId, versionNumber));
             var user = details.getVersionInfo() != null && details.getVersionInfo().getUser() != null ? new OcflUserDto()
                 .name(details.getVersionInfo().getUser().getName())
                 .address(details.getVersionInfo().getUser().getAddress()) : null;
@@ -184,16 +189,26 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
     }
 
     @Override
-    public Optional<OcflObjectVersion> getObject(String objectId, String versionNumber) {
+    public Optional<List<OcflFileDetailsDto>> listFiles(String objectId, String versionNumber) {
         try {
-            if ("latest".equalsIgnoreCase(versionNumber)) {
-                return Optional.of(ocflRepository.getObject(ObjectVersionId.head(objectId)));
-            }
-            return Optional.of(ocflRepository.getObject(ObjectVersionId.version(objectId, versionNumber)));
+            var objectVersionId = versionNumber == null ? ObjectVersionId.head(objectId) : ObjectVersionId.version(objectId, versionNumber);
+            var objectVersion = ocflRepository.getObject(objectVersionId);
+            var files = objectVersion.getFiles().stream()
+                .map(this::mapToFileDetailsDto)
+                .collect(Collectors.toList());
+            return Optional.of(files);
         }
         catch (NotFoundException e) {
             return Optional.empty();
         }
+    }
+
+    private OcflFileDetailsDto mapToFileDetailsDto(io.ocfl.api.model.OcflObjectVersionFile file) {
+        return new OcflFileDetailsDto()
+            .path(file.getPath())
+            .storageRelativePath(file.getStorageRelativePath())
+            .fixity(file.getFixity().entrySet().stream()
+                .collect(Collectors.toMap(e -> e.getKey().getOcflName(), Map.Entry::getValue)));
     }
 
     private VersionInfoJsonReader createVersionInfoJsonReader(Path versionPropertiesFile) {

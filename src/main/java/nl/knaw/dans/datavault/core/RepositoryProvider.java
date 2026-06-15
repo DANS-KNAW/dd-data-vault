@@ -20,6 +20,7 @@ import io.ocfl.api.model.ObjectDetails;
 import io.ocfl.api.model.OcflObjectVersion;
 import io.ocfl.api.model.VersionNum;
 import io.ocfl.api.model.VersionDetails;
+import nl.knaw.dans.datavault.api.OcflFileDetailsDto;
 import nl.knaw.dans.datavault.api.OcflObjectDetailsDto;
 import nl.knaw.dans.datavault.api.OcflObjectVersionDto;
 import nl.knaw.dans.datavault.api.OcflVersionDetailsDto;
@@ -77,12 +78,11 @@ public interface RepositoryProvider extends Managed {
     Optional<OcflVersionDetailsDto> getVersionDetails(String objectId, String versionNumber);
 
     /**
-     * Returns the OCFL inventory at a specific version.
+     * Returns the files in a specific version of an object.
      *
      * @param objectId      The identifier of the object
      * @param versionNumber The version number or "latest"
-     * @return the OCFL inventory at the specified version
+     * @return the files in the specified version
      */
-    Optional<OcflObjectVersion> getObject(String objectId, String versionNumber);
-
+    Optional<List<OcflFileDetailsDto>> listFiles(String objectId, String versionNumber);
 }
