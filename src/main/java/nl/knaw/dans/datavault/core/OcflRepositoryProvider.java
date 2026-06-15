@@ -21,7 +21,11 @@ import com.jayway.jsonpath.Option;
 import io.dropwizard.lifecycle.Managed;
 import io.ocfl.api.OcflRepository;
 import io.ocfl.api.exception.NotFoundException;
+import io.ocfl.api.model.ObjectDetails;
+import io.ocfl.api.model.DigestAlgorithm;
 import io.ocfl.api.model.ObjectVersionId;
+import io.ocfl.api.model.OcflObjectVersion;
+import io.ocfl.api.model.VersionNum;
 import io.ocfl.core.OcflRepositoryBuilder;
 import io.ocfl.core.extension.UnsupportedExtensionBehavior;
 import io.ocfl.core.extension.storage.layout.config.NTupleOmitPrefixStorageLayoutConfig;
@@ -32,7 +36,10 @@ import lombok.Builder;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import nl.knaw.dans.datavault.api.OcflObjectDetailsDto;
 import nl.knaw.dans.datavault.api.OcflObjectVersionDto;
+import nl.knaw.dans.datavault.api.OcflUserDto;
+import nl.knaw.dans.datavault.api.OcflVersionDetailsDto;
 import nl.knaw.dans.datavault.config.InitChecksConfig;
 import nl.knaw.dans.datavault.config.RootExtensionsInitChecksConfig;
 import nl.knaw.dans.datavault.config.RootExtensionsInitEdit;
@@ -130,6 +137,59 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
             var versionInfo = ocflRepository.getObject(ObjectVersionId.version(objectId, version));
             return Optional.of(new OcflObjectVersionDto()
                 .versionNumber(version).created(versionInfo.getCreated()));
+        }
+        catch (NotFoundException e) {
+            return Optional.empty();
+        }
+    }
+
+    @Override
+    public List<String> listObjectIds() {
+        return ocflRepository.listObjectIds().toList();
+    }
+
+    @Override
+    public Optional<OcflObjectDetailsDto> describeObject(String objectId) {
+        try {
+            var details = ocflRepository.describeObject(objectId);
+            return Optional.of(new OcflObjectDetailsDto()
+                .id(details.getId())
+                .headVersionNum(details.getHeadVersionNum().toString())
+                .digestAlgorithm(details.getDigestAlgorithm().getOcflName())
+                .objectOcflVersion(details.getObjectOcflVersion().toString()));
+        }
+        catch (NotFoundException e) {
+            return Optional.empty();
+        }
+    }
+
+    @Override
+    public Optional<OcflVersionDetailsDto> getVersionDetails(String objectId, String versionNumber) {
+        try {
+            var details = ocflRepository.describeVersion(ObjectVersionId.version(objectId, versionNumber));
+            var user = details.getVersionInfo() != null && details.getVersionInfo().getUser() != null ? new OcflUserDto()
+                .name(details.getVersionInfo().getUser().getName())
+                .address(details.getVersionInfo().getUser().getAddress()) : null;
+
+            return Optional.of(new OcflVersionDetailsDto()
+                .objectId(details.getObjectId())
+                .versionNum(details.getVersionNum().toString())
+                .created(details.getCreated())
+                .message(details.getVersionInfo() != null ? details.getVersionInfo().getMessage() : null)
+                .user(user));
+        }
+        catch (NotFoundException e) {
+            return Optional.empty();
+        }
+    }
+
+    @Override
+    public Optional<OcflObjectVersion> getObject(String objectId, String versionNumber) {
+        try {
+            if ("latest".equalsIgnoreCase(versionNumber)) {
+                return Optional.of(ocflRepository.getObject(ObjectVersionId.head(objectId)));
+            }
+            return Optional.of(ocflRepository.getObject(ObjectVersionId.version(objectId, versionNumber)));
         }
         catch (NotFoundException e) {
             return Optional.empty();
