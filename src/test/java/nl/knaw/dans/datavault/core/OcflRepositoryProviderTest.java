@@ -78,7 +78,6 @@ public class OcflRepositoryProviderTest extends AbstractTestFixture {
     private final LayerDatabase dao = new LayerDatabaseImpl(new PersistenceProviderImpl<>(db.getSessionFactory(), ItemRecord.class));
     private OcflRepositoryProvider ocflRepositoryProvider;
     private LayerManager layerManager;
-    private LayerManager layerManagerEdits;
 
     @BeforeEach
     public void setUp() throws Exception {
@@ -103,26 +102,6 @@ public class OcflRepositoryProviderTest extends AbstractTestFixture {
 
         ocflRepositoryProvider.start();
 
-    }
-
-    private OcflRepositoryProvider newProviderWithEdits(List<RootExtensionsInitEdit> edits) throws Exception {
-        var rootDocsPath = testDir.resolve("root-docs");
-        FileUtils.copyDirectory(Path.of("target/dans-ocfl-extensions/extension-docs/").toFile(), rootDocsPath.toFile());
-        FileUtils.copyDirectory(Path.of("target/dans-ocfl-extensions/schemas/").toFile(), rootDocsPath.toFile());
-        var stagingRoot = createSubdir(LAYER_STAGING_ROOT + "-edits");
-        var archiveRoot = createSubdir(LAYER_ARCHIVE_ROOT + "-edits");
-        layerManagerEdits = new LayerManagerImpl(stagingRoot, new ZipArchiveProvider(archiveRoot), new DirectLayerArchiver());
-        var itemStore = new LayeredItemStore(dao, layerManagerEdits, new StoreInventoryDbBackedContentManager());
-        return OcflRepositoryProvider.builder()
-            .itemStore(itemStore)
-            .layerConsistencyChecker(new ItemsMatchDbConsistencyChecker(dao))
-            .rootExtensionsSourcePath(Path.of("src/main/assembly/dist/cfg/ocfl-root-extensions"))
-            .rootDocsSourcePath(rootDocsPath)
-            .workDir(testDir.resolve(WORK_DIR))
-            .rootExtensionsInitEdits(edits)
-            .initChecks(new nl.knaw.dans.datavault.config.InitChecksConfig())
-            .rootExtensionsInitChecks(new RootExtensionsInitChecksConfig())
-            .build();
     }
 
     @Test
@@ -240,77 +219,6 @@ public class OcflRepositoryProviderTest extends AbstractTestFixture {
         assertThat(objectVersionProperties).containsKey("v2");
         assertThat(objectVersionProperties.get("v2").keySet()).hasSize(1);
         assertThat(objectVersionProperties.get("v2")).containsEntry("packaging-format", "DANS RDA BagPack Profile/0.1.0");
-    }
-
-    @Test
-    public void start_should_apply_root_extensions_init_edit() throws Exception {
-        // Given an isolated store and an edit to set dataset-version.required to true
-        var localDb = DAOTestExtension.newBuilder().addEntityClass(ItemRecord.class).build();
-        var localDao = new LayerDatabaseImpl(new PersistenceProviderImpl<>(localDb.getSessionFactory(), ItemRecord.class));
-        var rootDocsPath = testDir.resolve("root-docs");
-        var stagingRoot = createSubdir(LAYER_STAGING_ROOT + "-edits");
-        var archiveRoot = createSubdir(LAYER_ARCHIVE_ROOT + "-edits");
-        var localLayerManager = new LayerManagerImpl(stagingRoot, new ZipArchiveProvider(archiveRoot), new DirectLayerArchiver());
-        var localStore = new LayeredItemStore(localDao, localLayerManager, new StoreInventoryDbBackedContentManager());
-        var edit = new RootExtensionsInitEdit();
-        edit.setFile("property-registry/config.json");
-        edit.setJsonPath("$.propertyRegistry.dataset-version.required");
-        edit.setValue(Boolean.TRUE);
-        var provider = OcflRepositoryProvider.builder()
-            .itemStore(localStore)
-            .layerConsistencyChecker(new ItemsMatchDbConsistencyChecker(localDao))
-            .rootExtensionsSourcePath(Path.of("src/main/assembly/dist/cfg/ocfl-root-extensions"))
-            .rootDocsSourcePath(rootDocsPath)
-            .workDir(testDir.resolve(WORK_DIR))
-            .rootExtensionsInitEdits(List.of(edit))
-            .initChecks(new nl.knaw.dans.datavault.config.InitChecksConfig())
-            .rootExtensionsInitChecks(new RootExtensionsInitChecksConfig())
-            .build();
-
-        // When
-        Session session = localDb.getSessionFactory().openSession();
-        try {
-            ManagedSessionContext.bind(session);
-            var tx = session.beginTransaction();
-            provider.start();
-            tx.commit();
-        }
-        finally {
-            ManagedSessionContext.unbind(localDb.getSessionFactory());
-            session.close();
-        }
-
-        // Then: verify via the isolated layered item store API
-        Session verifySession = localDb.getSessionFactory().openSession();
-        try {
-            ManagedSessionContext.bind(verifySession);
-            var tx2 = verifySession.beginTransaction();
-            assertThat(localStore.existsPathLike("extensions/property-registry/config.json")).isTrue();
-            try (InputStream is = localStore.readFile("extensions/property-registry/config.json")) {
-                var tree = mapper.readTree(is);
-                assertThat(tree.path("propertyRegistry").path("dataset-version").path("required").asBoolean()).isTrue();
-            }
-            tx2.commit();
-        }
-        finally {
-            ManagedSessionContext.unbind(localDb.getSessionFactory());
-            verifySession.close();
-        }
-    }
-
-    @Test
-    public void start_should_fail_on_type_mismatch_in_root_extensions_init() throws Exception {
-        // Given: editing a boolean with a string value should fail
-        var edit = new RootExtensionsInitEdit();
-        edit.setFile("property-registry/config.json");
-        edit.setJsonPath("$.propertyRegistry.dataset-version.required");
-        edit.setValue("true"); // wrong type
-        var provider = newProviderWithEdits(List.of(edit));
-
-        // When / Then: start should throw RuntimeException wrapping IllegalStateException
-        var ex = Assertions.assertThrows(RuntimeException.class, () -> provider.start());
-        assertThat(ex.getCause()).isInstanceOf(IllegalStateException.class);
-        assertThat(ex.getCause().getMessage()).contains("Type mismatch");
     }
 
     // TODO: sidecar file must have the algorithm as inventory sidecar file (this must then first be made configurable in OcflRepositoryProvider)

@@ -149,7 +149,8 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
                 configuration.getDataVault().getLayerStore().getStagingRoot(),
                 configuration.getDataVault().getLayerStore().getArchiveProvider().build(),
                 new ConsistencyCheckingAsyncLayerArchiver(
-                    createUnitOfWorkAwareProxy(uowFactory, layerConsistencyChecker), environment.lifecycle().executorService("archiver-worker").build())
+                    createUnitOfWorkAwareProxy(uowFactory, layerConsistencyChecker), environment.lifecycle().executorService("archiver-worker").build()),
+                configuration.getDataVault().getLayerStore().getInitChecks().isArchiveRoot()
             );
         }
         catch (IOException e) {
