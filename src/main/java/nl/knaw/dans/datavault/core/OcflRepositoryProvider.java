@@ -452,11 +452,11 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
             return true;
         }
         // Allow map to map
-        if (current instanceof java.util.Map && replacement instanceof java.util.Map) {
+        if (current instanceof Map && replacement instanceof Map) {
             return true;
         }
         // Allow list to list
-        if (current instanceof java.util.List && replacement instanceof java.util.List) {
+        if (current instanceof List && replacement instanceof List) {
             return true;
         }
         // Otherwise, types are incompatible
