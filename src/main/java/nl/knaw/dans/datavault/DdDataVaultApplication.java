@@ -129,6 +129,7 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
                 configuration.getDataVault().getIngest().getPollingInterval().toJavaDuration(),
                 importBatchDao,
                 new ImportJobTaskFactory(
+                    uowFactory,
                     configuration.getDataVault().getIngest().getInbox(),
                     configuration.getDataVault().getIngest().getOutbox(),
                     importBatchDao,

@@ -15,17 +15,20 @@
  */
 package nl.knaw.dans.datavault.core;
 
+import io.dropwizard.hibernate.UnitOfWorkAwareProxyFactory;
 import lombok.RequiredArgsConstructor;
 import nl.knaw.dans.datavault.db.ImportJobDao;
 import nl.knaw.dans.lib.util.pollingtaskexec.TaskFactory;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.regex.Pattern;
 
 @RequiredArgsConstructor
 public class ImportJobTaskFactory implements TaskFactory<ImportJob> {
+    private final UnitOfWorkAwareProxyFactory unitOfWorkAwareProxyFactory;
     private final Path inbox;
     private final Path outbox;
     private final ImportJobDao importJobDao;
@@ -39,16 +42,31 @@ public class ImportJobTaskFactory implements TaskFactory<ImportJob> {
     public Runnable create(ImportJob record) {
         var batchOutbox = outbox.resolve(record.getPath());
         initializeBatchOutbox(batchOutbox);
-        return new ImportJobTask(
-            record.getId(),
-            inbox.resolve(record.getPath()),
-            batchOutbox,
-            importJobDao,
-            executorService,
-            repositoryProvider,
-            validObjectIdentifierPattern,
-            layerThresholdHandler,
-            autoclean);
+        return unitOfWorkAwareProxyFactory.create(
+            ImportJobTask.class,
+            new Class[] {
+                UUID.class,
+                Path.class,
+                Path.class,
+                ImportJobDao.class,
+                ExecutorService.class,
+                RepositoryProvider.class,
+                Pattern.class,
+                LayerThresholdHandler.class,
+                boolean.class
+            },
+            new Object[] {
+                record.getId(),
+                inbox.resolve(record.getPath()),
+                batchOutbox,
+                importJobDao,
+                executorService,
+                repositoryProvider,
+                validObjectIdentifierPattern,
+                layerThresholdHandler,
+                autoclean
+            }
+        );
     }
 
     private void initializeBatchOutbox(Path batchOutbox) {
