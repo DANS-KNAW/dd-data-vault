@@ -20,7 +20,6 @@ import io.dropwizard.testing.junit5.DAOTestExtension;
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
 import nl.knaw.dans.datavault.config.InitChecksConfig;
 import nl.knaw.dans.datavault.config.RootExtensionsInitChecksConfig;
-import nl.knaw.dans.datavault.config.RootExtensionsInitEdit;
 import nl.knaw.dans.layerstore.DirectLayerArchiver;
 import nl.knaw.dans.layerstore.ItemRecord;
 import nl.knaw.dans.layerstore.ItemsMatchDbConsistencyChecker;
@@ -33,17 +32,12 @@ import nl.knaw.dans.layerstore.ZipArchiveProvider;
 import nl.knaw.dans.lib.ocflext.StoreInventoryDbBackedContentManager;
 import nl.knaw.dans.lib.util.PersistenceProviderImpl;
 import org.apache.commons.io.FileUtils;
-import org.hibernate.Session;
-import org.hibernate.context.internal.ManagedSessionContext;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
-import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
