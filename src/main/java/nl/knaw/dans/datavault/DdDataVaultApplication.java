@@ -28,7 +28,6 @@ import io.dropwizard.hibernate.UnitOfWorkAwareProxyFactory;
 import lombok.extern.slf4j.Slf4j;
 import nl.knaw.dans.datavault.config.DdDataVaultConfig;
 import nl.knaw.dans.datavault.core.ConsistencyCheckTaskFactory;
-import nl.knaw.dans.datavault.core.ImportJob;
 import nl.knaw.dans.datavault.core.ImportJobTaskFactory;
 import nl.knaw.dans.datavault.core.LayerThresholdHandler;
 import nl.knaw.dans.datavault.core.OcflRepositoryProvider;
@@ -41,9 +40,10 @@ import nl.knaw.dans.datavault.db.ImportJobDao;
 import nl.knaw.dans.datavault.resources.ConsistencyChecksApiResource;
 import nl.knaw.dans.datavault.resources.DefaultApiResource;
 import nl.knaw.dans.datavault.resources.ImportsApiResource;
-import nl.knaw.dans.datavault.resources.LayersApiResource;
 import nl.knaw.dans.datavault.resources.ItemstoreApiResource;
+import nl.knaw.dans.datavault.resources.LayersApiResource;
 import nl.knaw.dans.datavault.resources.ObjectsApiResource;
+import nl.knaw.dans.datavault.resources.OcflApiResource;
 import nl.knaw.dans.layerstore.ConsistencyCheckingAsyncLayerArchiver;
 import nl.knaw.dans.layerstore.ItemRecord;
 import nl.knaw.dans.layerstore.ItemStore;
@@ -109,6 +109,7 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
         environment.jersey().register(new LayersApiResource(layeredItemStore));
         environment.jersey().register(new ItemstoreApiResource(createUnitOfWorkAwareProxy(uowFactory, layeredItemStore), configuration.getDataVault().getItemstore()));
         environment.jersey().register(new ObjectsApiResource(ocflRepositoryProvider));
+        environment.jersey().register(new OcflApiResource(ocflRepositoryProvider));
         environment.jersey().register(new DefaultApiResource());
 
         var consistencyCheckDao = new ConsistencyCheckDao(hibernateBundle.getSessionFactory());
@@ -127,6 +128,7 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
                 configuration.getDataVault().getIngest().getPollingInterval().toJavaDuration(),
                 importBatchDao,
                 new ImportJobTaskFactory(
+                    uowFactory,
                     configuration.getDataVault().getIngest().getInbox(),
                     configuration.getDataVault().getIngest().getOutbox(),
                     importBatchDao,
@@ -147,7 +149,8 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
                 configuration.getDataVault().getLayerStore().getStagingRoot(),
                 configuration.getDataVault().getLayerStore().getArchiveProvider().build(),
                 new ConsistencyCheckingAsyncLayerArchiver(
-                    createUnitOfWorkAwareProxy(uowFactory, layerConsistencyChecker), environment.lifecycle().executorService("archiver-worker").build())
+                    createUnitOfWorkAwareProxy(uowFactory, layerConsistencyChecker), environment.lifecycle().executorService("archiver-worker").build()),
+                configuration.getDataVault().getLayerStore().getInitChecks().isArchiveRoot()
             );
         }
         catch (IOException e) {

@@ -19,6 +19,7 @@ import lombok.Data;
 
 @Data
 public class InitChecksConfig {
-    private boolean layerIds;
-    private boolean topLayerListingRecords;
+    private boolean layerIds = true;
+    private boolean topLayerListingRecords = true;
+    private boolean archiveRoot = true;
 }

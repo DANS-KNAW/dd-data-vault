@@ -53,6 +53,17 @@ public class LayersApiResource implements LayersApi {
     }
 
     @Override
+    public Response layersIdClosePost(Long layerId) {
+        try {
+            layeredItemStore.getLayer(layerId).close();
+            return Response.status(OK).build();
+        }
+        catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
     @UnitOfWork
     public Response layersIdGet(Long layerId) {
         try {
@@ -68,6 +79,22 @@ public class LayersApiResource implements LayersApi {
         catch (IOException e) {
             return Response.status(INTERNAL_SERVER_ERROR).build();
         }
+    }
+
+    @Override
+    public Response layersIdRearchivePost(Long layerId) {
+        try {
+            layeredItemStore.archiveLayer(layerId, true);
+            return Response.status(ACCEPTED).build();
+        }
+        catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.NOT_FOUND).build();
+        }
+    }
+
+    @Override
+    public Response layersIdReopenPost(Long layerId) {
+        return null;
     }
 
     @Override

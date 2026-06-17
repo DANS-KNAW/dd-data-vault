@@ -17,7 +17,6 @@ package nl.knaw.dans.datavault.config;
 
 import io.dropwizard.util.DataSize;
 import lombok.Data;
-import lombok.NonNull;
 
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;

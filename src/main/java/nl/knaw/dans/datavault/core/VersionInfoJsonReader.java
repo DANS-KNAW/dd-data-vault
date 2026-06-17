@@ -25,6 +25,7 @@ import org.apache.commons.validator.routines.EmailValidator;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -139,7 +140,7 @@ public class VersionInfoJsonReader {
         return node.asText();
     }
 
-    private static Stream<Entry<String, JsonNode>> iterableToStream(java.util.Iterator<Map.Entry<String, JsonNode>> it) {
+    private static Stream<Entry<String, JsonNode>> iterableToStream(Iterator<Map.Entry<String, JsonNode>> it) {
         Iterable<Map.Entry<String, JsonNode>> iterable = () -> it;
         return StreamSupport.stream(iterable.spliterator(), false);
     }

@@ -22,8 +22,6 @@ import javax.validation.constraints.NotNull;
 import java.nio.file.Path;
 import java.util.List;
 
-import nl.knaw.dans.datavault.config.RootExtensionsInitEdit;
-
 @Data
 public class OcflRepositoryConfig {
     @NotNull

@@ -164,6 +164,8 @@ dataVault:
       layerIds: true
       # Check that the listing records for the top layer found in the database correspond one-to-one with entries in that layer.
       topLayerListingRecords: true
+      # Check the archive root (the directory containing the archived layers) for the presence of any files that do not correspond to a layer ID in the database. This may be slow if the archive root is on a remote storage.
+      archiveRoot: true
 
 
 #

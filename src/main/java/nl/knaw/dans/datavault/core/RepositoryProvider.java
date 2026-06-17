@@ -16,9 +16,13 @@
 package nl.knaw.dans.datavault.core;
 
 import io.dropwizard.lifecycle.Managed;
+import nl.knaw.dans.datavault.api.OcflFileDetailsDto;
+import nl.knaw.dans.datavault.api.OcflObjectDetailsDto;
 import nl.knaw.dans.datavault.api.OcflObjectVersionDto;
+import nl.knaw.dans.datavault.api.OcflVersionDetailsDto;
 
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -45,4 +49,36 @@ public interface RepositoryProvider extends Managed {
      */
     Optional<OcflObjectVersionDto> getOcflObjectVersion(String objectId, int version);
 
+    /**
+     * Lists all object IDs in the vault.
+     *
+     * @return a list of object IDs
+     */
+    List<String> listObjectIds();
+
+    /**
+     * Gets a detailed overview of an object.
+     *
+     * @param objectId The identifier of the object
+     * @return the object details
+     */
+    Optional<OcflObjectDetailsDto> describeObject(String objectId);
+
+    /**
+     * Returns the details of a specific version of an object.
+     *
+     * @param objectId      The identifier of the object
+     * @param versionNumber The version number or "latest"
+     * @return the version details
+     */
+    Optional<OcflVersionDetailsDto> getVersionDetails(String objectId, String versionNumber);
+
+    /**
+     * Returns the files in a specific version of an object.
+     *
+     * @param objectId      The identifier of the object
+     * @param versionNumber The version number or "latest"
+     * @return the files in the specified version
+     */
+    Optional<List<OcflFileDetailsDto>> listFiles(String objectId, String versionNumber);
 }

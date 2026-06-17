@@ -17,9 +17,13 @@ package nl.knaw.dans.datavault.core;
 
 import io.dropwizard.hibernate.UnitOfWork;
 import lombok.AllArgsConstructor;
+import nl.knaw.dans.datavault.api.OcflFileDetailsDto;
+import nl.knaw.dans.datavault.api.OcflObjectDetailsDto;
 import nl.knaw.dans.datavault.api.OcflObjectVersionDto;
+import nl.knaw.dans.datavault.api.OcflVersionDetailsDto;
 
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -39,6 +43,30 @@ public class UnitOfWorkDeclaringRepositoryProviderAdapter implements RepositoryP
     @UnitOfWork
     public Optional<OcflObjectVersionDto> getOcflObjectVersion(String objectId, int version) {
         return delegate.getOcflObjectVersion(objectId, version);
+    }
+
+    @Override
+    @UnitOfWork
+    public List<String> listObjectIds() {
+        return delegate.listObjectIds();
+    }
+
+    @Override
+    @UnitOfWork
+    public Optional<OcflObjectDetailsDto> describeObject(String objectId) {
+        return delegate.describeObject(objectId);
+    }
+
+    @Override
+    @UnitOfWork
+    public Optional<OcflVersionDetailsDto> getVersionDetails(String objectId, String versionNumber) {
+        return delegate.getVersionDetails(objectId, versionNumber);
+    }
+
+    @Override
+    @UnitOfWork
+    public Optional<List<OcflFileDetailsDto>> listFiles(String objectId, String versionNumber) {
+        return delegate.listFiles(objectId, versionNumber);
     }
 
     @Override
