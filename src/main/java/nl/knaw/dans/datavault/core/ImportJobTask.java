@@ -15,13 +15,13 @@
  */
 package nl.knaw.dans.datavault.core;
 
-import org.apache.commons.io.FileUtils;
 import io.dropwizard.hibernate.UnitOfWork;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import nl.knaw.dans.datavault.core.ImportJob.Status;
 import nl.knaw.dans.datavault.db.ImportJobDao;
+import org.apache.commons.io.FileUtils;
 
 import java.io.IOException;
 import java.nio.file.DirectoryStream;

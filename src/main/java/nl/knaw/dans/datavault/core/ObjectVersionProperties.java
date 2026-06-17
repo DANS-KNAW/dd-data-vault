@@ -16,7 +16,6 @@
 package nl.knaw.dans.datavault.core;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.collect.Sets;
 import lombok.RequiredArgsConstructor;
 import nl.knaw.dans.layerstore.ItemStore;
 import org.apache.commons.codec.binary.Hex;
@@ -28,7 +27,6 @@ import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * Implements the DANS-defined object version properties OCFL extension.

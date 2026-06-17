@@ -16,10 +16,6 @@
 package nl.knaw.dans.datavault.core;
 
 import io.dropwizard.lifecycle.Managed;
-import io.ocfl.api.model.ObjectDetails;
-import io.ocfl.api.model.OcflObjectVersion;
-import io.ocfl.api.model.VersionNum;
-import io.ocfl.api.model.VersionDetails;
 import nl.knaw.dans.datavault.api.OcflFileDetailsDto;
 import nl.knaw.dans.datavault.api.OcflObjectDetailsDto;
 import nl.knaw.dans.datavault.api.OcflObjectVersionDto;

@@ -20,7 +20,6 @@ import lombok.AllArgsConstructor;
 import nl.knaw.dans.datavault.core.RepositoryProvider;
 
 import javax.ws.rs.core.Response;
-import java.util.stream.Collectors;
 
 @AllArgsConstructor
 public class ObjectsApiResource implements ObjectsApi {
