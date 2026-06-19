@@ -7,11 +7,11 @@ Introduction
 ### Version
 
 * Document version: 1.1.0
-* Publication date: n/a
+* Publication date: 2026-06-15
 
 ### Status
 
-The status of this document is DRAFT.
+The status of this document is PUBLISHED.
 
 ### Changes
 
@@ -75,8 +75,8 @@ The following items are required by the [RDA BagPack]{:target=_blank} specificat
     * the DANS BagPack is a valid bag, according to [BagIt v1.0]{:target=_blank} or [BagIt v0.97]{:target=_blank}
     * the DANS BagPack is a holey bag (i.e., a bag with a [fetch.txt]{:target=_blank} file listing the missing files and their fetch URLs). The files to be
       fetched MUST be downloadable from the given URL or obtainable from a well-known location and have the checksums listed in the payload manifests.
-      "Obtainable from a well-known location" means that the repository containing the bag documents how to map the fetch-URL or a checksum for the file to
-      the location where the file data is stored.
+      "Obtainable from a well-known location" means that the repository containing the bag specifies how to map the payload checksum for the file (from a
+      designated algorithm) to the location where the file data is stored.
 2. (a) A DANS BagPack MUST contain a file `metadata/datacite.xml` (b) this file MUST be valid according to the
    [DataCite schema version 4.0 or later]{:target=_blank}, except for the requirement that there MUST be a DOI present: a DOI is not required for a DANS
    BagPack; (c) [DataCite's recommended properties]{:target=_blank} SHOULD be present.
