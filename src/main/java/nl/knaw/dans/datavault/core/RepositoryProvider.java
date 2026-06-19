@@ -16,6 +16,7 @@
 package nl.knaw.dans.datavault.core;
 
 import io.dropwizard.lifecycle.Managed;
+import nl.knaw.dans.datavault.api.OcflExtensionFileDetailsDto;
 import nl.knaw.dans.datavault.api.OcflFileDetailsDto;
 import nl.knaw.dans.datavault.api.OcflObjectDetailsDto;
 import nl.knaw.dans.datavault.api.OcflObjectVersionDto;
@@ -91,7 +92,7 @@ public interface RepositoryProvider extends Managed {
      * @return the extension files
      * @throws NoSuchElementException when the object does not exist
      */
-    List<OcflFileDetailsDto> listExtensionFiles(String objectId) throws NoSuchElementException;
+    List<OcflExtensionFileDetailsDto> listExtensionFiles(String objectId) throws NoSuchElementException;
 
     /**
      * Returns the content of a specific extension file (path is relative to `extensions/`).

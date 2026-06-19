@@ -32,6 +32,7 @@ import lombok.Builder;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import nl.knaw.dans.datavault.api.OcflExtensionFileDetailsDto;
 import nl.knaw.dans.datavault.api.OcflFileDetailsDto;
 import nl.knaw.dans.datavault.api.OcflObjectDetailsDto;
 import nl.knaw.dans.datavault.api.OcflObjectVersionDto;
@@ -203,7 +204,7 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
     }
 
     @Override
-    public List<OcflFileDetailsDto> listExtensionFiles(String objectId) {
+    public List<OcflExtensionFileDetailsDto> listExtensionFiles(String objectId) {
         if (ocflRepository == null) {
             throw new IllegalStateException("OCFL repository is not yet started");
         }
@@ -223,7 +224,7 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
                 .filter(item -> item.getType() == Item.Type.File)
                 .map(item -> {
                     var rel = Path.of(extensionsPath).relativize(Path.of(item.getPath())).toString();
-                    return new OcflFileDetailsDto()
+                    return new OcflExtensionFileDetailsDto()
                         .path(rel)
                         .storageRelativePath(item.getPath());
                 })
