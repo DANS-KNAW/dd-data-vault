@@ -93,12 +93,13 @@ The following items are required by the DANS BagPack Profile, in addition to the
 3. There MUST be a file called `metadata/pid-mapping.txt`: the structure of this file MUST be rows formatted as `<identifier>  <referenced object>`, where
    `<identifier>` is a unique URI and `<referenced object>` is the path to the file relative to the root of the bag, and both are separated by one or more
    spaces. One of the lines MAY be mapping from the dataset DOI to a folder directly under the `data` folder.
-4. (a) There MUST a `metadata/oai-ore.json` file which MUST be a valid JSON-LD 1.0 or higher document; (b) The object described in the
+4. (a) There MUST be a `metadata/oai-ore.jsonld` file which MUST be a valid JSON-LD 1.0 or higher document; (b) The object described in the
    document MUST have the attribute `vaultMd:dansBagId` whose value is a URN:UUID. (c) The `ore:AggregatedResource`s of the `ore:Aggregation` MUST have the
    following attributes: (i) `@id` whose value is a URI; (ii) `schema:name`; (iii) `dvcore:restricted`, with value true or false.
-5. There MUST be a one-to-one mapping between the files in the `data` folder and the files described in the Aggregation contained in  `oai-ore.jsonld` file:
+5. There MUST be a one-to-one mapping between the files in the `data` folder and the files described in the Aggregation contained in the `oai-ore.jsonld` file:
    (a) all identifiers found in 2.4(c)(i) MUST be present in the left column of `pid-mapping.txt`; (b) the set of paths pointing to files found in the right
-   column of `pid-mapping.txt` MUST be equal to the set of paths of files present in the `data` folder (relative to the bag root).
+   column of `pid-mapping.txt` MUST be equal to the set of paths of files present in the `data` folder (relative to the bag root) or listed in the `fetch.txt` 
+   file, if present.
 
 [RFC 2119]: {{ rfc_2119 }}
 [BagIt v1.0]: {{ bagit }}
