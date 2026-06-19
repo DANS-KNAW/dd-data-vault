@@ -22,6 +22,7 @@ import nl.knaw.dans.datavault.api.OcflObjectDetailsDto;
 import nl.knaw.dans.datavault.api.OcflObjectVersionDto;
 import nl.knaw.dans.datavault.api.OcflVersionDetailsDto;
 
+import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
@@ -67,6 +68,18 @@ public class UnitOfWorkDeclaringRepositoryProviderAdapter implements RepositoryP
     @UnitOfWork
     public Optional<List<OcflFileDetailsDto>> listFiles(String objectId, String versionNumber) {
         return delegate.listFiles(objectId, versionNumber);
+    }
+
+    @Override
+    @UnitOfWork
+    public List<OcflFileDetailsDto> listExtensionFiles(String objectId) {
+        return delegate.listExtensionFiles(objectId);
+    }
+
+    @Override
+    @UnitOfWork
+    public InputStream getExtensionFile(String objectId, String path) {
+        return delegate.getExtensionFile(objectId, path);
     }
 
     @Override

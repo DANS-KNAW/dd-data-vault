@@ -19,7 +19,11 @@ import io.dropwizard.hibernate.UnitOfWork;
 import lombok.AllArgsConstructor;
 import nl.knaw.dans.datavault.core.RepositoryProvider;
 
+import javax.validation.constraints.NotNull;
+import javax.ws.rs.NotFoundException;
+import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -81,6 +85,30 @@ public class OcflApiResource implements OcflApi {
             .map(Response::ok)
             .orElseGet(() -> Response.status(Response.Status.NOT_FOUND))
             .build();
+    }
+
+    @UnitOfWork
+    @Override
+    public Response ocflObjectsIdExtensionFilesGet(@NotNull String id) {
+        try {
+            var files = ocflRepositoryProvider.listExtensionFiles(id);
+            return Response.ok(files).build();
+        }
+        catch (NoSuchElementException e) {
+            throw new NotFoundException(e.getMessage());
+        }
+    }
+
+    @UnitOfWork
+    @Override
+    public Response ocflObjectsIdExtensionFilesPathGet(@NotNull String id, @NotNull String path) {
+        try {
+            var is = ocflRepositoryProvider.getExtensionFile(id, path);
+            return Response.ok(is, MediaType.APPLICATION_OCTET_STREAM).build();
+        }
+        catch (NoSuchElementException e) {
+            throw new NotFoundException(e.getMessage());
+        }
     }
 
     private Optional<String> validateAndFormatVersionNumber(String nr) {

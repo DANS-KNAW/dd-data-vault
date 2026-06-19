@@ -40,6 +40,7 @@ import nl.knaw.dans.datavault.api.OcflVersionDetailsDto;
 import nl.knaw.dans.datavault.config.InitChecksConfig;
 import nl.knaw.dans.datavault.config.RootExtensionsInitChecksConfig;
 import nl.knaw.dans.datavault.config.RootExtensionsInitEdit;
+import nl.knaw.dans.layerstore.Item;
 import nl.knaw.dans.layerstore.ItemsMismatchException;
 import nl.knaw.dans.layerstore.LayerConsistencyChecker;
 import nl.knaw.dans.layerstore.LayerIdsMismatchException;
@@ -48,6 +49,7 @@ import nl.knaw.dans.lib.ocflext.LayeredStorage;
 import org.apache.commons.io.FileUtils;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -56,6 +58,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.PosixFilePermission;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -196,6 +199,61 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
         }
         catch (NotFoundException e) {
             return Optional.empty();
+        }
+    }
+
+    @Override
+    public List<OcflFileDetailsDto> listExtensionFiles(String objectId) {
+        if (ocflRepository == null) {
+            throw new IllegalStateException("OCFL repository is not yet started");
+        }
+        if (!ocflRepository.containsObject(objectId)) {
+            throw new NoSuchElementException("OCFL object not found: " + objectId);
+        }
+
+        try {
+            var objectRoot = ocflStorage.objectRootPath(objectId);
+            var extensionsPath = Path.of(objectRoot).resolve("extensions").toString();
+
+            if (!layeredItemStore.existsPathLike(extensionsPath)) {
+                return List.of();
+            }
+
+            return layeredItemStore.listRecursive(extensionsPath).stream()
+                .filter(item -> item.getType() == Item.Type.File)
+                .map(item -> {
+                    var rel = Path.of(extensionsPath).relativize(Path.of(item.getPath())).toString();
+                    return new OcflFileDetailsDto()
+                        .path(rel)
+                        .storageRelativePath(item.getPath());
+                })
+                .collect(Collectors.toList());
+        }
+        catch (IOException e) {
+            throw new RuntimeException("Failed to list extension files for object " + objectId, e);
+        }
+    }
+
+    @Override
+    public InputStream getExtensionFile(String objectId, String path) {
+        if (ocflRepository == null) {
+            throw new IllegalStateException("OCFL repository is not yet started");
+        }
+        if (!ocflRepository.containsObject(objectId)) {
+            throw new NoSuchElementException("OCFL object not found: " + objectId);
+        }
+
+        try {
+            var objectRoot = ocflStorage.objectRootPath(objectId);
+            var fullPath = Path.of(objectRoot).resolve("extensions").resolve(path).toString();
+
+            if (!layeredItemStore.existsPathLike(fullPath)) {
+                throw new NoSuchElementException("Extension file not found: " + path + " in object " + objectId);
+            }
+            return layeredItemStore.readFile(fullPath);
+        }
+        catch (IOException e) {
+            throw new RuntimeException("Failed to read extension file '" + path + "' for object " + objectId, e);
         }
     }
 

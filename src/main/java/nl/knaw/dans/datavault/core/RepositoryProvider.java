@@ -21,8 +21,10 @@ import nl.knaw.dans.datavault.api.OcflObjectDetailsDto;
 import nl.knaw.dans.datavault.api.OcflObjectVersionDto;
 import nl.knaw.dans.datavault.api.OcflVersionDetailsDto;
 
+import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 
 /**
@@ -81,4 +83,23 @@ public interface RepositoryProvider extends Managed {
      * @return the files in the specified version
      */
     Optional<List<OcflFileDetailsDto>> listFiles(String objectId, String versionNumber);
+
+    /**
+     * Lists all files below the OCFL object's `extensions/` directory.
+     *
+     * @param objectId The identifier of the object
+     * @return the extension files
+     * @throws NoSuchElementException when the object does not exist
+     */
+    List<OcflFileDetailsDto> listExtensionFiles(String objectId) throws NoSuchElementException;
+
+    /**
+     * Returns the content of a specific extension file (path is relative to `extensions/`).
+     *
+     * @param objectId The identifier of the object
+     * @param path     The path to the extension file
+     * @return the content of the extension file
+     * @throws NoSuchElementException when the object or the file does not exist
+     */
+    InputStream getExtensionFile(String objectId, String path) throws NoSuchElementException;
 }

@@ -36,11 +36,15 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
+import java.util.NoSuchElementException;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @ExtendWith(DropwizardExtensionsSupport.class)
 public class OcflRepositoryProviderTest extends AbstractTestFixture {
@@ -216,4 +220,92 @@ public class OcflRepositoryProviderTest extends AbstractTestFixture {
     }
 
     // TODO: sidecar file must have the algorithm as inventory sidecar file (this must then first be made configurable in OcflRepositoryProvider)
+
+    @Test
+    public void listExtensionFiles_should_return_extension_files() throws Exception {
+        // Given
+        copyToTestDir("simple-object/v1", TEST_INPUT);
+        var json = """
+            {
+              "version-info": {
+                "user": {"name": "Test User", "email": "test.user@mail.com"},
+                "message": "Initial version"
+              },
+              "object-version-properties": {
+                "packaging-format": "DANS RDA BagPack Profile/0.1.0"
+              }
+            }
+            """;
+        Files.writeString(testDir.resolve(TEST_INPUT + "/v1.json"), json);
+        ocflRepositoryProvider.addVersion("urn:nbn:o1", 1, testDir.resolve(TEST_INPUT + "/v1"));
+
+        // When
+        var files = ocflRepositoryProvider.listExtensionFiles("urn:nbn:o1");
+
+        // Then
+        assertThat(files).isNotEmpty();
+        assertThat(files).anyMatch(f -> f.getPath().equals("object-version-properties/object_version_properties.json"));
+    }
+
+    @Test
+    public void listExtensionFiles_should_throw_NoSuchElementException_when_object_not_found() {
+        assertThatThrownBy(() -> ocflRepositoryProvider.listExtensionFiles("urn:nbn:non-existent"))
+            .isInstanceOf(NoSuchElementException.class);
+    }
+
+    @Test
+    public void getExtensionFile_should_return_file_content() throws Exception {
+        // Given
+        copyToTestDir("simple-object/v1", TEST_INPUT);
+        var json = """
+            {
+              "version-info": {
+                "user": {"name": "Test User", "email": "test.user@mail.com"},
+                "message": "Initial version"
+              },
+              "object-version-properties": {
+                "packaging-format": "DANS RDA BagPack Profile/0.1.0"
+              }
+            }
+            """;
+        Files.writeString(testDir.resolve(TEST_INPUT + "/v1.json"), json);
+        ocflRepositoryProvider.addVersion("urn:nbn:o1", 1, testDir.resolve(TEST_INPUT + "/v1"));
+
+        // When
+        try (InputStream is = ocflRepositoryProvider.getExtensionFile("urn:nbn:o1", "object-version-properties/object_version_properties.json")) {
+            var content = new String(is.readAllBytes(), StandardCharsets.UTF_8);
+            // Then
+            assertThat(content).contains("packaging-format");
+            assertThat(content).contains("DANS RDA BagPack Profile/0.1.0");
+        }
+    }
+
+    @Test
+    public void getExtensionFile_should_throw_NoSuchElementException_when_object_not_found() {
+        assertThatThrownBy(() -> ocflRepositoryProvider.getExtensionFile("urn:nbn:non-existent", "some/path"))
+            .isInstanceOf(NoSuchElementException.class);
+    }
+
+    @Test
+    public void getExtensionFile_should_throw_NoSuchElementException_when_file_not_found() throws Exception {
+        // Given
+        copyToTestDir("simple-object/v1", TEST_INPUT);
+        var json = """
+            {
+              "version-info": {
+                "user": {"name": "Test User", "email": "test.user@mail.com"},
+                "message": "Initial version"
+              },
+              "object-version-properties": {
+                "packaging-format": "DANS RDA BagPack Profile/0.1.0"
+              }
+            }
+            """;
+        Files.writeString(testDir.resolve(TEST_INPUT + "/v1.json"), json);
+        ocflRepositoryProvider.addVersion("urn:nbn:o1", 1, testDir.resolve(TEST_INPUT + "/v1"));
+
+        // When/Then
+        assertThatThrownBy(() -> ocflRepositoryProvider.getExtensionFile("urn:nbn:o1", "non-existent-file"))
+            .isInstanceOf(NoSuchElementException.class);
+    }
 }
