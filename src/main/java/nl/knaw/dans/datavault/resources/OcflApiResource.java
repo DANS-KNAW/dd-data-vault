@@ -101,7 +101,7 @@ public class OcflApiResource implements OcflApi {
 
     @UnitOfWork
     @Override
-    public Response ocflObjectsIdExtensionFilesPathGet(@NotNull String id, @NotNull String path) {
+    public Response ocflObjectsIdExtensionFileGet(@NotNull String id, @NotNull String path) {
         try {
             var is = ocflRepositoryProvider.getExtensionFile(id, path);
             return Response.ok(is, MediaType.APPLICATION_OCTET_STREAM).build();
