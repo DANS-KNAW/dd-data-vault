@@ -20,13 +20,9 @@ import io.dropwizard.testing.junit5.DAOTestExtension;
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
 import nl.knaw.dans.datavault.config.InitChecksConfig;
 import nl.knaw.dans.datavault.config.RootExtensionsInitChecksConfig;
-import nl.knaw.dans.layerstore.DirectLayerArchiver;
 import nl.knaw.dans.layerstore.ItemRecord;
-import nl.knaw.dans.layerstore.ItemsMatchDbConsistencyChecker;
 import nl.knaw.dans.layerstore.LayerDatabase;
 import nl.knaw.dans.layerstore.LayerDatabaseImpl;
-import nl.knaw.dans.layerstore.LayerManager;
-import nl.knaw.dans.layerstore.LayerManagerImpl;
 import nl.knaw.dans.layerstore.LayeredItemStore;
 import nl.knaw.dans.layerstore.ZipArchiveProvider;
 import nl.knaw.dans.lib.ocflext.StoreInventoryDbBackedContentManager;
@@ -75,7 +71,7 @@ public class OcflRepositoryProviderTest extends AbstractTestFixture {
         .build();
     private final LayerDatabase dao = new LayerDatabaseImpl(new PersistenceProviderImpl<>(db.getSessionFactory(), ItemRecord.class));
     private OcflRepositoryProvider ocflRepositoryProvider;
-    private LayerManager layerManager;
+    private LayeredItemStore itemStore;
 
     @BeforeEach
     public void setUp() throws Exception {
@@ -85,14 +81,16 @@ public class OcflRepositoryProviderTest extends AbstractTestFixture {
         FileUtils.copyDirectory(Path.of("target/dans-ocfl-extensions/schemas/").toFile(), rootDocsPath.toFile());
         var stagingRoot = createSubdir(LAYER_STAGING_ROOT);
         var archiveRoot = createSubdir(LAYER_ARCHIVE_ROOT);
-        layerManager = new LayerManagerImpl(stagingRoot, new ZipArchiveProvider(archiveRoot), new DirectLayerArchiver());
-        var itemStore = new LayeredItemStore(dao, layerManager, new StoreInventoryDbBackedContentManager());
-        var layerConsistencyChecker = new ItemsMatchDbConsistencyChecker(dao);
-        layerConsistencyChecker.setLayerManager(layerManager);
+        itemStore = new LayeredItemStore.Builder()
+            .database(dao)
+            .stagingRoot(stagingRoot)
+            .archiveProvider(new ZipArchiveProvider(archiveRoot))
+            .databaseBackedContentManager(new StoreInventoryDbBackedContentManager())
+            .build();
 
         ocflRepositoryProvider = OcflRepositoryProvider.builder()
             .itemStore(itemStore)
-            .layerConsistencyChecker(layerConsistencyChecker)
+            .layerConsistencyChecker(itemStore.getLayerConsistencyChecker())
             .rootExtensionsSourcePath(Path.of("src/main/assembly/dist/cfg/ocfl-root-extensions"))
             .rootDocsSourcePath(rootDocsPath)
             .workDir(testDir.resolve(WORK_DIR))
@@ -125,7 +123,7 @@ public class OcflRepositoryProviderTest extends AbstractTestFixture {
         ocflRepositoryProvider.addVersion("urn:nbn:o1", 1, testDir.resolve(TEST_INPUT + "/v1"));
 
         // Then
-        long layerId = layerManager.getTopLayerId();
+        long layerId = itemStore.getTopLayerId();
         var objectRoot = testDir.resolve(LAYER_STAGING_ROOT).resolve(Long.toString(layerId)).resolve("000/000/0o1/o1");
         assertThat(objectRoot.resolve("v1"))
             .exists()
@@ -190,7 +188,7 @@ public class OcflRepositoryProviderTest extends AbstractTestFixture {
         ocflRepositoryProvider.addVersion("urn:nbn:o1", 2, testDir.resolve(TEST_INPUT + "/v2"));
 
         // Then
-        long layerId = layerManager.getTopLayerId();
+        long layerId = itemStore.getTopLayerId();
         var objectRoot = testDir.resolve(LAYER_STAGING_ROOT).resolve(Long.toString(layerId)).resolve("000/000/0o1/o1");
         assertThat(objectRoot.resolve("v2"))
             .exists()

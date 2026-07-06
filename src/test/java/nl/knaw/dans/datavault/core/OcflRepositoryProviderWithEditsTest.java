@@ -20,13 +20,9 @@ import io.dropwizard.testing.junit5.DAOTestExtension;
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
 import nl.knaw.dans.datavault.config.RootExtensionsInitChecksConfig;
 import nl.knaw.dans.datavault.config.RootExtensionsInitEdit;
-import nl.knaw.dans.layerstore.DirectLayerArchiver;
 import nl.knaw.dans.layerstore.ItemRecord;
-import nl.knaw.dans.layerstore.ItemsMatchDbConsistencyChecker;
 import nl.knaw.dans.layerstore.LayerDatabase;
 import nl.knaw.dans.layerstore.LayerDatabaseImpl;
-import nl.knaw.dans.layerstore.LayerManager;
-import nl.knaw.dans.layerstore.LayerManagerImpl;
 import nl.knaw.dans.layerstore.LayeredItemStore;
 import nl.knaw.dans.layerstore.ZipArchiveProvider;
 import nl.knaw.dans.lib.ocflext.StoreInventoryDbBackedContentManager;
@@ -63,13 +59,15 @@ public class OcflRepositoryProviderWithEditsTest extends AbstractTestFixture {
         FileUtils.copyDirectory(Path.of("target/dans-ocfl-extensions/schemas/").toFile(), rootDocsPath.toFile());
         var stagingRoot = createSubdir(LAYER_STAGING_ROOT);
         var archiveRoot = createSubdir(LAYER_ARCHIVE_ROOT);
-        LayerManager layerManagerEdits = new LayerManagerImpl(stagingRoot, new ZipArchiveProvider(archiveRoot), new DirectLayerArchiver());
-        var itemStore = new LayeredItemStore(dao, layerManagerEdits, new StoreInventoryDbBackedContentManager());
-        var layerConsistencyCheckerEdits = new ItemsMatchDbConsistencyChecker(dao);
-        layerConsistencyCheckerEdits.setLayerManager(layerManagerEdits);
+        var itemStore = new LayeredItemStore.Builder()
+            .database(dao)
+            .stagingRoot(stagingRoot)
+            .archiveProvider(new ZipArchiveProvider(archiveRoot))
+            .databaseBackedContentManager(new StoreInventoryDbBackedContentManager())
+            .build();
         return OcflRepositoryProvider.builder()
             .itemStore(itemStore)
-            .layerConsistencyChecker(layerConsistencyCheckerEdits)
+            .layerConsistencyChecker(itemStore.getLayerConsistencyChecker())
             .rootExtensionsSourcePath(Path.of("src/main/assembly/dist/cfg/ocfl-root-extensions"))
             .rootDocsSourcePath(rootDocsPath)
             .workDir(testDir.resolve(WORK_DIR))
@@ -89,17 +87,19 @@ public class OcflRepositoryProviderWithEditsTest extends AbstractTestFixture {
         FileUtils.copyDirectory(Path.of("target/dans-ocfl-extensions/schemas/").toFile(), rootDocsPath.toFile());
         var stagingRoot = createSubdir(LAYER_STAGING_ROOT);
         var archiveRoot = createSubdir(LAYER_ARCHIVE_ROOT);
-        var localLayerManager = new LayerManagerImpl(stagingRoot, new ZipArchiveProvider(archiveRoot), new DirectLayerArchiver());
-        var localStore = new LayeredItemStore(localDao, localLayerManager, new StoreInventoryDbBackedContentManager());
+        var localStore = new LayeredItemStore.Builder()
+            .database(localDao)
+            .stagingRoot(stagingRoot)
+            .archiveProvider(new ZipArchiveProvider(archiveRoot))
+            .databaseBackedContentManager(new StoreInventoryDbBackedContentManager())
+            .build();
         var edit = new RootExtensionsInitEdit();
         edit.setFile("property-registry/config.json");
         edit.setJsonPath("$.propertyRegistry.dataset-version.required");
         edit.setValue(Boolean.TRUE);
-        var localLayerConsistencyChecker = new ItemsMatchDbConsistencyChecker(localDao);
-        localLayerConsistencyChecker.setLayerManager(localLayerManager);
         var provider = OcflRepositoryProvider.builder()
             .itemStore(localStore)
-            .layerConsistencyChecker(localLayerConsistencyChecker)
+            .layerConsistencyChecker(localStore.getLayerConsistencyChecker())
             .rootExtensionsSourcePath(Path.of("src/main/assembly/dist/cfg/ocfl-root-extensions"))
             .rootDocsSourcePath(rootDocsPath)
             .workDir(testDir.resolve(WORK_DIR))

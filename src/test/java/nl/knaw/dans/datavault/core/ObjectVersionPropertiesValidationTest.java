@@ -18,12 +18,9 @@ package nl.knaw.dans.datavault.core;
 import io.dropwizard.testing.junit5.DAOTestExtension;
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
 import nl.knaw.dans.datavault.config.InitChecksConfig;
-import nl.knaw.dans.layerstore.DirectLayerArchiver;
 import nl.knaw.dans.layerstore.ItemRecord;
-import nl.knaw.dans.layerstore.ItemsMatchDbConsistencyChecker;
 import nl.knaw.dans.layerstore.LayerDatabase;
 import nl.knaw.dans.layerstore.LayerDatabaseImpl;
-import nl.knaw.dans.layerstore.LayerManagerImpl;
 import nl.knaw.dans.layerstore.LayeredItemStore;
 import nl.knaw.dans.layerstore.ZipArchiveProvider;
 import nl.knaw.dans.lib.ocflext.StoreInventoryDbBackedContentManager;
@@ -62,13 +59,15 @@ public class ObjectVersionPropertiesValidationTest extends AbstractTestFixture {
         FileUtils.copyDirectory(Path.of("target/dans-ocfl-extensions/schemas/").toFile(), rootDocsPath.toFile());
         var stagingRoot = createSubdir(LAYER_STAGING_ROOT);
         var archiveRoot = createSubdir(LAYER_ARCHIVE_ROOT);
-        var layerManager = new LayerManagerImpl(stagingRoot, new ZipArchiveProvider(archiveRoot), new DirectLayerArchiver());
-        var itemStore = new LayeredItemStore(dao, layerManager, new StoreInventoryDbBackedContentManager());
-        var layerConsistencyChecker = new ItemsMatchDbConsistencyChecker(dao);
-        layerConsistencyChecker.setLayerManager(layerManager);
+        var itemStore = new LayeredItemStore.Builder()
+            .database(dao)
+            .stagingRoot(stagingRoot)
+            .archiveProvider(new ZipArchiveProvider(archiveRoot))
+            .databaseBackedContentManager(new StoreInventoryDbBackedContentManager())
+            .build();
         provider = OcflRepositoryProvider.builder()
             .itemStore(itemStore)
-            .layerConsistencyChecker(layerConsistencyChecker)
+            .layerConsistencyChecker(itemStore.getLayerConsistencyChecker())
             .rootExtensionsSourcePath(Path.of("src/main/assembly/dist/cfg/ocfl-root-extensions"))
             .rootDocsSourcePath(rootDocsPath)
             .workDir(testDir.resolve(WORK_DIR))

@@ -50,8 +50,6 @@ import nl.knaw.dans.layerstore.ItemStore;
 import nl.knaw.dans.layerstore.ItemsMatchDbConsistencyChecker;
 import nl.knaw.dans.layerstore.LayerConsistencyChecker;
 import nl.knaw.dans.layerstore.LayerDatabaseImpl;
-import nl.knaw.dans.layerstore.LayerManager;
-import nl.knaw.dans.layerstore.LayerManagerImpl;
 import nl.knaw.dans.layerstore.LayeredItemStore;
 import nl.knaw.dans.lib.ocflext.StoreInventoryDbBackedContentManager;
 import nl.knaw.dans.lib.util.PersistenceProviderImpl;
@@ -89,11 +87,25 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
         var uowFactory = new UnitOfWorkAwareProxyFactory(hibernateBundle);
 
         var layerDatabaseDao = new LayerDatabaseImpl(new PersistenceProviderImpl<>(hibernateBundle.getSessionFactory(), ItemRecord.class));
-        var layerConsistencyChecker = new ItemsMatchDbConsistencyChecker(layerDatabaseDao);
-        var layerManager = createLayerManager(configuration, environment, uowFactory, createUnitOfWorkAwareProxy(uowFactory, layerConsistencyChecker));
-        layerConsistencyChecker.setLayerManager(layerManager);
-        var layeredItemStore = new LayeredItemStore(layerDatabaseDao, layerManager, new StoreInventoryDbBackedContentManager());
+        LayeredItemStore layeredItemStore;
+        try {
+            layeredItemStore = new LayeredItemStore.Builder()
+                .database(layerDatabaseDao)
+                .stagingRoot(configuration.getDataVault().getLayerStore().getStagingRoot())
+                .archiveProvider(configuration.getDataVault().getLayerStore().getArchiveProvider().build())
+                .layerConsistencyCheckerProxy(checker -> createUnitOfWorkAwareProxy(uowFactory, checker))
+                .layerArchiver(proxiedChecker -> new ConsistencyCheckingAsyncLayerArchiver(
+                    proxiedChecker, environment.lifecycle().executorService("archiver-worker").build()))
+                .databaseBackedContentManager(new StoreInventoryDbBackedContentManager())
+                .validateArchiveRoot(configuration.getDataVault().getLayerStore().getInitChecks().isArchiveRoot())
+                .build();
+        }
+        catch (IOException e) {
+            log.error("Error creating LayeredItemStore", e);
+            throw new RuntimeException(e);
+        }
         layeredItemStore.setAllowReadingContentFromArchives(false);
+        var layerConsistencyChecker = layeredItemStore.getLayerConsistencyChecker();
         RepositoryProvider ocflRepositoryProvider = createUnitOfWorkAwareProxy(uowFactory, OcflRepositoryProvider.create(
             layeredItemStore,
             configuration.getDataVault().getOcflRepository().getWorkDir(),
@@ -142,22 +154,6 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
             )
         ));
 
-    }
-
-    private LayerManager createLayerManager(DdDataVaultConfig configuration, Environment environment, UnitOfWorkAwareProxyFactory uowFactory, LayerConsistencyChecker layerConsistencyChecker) {
-        try {
-            return new LayerManagerImpl(
-                configuration.getDataVault().getLayerStore().getStagingRoot(),
-                configuration.getDataVault().getLayerStore().getArchiveProvider().build(),
-                new ConsistencyCheckingAsyncLayerArchiver(
-                    createUnitOfWorkAwareProxy(uowFactory, layerConsistencyChecker), environment.lifecycle().executorService("archiver-worker").build()),
-                configuration.getDataVault().getLayerStore().getInitChecks().isArchiveRoot()
-            );
-        }
-        catch (IOException e) {
-            log.error("Error creating LayerManager", e);
-            throw new RuntimeException(e);
-        }
     }
 
     private RepositoryProvider createUnitOfWorkAwareProxy(UnitOfWorkAwareProxyFactory uowFactory, RepositoryProvider repositoryProvider) {
