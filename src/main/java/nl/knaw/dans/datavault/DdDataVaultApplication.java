@@ -91,6 +91,7 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
         var layerDatabaseDao = new LayerDatabaseImpl(new PersistenceProviderImpl<>(hibernateBundle.getSessionFactory(), ItemRecord.class));
         var layerConsistencyChecker = new ItemsMatchDbConsistencyChecker(layerDatabaseDao);
         var layerManager = createLayerManager(configuration, environment, uowFactory, createUnitOfWorkAwareProxy(uowFactory, layerConsistencyChecker));
+        layerConsistencyChecker.setLayerManager(layerManager);
         var layeredItemStore = new LayeredItemStore(layerDatabaseDao, layerManager, new StoreInventoryDbBackedContentManager());
         layeredItemStore.setAllowReadingContentFromArchives(false);
         RepositoryProvider ocflRepositoryProvider = createUnitOfWorkAwareProxy(uowFactory, OcflRepositoryProvider.create(

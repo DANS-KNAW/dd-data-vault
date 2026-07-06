@@ -322,7 +322,7 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
 
     private LayeredItemStore initTopLayer(LayeredItemStore layeredItemStore) {
         try {
-            if (layeredItemStore.getTopLayer() == null) {
+            if (layeredItemStore.getTopLayerId() == null) {
                 layeredItemStore.newTopLayer();
             }
             return layeredItemStore;
@@ -344,7 +344,7 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
             }
             if (initChecks.isTopLayerListingRecords()) {
                 log.info("Checking top layer listing records consistency...");
-                layerConsistencyChecker.check(layeredItemStore.getTopLayer());
+                layerConsistencyChecker.check(layeredItemStore.getTopLayerId());
                 log.info("Top layer listing records OK.");
             }
             else {

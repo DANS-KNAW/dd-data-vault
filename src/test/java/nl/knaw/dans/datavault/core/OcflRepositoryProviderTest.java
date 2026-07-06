@@ -87,10 +87,12 @@ public class OcflRepositoryProviderTest extends AbstractTestFixture {
         var archiveRoot = createSubdir(LAYER_ARCHIVE_ROOT);
         layerManager = new LayerManagerImpl(stagingRoot, new ZipArchiveProvider(archiveRoot), new DirectLayerArchiver());
         var itemStore = new LayeredItemStore(dao, layerManager, new StoreInventoryDbBackedContentManager());
+        var layerConsistencyChecker = new ItemsMatchDbConsistencyChecker(dao);
+        layerConsistencyChecker.setLayerManager(layerManager);
 
         ocflRepositoryProvider = OcflRepositoryProvider.builder()
             .itemStore(itemStore)
-            .layerConsistencyChecker(new ItemsMatchDbConsistencyChecker(dao))
+            .layerConsistencyChecker(layerConsistencyChecker)
             .rootExtensionsSourcePath(Path.of("src/main/assembly/dist/cfg/ocfl-root-extensions"))
             .rootDocsSourcePath(rootDocsPath)
             .workDir(testDir.resolve(WORK_DIR))
@@ -123,7 +125,7 @@ public class OcflRepositoryProviderTest extends AbstractTestFixture {
         ocflRepositoryProvider.addVersion("urn:nbn:o1", 1, testDir.resolve(TEST_INPUT + "/v1"));
 
         // Then
-        long layerId = layerManager.getTopLayer().getId();
+        long layerId = layerManager.getTopLayerId();
         var objectRoot = testDir.resolve(LAYER_STAGING_ROOT).resolve(Long.toString(layerId)).resolve("000/000/0o1/o1");
         assertThat(objectRoot.resolve("v1"))
             .exists()
@@ -188,7 +190,7 @@ public class OcflRepositoryProviderTest extends AbstractTestFixture {
         ocflRepositoryProvider.addVersion("urn:nbn:o1", 2, testDir.resolve(TEST_INPUT + "/v2"));
 
         // Then
-        long layerId = layerManager.getTopLayer().getId();
+        long layerId = layerManager.getTopLayerId();
         var objectRoot = testDir.resolve(LAYER_STAGING_ROOT).resolve(Long.toString(layerId)).resolve("000/000/0o1/o1");
         assertThat(objectRoot.resolve("v2"))
             .exists()

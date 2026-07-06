@@ -65,9 +65,11 @@ public class OcflRepositoryProviderWithEditsTest extends AbstractTestFixture {
         var archiveRoot = createSubdir(LAYER_ARCHIVE_ROOT);
         LayerManager layerManagerEdits = new LayerManagerImpl(stagingRoot, new ZipArchiveProvider(archiveRoot), new DirectLayerArchiver());
         var itemStore = new LayeredItemStore(dao, layerManagerEdits, new StoreInventoryDbBackedContentManager());
+        var layerConsistencyCheckerEdits = new ItemsMatchDbConsistencyChecker(dao);
+        layerConsistencyCheckerEdits.setLayerManager(layerManagerEdits);
         return OcflRepositoryProvider.builder()
             .itemStore(itemStore)
-            .layerConsistencyChecker(new ItemsMatchDbConsistencyChecker(dao))
+            .layerConsistencyChecker(layerConsistencyCheckerEdits)
             .rootExtensionsSourcePath(Path.of("src/main/assembly/dist/cfg/ocfl-root-extensions"))
             .rootDocsSourcePath(rootDocsPath)
             .workDir(testDir.resolve(WORK_DIR))
@@ -93,9 +95,11 @@ public class OcflRepositoryProviderWithEditsTest extends AbstractTestFixture {
         edit.setFile("property-registry/config.json");
         edit.setJsonPath("$.propertyRegistry.dataset-version.required");
         edit.setValue(Boolean.TRUE);
+        var localLayerConsistencyChecker = new ItemsMatchDbConsistencyChecker(localDao);
+        localLayerConsistencyChecker.setLayerManager(localLayerManager);
         var provider = OcflRepositoryProvider.builder()
             .itemStore(localStore)
-            .layerConsistencyChecker(new ItemsMatchDbConsistencyChecker(localDao))
+            .layerConsistencyChecker(localLayerConsistencyChecker)
             .rootExtensionsSourcePath(Path.of("src/main/assembly/dist/cfg/ocfl-root-extensions"))
             .rootDocsSourcePath(rootDocsPath)
             .workDir(testDir.resolve(WORK_DIR))

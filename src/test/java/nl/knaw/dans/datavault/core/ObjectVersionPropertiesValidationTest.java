@@ -64,9 +64,11 @@ public class ObjectVersionPropertiesValidationTest extends AbstractTestFixture {
         var archiveRoot = createSubdir(LAYER_ARCHIVE_ROOT);
         var layerManager = new LayerManagerImpl(stagingRoot, new ZipArchiveProvider(archiveRoot), new DirectLayerArchiver());
         var itemStore = new LayeredItemStore(dao, layerManager, new StoreInventoryDbBackedContentManager());
+        var layerConsistencyChecker = new ItemsMatchDbConsistencyChecker(dao);
+        layerConsistencyChecker.setLayerManager(layerManager);
         provider = OcflRepositoryProvider.builder()
             .itemStore(itemStore)
-            .layerConsistencyChecker(new ItemsMatchDbConsistencyChecker(dao))
+            .layerConsistencyChecker(layerConsistencyChecker)
             .rootExtensionsSourcePath(Path.of("src/main/assembly/dist/cfg/ocfl-root-extensions"))
             .rootDocsSourcePath(rootDocsPath)
             .workDir(testDir.resolve(WORK_DIR))

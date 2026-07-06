@@ -55,7 +55,7 @@ public class LayersApiResource implements LayersApi {
     @Override
     public Response layersIdClosePost(Long layerId) {
         try {
-            layeredItemStore.getLayer(layerId).close();
+            layeredItemStore.closeLayer(layerId);
             return Response.status(OK).build();
         }
         catch (IOException e) {
@@ -67,10 +67,9 @@ public class LayersApiResource implements LayersApi {
     @UnitOfWork
     public Response layersIdGet(Long layerId) {
         try {
-            var layer = layeredItemStore.getLayer(layerId);
             return Response.ok(new LayerStatusDto()
-                    .layerId(layer.getId())
-                    .sizeInBytes(layer.getSizeInBytes()))
+                    .layerId(layerId)
+                    .sizeInBytes(layeredItemStore.getLayerSizeInBytes(layerId)))
                 .build();
         }
         catch (IllegalArgumentException e) {
@@ -113,7 +112,7 @@ public class LayersApiResource implements LayersApi {
     @UnitOfWork
     public Response layersPost() {
         try {
-            return Response.status(CREATED).entity(new LayerStatusDto().layerId(layeredItemStore.newTopLayer().getId())).build();
+            return Response.status(CREATED).entity(new LayerStatusDto().layerId(layeredItemStore.newTopLayer())).build();
         }
         catch (IOException e) {
             return Response.status(INTERNAL_SERVER_ERROR).build();
@@ -124,10 +123,9 @@ public class LayersApiResource implements LayersApi {
     @UnitOfWork
     public Response layersTopGet() {
         try {
-            var topLayer = layeredItemStore.getTopLayer();
             return Response.ok(new LayerStatusDto()
-                    .layerId(topLayer.getId())
-                    .sizeInBytes(topLayer.getSizeInBytes()))
+                    .layerId(layeredItemStore.getTopLayerId())
+                    .sizeInBytes(layeredItemStore.getTopLayerSizeInBytes()))
                 .build();
         }
         catch (IOException e) {

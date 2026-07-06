@@ -33,10 +33,10 @@ public class LayerThresholdHandler {
 
     @UnitOfWork
     public void newTopLayerIfThresholdReached() throws IOException {
-        if (layeredItemStore.getTopLayer().getSizeInBytes() >= layerArchivingThreshold) {
+        if (layeredItemStore.getTopLayerSizeInBytes() >= layerArchivingThreshold) {
             log.info("Archiving threshold reached, creating new top layer");
             layeredItemStore.newTopLayer();
-            log.info("New top layer created with id {}", layeredItemStore.getTopLayer().getId());
+            log.info("New top layer created with id {}", layeredItemStore.getTopLayerId());
         }
     }
 

@@ -18,7 +18,6 @@ package nl.knaw.dans.datavault.core;
 import io.dropwizard.hibernate.UnitOfWork;
 import lombok.RequiredArgsConstructor;
 import nl.knaw.dans.layerstore.ItemsMismatchException;
-import nl.knaw.dans.layerstore.Layer;
 import nl.knaw.dans.layerstore.LayerConsistencyChecker;
 
 import java.io.IOException;
@@ -32,7 +31,7 @@ public class UnitOfWorkDeclaringLayerConsistencyChecker implements LayerConsiste
 
     @UnitOfWork
     @Override
-    public void check(Layer layer) throws IOException, ItemsMismatchException {
-        delegate.check(layer);
+    public void check(long layerId) throws IOException, ItemsMismatchException {
+        delegate.check(layerId);
     }
 }
