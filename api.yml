@@ -1,0 +1,849 @@
+#
+# Copyright (C) 2024 DANS - Data Archiving and Networked Services (info@dans.knaw.nl)
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+openapi: 3.0.1
+
+servers:
+  - url: http://localhost:20365/
+
+info:
+  description: Service for managing a Data Vault
+  version: 2.0.0
+  title: dd-data-vault-api
+  contact:
+    email: info@dans.knaw.nl
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+
+paths:
+  /:
+    get:
+      operationId: rootGet
+      summary: Returns a description of the service.
+      parameters:
+        - name: Accept
+          in: header
+          required: false
+          schema:
+            type: string
+            enum: [ application/json, text/plain ]
+            default: application/json
+      responses:
+        '200':
+          description: description of the service
+          content:
+            text/plain:
+              schema:
+                type: string
+                description: a plain text, human readable description of the service
+                example: |
+                  Data Vault API Running (v2.0.0)
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppInfo'
+
+  /imports:
+    get:
+      operationId: importsGet
+      summary: Returns a list of all current import jobs and their status
+      responses:
+        '200':
+          description: A list of all current import jobs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ImportJobStatus'
+    post:
+      operationId: importsPost
+      summary: Submits a new import job
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImportCommand'
+      responses:
+        '201':
+          description: The job has been submitted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportJobStatus'
+
+  /imports/{id}:
+    get:
+      operationId: importsIdGet
+      summary: Returns the import job with the specified id
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: The unique identifier of the job
+      responses:
+        '200':
+          description: The job with the specified id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportJobStatus'
+        '404':
+          description: No job with the specified id was found
+
+  /layers:
+    post:
+      operationId: layersPost
+      summary: Creates a new top layer, closing and archiving the current top layer
+      responses:
+        '201':
+          description: The new top layer has been created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LayerStatus'
+
+  /layers/{layerId}:
+    get:
+      operationId: layersIdGet
+      summary: Returns the status of the layer with the specified id
+      parameters:
+        - name: layerId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: The timestamp of the layer, in milliseconds since the epoch
+      responses:
+        '200':
+          description: The status of the layer with the specified id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LayerStatus'
+        '404':
+          description: No layer with the specified id was found
+
+  /layers/{layerId}/close:
+    post:
+      operationId: layersIdClosePost
+      summary: Closes the layer with the specified id. This is a synchronous operation.
+      parameters:
+        - name: layerId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: The timestamp of the layer, in milliseconds since the epoch
+      responses:
+        '200':
+          description: The layer has been closed.
+        '400':
+          description: The layer with the specified id cannot be archived, because its current state is not OPEN.
+        '404':
+          description: No layer with the specified id was found
+
+  /layers/{layerId}/archive:
+    post:
+      operationId: layersIdArchivePost
+      summary: Requests the archiving of the layer with the specified id. The operation may be performed asynchronously,
+        so the caller should check the layer's status to determine when the archiving is complete.
+      parameters:
+        - name: layerId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: The timestamp of the layer, in milliseconds since the epoch
+      responses:
+        '202':
+          description: The request to archive the layer has been accepted
+        '400':
+          description: The layer with the specified id cannot be archived, because its current state is not CLOSED or there is already an archive file.
+            To overwrite an archive file with the contents of a reopened layer use the /rearchive endpoint.
+        '404':
+          description: No layer with the specified id was found
+
+  /layers/{layerId}/rearchive:
+    post:
+      operationId: layersIdRearchivePost
+      summary: Requests the rearchiving of the layer with the specified id. The operation may be performed asynchronously,
+        so the caller should check the layer's status to determine when the archiving is complete.
+      parameters:
+        - name: layerId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: The timestamp of the layer, in milliseconds since the epoch
+      responses:
+        '202':
+          description: The request to archive the layer has been accepted
+        '404':
+          description: No layer with the specified id was found
+
+  /layers/{layerId}/reopen:
+    post:
+      operationId: layersIdReopenPost
+      summary: Requests the reopening of the layer with the specified id. The operation may be performed asynchronously, so the caller should check the layer's status to determine when the reopening is complete.
+      parameters:
+        - name: layerId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: The timestamp of the layer, in milliseconds since the epoch
+      responses:
+        '202':
+          description: The request to reopen the layer has been accepted
+        '400':
+          description: The layer with the specified id cannot be reopened, because its current state is not ARCHIVED or CLOSED
+        '404':
+          description: No layer with the specified id was found
+        '409':
+          description: The layer is not in the CLOSED state
+
+  /itemstore/create-directory:
+    post:
+      operationId: itemstoreCreateDirectoryPost
+      summary: Creates a new directory in the item store
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDirectoryRequest'
+      responses:
+        '200':
+          description: The directory has been created
+        '400':
+          description: Bad request
+        '404':
+          description: The item store was not found
+        '409':
+          description: The item store is not in the OPEN state
+
+  /itemstore/delete-directory:
+    post:
+      operationId: itemstoreDeleteDirectoryPost
+      summary: Deletes a directory from the item store
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeleteDirectoryRequest'
+      responses:
+        '200':
+          description: The directory has been deleted
+        '400':
+          description: Bad request
+        '404':
+          description: The item store was not found
+        '409':
+          description: The item store is not in the OPEN state
+
+  /itemstore/delete-files:
+    post:
+      operationId: itemstoreDeleteFilesPost
+      summary: Deletes files from the item store
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeleteFilesRequest'
+      responses:
+        '200':
+          description: The files have been deleted
+        '400':
+          description: Bad request
+        '404':
+          description: The item store was not found
+        '409':
+          description: The item store is not in the OPEN state
+
+  /itemstore/copy-directory-into:
+    post:
+      operationId: itemstoreCopyDirectoryIntoPost
+      summary: Copies a directory into the item store
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CopyDirectoryIntoRequest'
+      responses:
+        '200':
+          description: The directory has been copied
+        '400':
+          description: Bad request
+        '404':
+          description: The item store was not found
+        '409':
+          description: The item store is not in the OPEN state
+
+  /itemstore/copy-file-into:
+    post:
+      operationId: itemstoreCopyFileIntoPost
+      summary: Copies a file into the item store
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CopyFileIntoRequest'
+      responses:
+        '200':
+          description: The file has been copied
+        '400':
+          description: Bad request
+        '404':
+          description: The item store was not found
+        '409':
+          description: The item store is not in the OPEN state
+
+  /itemstore/copy-file-out-of:
+    post:
+      operationId: itemstoreCopyFileOutOfPost
+      summary: Copies a file out of the item store
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CopyFileOutOfRequest'
+      responses:
+        '200':
+          description: The file has been copied
+        '400':
+          description: Bad request
+        '404':
+          description: The item store was not found
+        '409':
+          description: The item store is not in the OPEN state
+
+  /layers/top:
+    get:
+      operationId: layersTopGet
+      summary: Returns the status of the top layer
+      responses:
+        '200':
+          description: The status of the top layer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LayerStatus'
+
+  /layers/ids:
+    get:
+      operationId: layersIdsGet
+      summary: Returns a list of all layer ids
+      responses:
+        '200':
+          description: A list of all layer ids
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: integer
+                  format: int64
+
+  /objects/{id}/versions/{nr}:
+    get:
+      operationId: objectsIdVersionsNrGet
+      summary: Returns the properties of the given object version
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: nr
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Information object the requested version
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OcflObjectVersion'
+
+  /ocfl/objects:
+    get:
+      operationId: ocflObjectsGet
+      summary: List all OCFL object IDs
+      tags:
+        - ocfl
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: List of object IDs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+
+  /ocfl/objects/{id}/details:
+    get:
+      operationId: ocflObjectsIdDetailsGet
+      summary: Get detailed overview of an OCFL object
+      tags:
+        - ocfl
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Object details including version history
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OcflObjectDetails'
+        '404':
+          description: Object not found
+
+  /ocfl/objects/{id}/extension-files:
+    get:
+      operationId: ocflObjectsIdExtensionFilesGet
+      summary: List all extension files for an OCFL object
+      tags:
+        - ocfl
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of extension file details
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OcflExtensionFileDetails'
+        '404':
+          description: Object not found
+
+  /ocfl/objects/{id}/extension-file:
+    get:
+      operationId: ocflObjectsIdExtensionFileGet
+      summary: Get the content of a specific extension file
+      tags:
+        - ocfl
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: path
+          in: query
+          required: true
+          description: The path to the specific extension file (can contain slashes)
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The content of the file
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Object or file not found
+
+  /ocfl/objects/{id}/versions/{nr}/details:
+    get:
+      operationId: ocflObjectsIdVersionsNrDetailsGet
+      summary: Get details of a specific version of an OCFL object
+      tags:
+        - ocfl
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: nr
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Version number or 'latest'
+      responses:
+        '200':
+          description: Version details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OcflVersionDetails'
+        '404':
+          description: Object or version not found
+
+  /ocfl/objects/{id}/versions/{nr}/files:
+    get:
+      operationId: ocflObjectsIdVersionsNrFilesGet
+      summary: List files in a specific version of an OCFL object
+      tags:
+        - ocfl
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: nr
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Version number or 'latest'
+      responses:
+        '200':
+          description: List of file details
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OcflFileDetails'
+        '404':
+          description: Object or version not found
+
+  /consistency-checks:
+    post:
+      operationId: consistencyChecksPost
+      summary: Requests a consistency check of the data vault
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConsistencyCheckRequest'
+      responses:
+        '202':
+          description: The consistency check has been requested
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConsistencyCheckResult'
+
+  /consistency-checks/{id}:
+    get:
+      operationId: consistencyChecksIdGet
+      summary: Returns the status of the consistency check with the specified id
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: The status of the consistency check with the specified id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConsistencyCheckResult'
+        '404':
+          description: No consistency check with the specified id was found
+
+components:
+  schemas:
+    ConsistencyCheckRequest:
+      type: object
+      # layerId cannot be required because that would make LAYER_IDS type requests impossible
+      required: [ type ]
+      properties:
+        type:
+          type: string
+          enum: [ LAYER_IDS, LISTING_RECORDS ]
+          description: The type of consistency check to perform
+        layerId:
+          type: integer
+          format: int64
+          description: The ID of the layer to perform the consistency check on (only applicable for LISTING_RECORDS)
+
+    ConsistencyCheckResult:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: The unique identifier of the consistency check
+        type:
+          type: string
+          enum: [ LAYER_IDS, LISTING_RECORDS ]
+          description: The type of consistency check that was performed
+        layerId:
+          type: integer
+          format: int64
+          description: The ID of the layer that was checked (only applicable for LISTING_RECORDS)
+        created:
+          type: string
+          format: date-time
+          description: The date and time when the consistency check was performed
+        started:
+          type: string
+          format: date-time
+          description: The date and time when the consistency check was started
+        finished:
+          type: string
+          format: date-time
+          description: The date and time when the consistency check was finished
+        result:
+          type: string
+          enum: [ OK, NOT_OK, ERROR ]
+          description: The result of the consistency check
+        message:
+          type: string
+          description: A message describing the result of the consistency check
+
+    AppInfo:
+      type: object
+      properties:
+        name:
+          type: string
+        version:
+          type: string
+
+    ImportCommand:
+      type: object
+      required: [ path ]
+      properties:
+        path:
+          type: string
+          format: path
+          description: The path to the object import or batch directory
+        singleObject:
+          type: boolean
+          default: false
+          description: Whether the import is for a single object or a batch
+    ImportJobStatus:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: The unique identifier of the job
+        path:
+          type: string
+          format: path
+          description: The path to the object import or batch directory
+        singleObject:
+          type: boolean
+          description: Whether the import is for a single object or a batch
+        status:
+          type: string
+          description: The current status of the job
+          enum:
+            - PENDING
+            - RUNNING
+            - SUCCESS
+            - FAILED
+        created:
+          type: string
+          format: date-time
+          description: The date and time when the job was created
+        started:
+          type: string
+          format: date-time
+          description: The date and time when the job was started
+        finished:
+          type: string
+          format: date-time
+          description: The date and time when the job was finished
+        message:
+          type: string
+          description: A message describing the current status of the job
+    LayerStatus:
+      type: object
+      properties:
+        layerId:
+          type: integer
+          format: int64
+          description: The timestamp of the layer, in milliseconds since the epoch
+        sizeInBytes:
+          type: integer
+          format: int64
+          description: The size of the layer in bytes
+
+    CreateDirectoryRequest:
+      type: object
+      required: [ path ]
+      properties:
+        path:
+          type: string
+          format: path
+          description: The path to the directory to create
+
+    DeleteDirectoryRequest:
+      type: object
+      required: [ path ]
+      properties:
+        path:
+          type: string
+          format: path
+          description: The path to the directory to delete
+
+    DeleteFilesRequest:
+      type: object
+      required: [ paths ]
+      properties:
+        paths:
+          type: array
+          items:
+            type: string
+            format: path
+          description: The paths to the files to delete
+
+    CopyDirectoryIntoRequest:
+      type: object
+      required: [ source, destination ]
+      properties:
+        source:
+          type: string
+          format: path
+          description: The source directory path
+        destination:
+          type: string
+          format: path
+          description: The destination directory path in the item store
+
+    CopyFileIntoRequest:
+      type: object
+      required: [ source, destination ]
+      properties:
+        source:
+          type: string
+          format: path
+          description: The source file path
+        destination:
+          type: string
+          format: path
+          description: The destination path in the item store
+
+    CopyFileOutOfRequest:
+      type: object
+      required: [ source, destination ]
+      properties:
+        source:
+          type: string
+          format: path
+          description: The source path in the item store
+        destination:
+          type: string
+          format: path
+          description: The destination file path
+
+    OcflObjectVersion:
+      type: object
+      properties:
+        versionNumber:
+          type: integer
+          description: The version number
+        created:
+          type: string
+          format: date-time
+
+    OcflObjectDetails:
+      type: object
+      properties:
+        id:
+          type: string
+        headVersionNum:
+          type: string
+        digestAlgorithm:
+          type: string
+        objectOcflVersion:
+          type: string
+
+    OcflVersionDetails:
+      type: object
+      properties:
+        objectId:
+          type: string
+        versionNum:
+          type: string
+        created:
+          type: string
+          format: date-time
+        message:
+          type: string
+        user:
+          $ref: '#/components/schemas/OcflUser'
+
+    OcflUser:
+      type: object
+      properties:
+        name:
+          type: string
+        address:
+          type: string
+
+    OcflExtensionFileDetails:
+      type: object
+      properties:
+        path:
+          type: string
+        storageRelativePath:
+          type: string
+
+    OcflFileDetails:
+      type: object
+      properties:
+        path:
+          type: string
+        fixity:
+          type: object
+          additionalProperties:
+            type: string
+        storageRelativePath:
+          type: string
+
