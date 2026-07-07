@@ -24,6 +24,8 @@ public class ItemstoreEndpointsConfig {
     @NotNull
     private Boolean copyDirectoryInto;
     @NotNull
+    private Boolean copyFileFrom;
+    @NotNull
     private Boolean copyFileTo;
     @NotNull
     private Boolean createDirectory;

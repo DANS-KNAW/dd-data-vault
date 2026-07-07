@@ -18,6 +18,7 @@ package nl.knaw.dans.datavault.resources;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import nl.knaw.dans.datavault.api.CopyDirectoryIntoRequestDto;
+import nl.knaw.dans.datavault.api.CopyFileFromRequestDto;
 import nl.knaw.dans.datavault.api.CopyFileToRequestDto;
 import nl.knaw.dans.datavault.api.CreateDirectoryRequestDto;
 import nl.knaw.dans.datavault.api.DeleteDirectoryRequestDto;
@@ -84,7 +85,7 @@ public class ItemstoreApiResource implements ItemstoreApi {
     }
 
     @Override
-    public Response itemstoreCopyFileToPost(CopyFileToRequestDto copyFileToRequestDto) {
+    public Response itemstoreCopyFileIntoPost(CopyFileToRequestDto copyFileToRequestDto) {
         if (!Boolean.TRUE.equals(itemstoreConfig.getEnableEndpoints().getCopyFileTo())) {
             log.warn("End-point called while disabled: itemstoreCopyFileToPost");
             return Response.status(Response.Status.FORBIDDEN).build();
@@ -98,6 +99,36 @@ public class ItemstoreApiResource implements ItemstoreApi {
             try (var is = new FileInputStream(copyFileToRequestDto.getSource())) {
                 layeredItemStore.writeFile(removeLeadingSlashes(copyFileToRequestDto.getDestination()), is);
                 log.debug("Copied file {} to item store at {}", copyFileToRequestDto.getSource(), copyFileToRequestDto.getDestination());
+            }
+            return Response.status(OK).build();
+        }
+        catch (IllegalStateException e) {
+            return Response.status(CONFLICT).build();
+        }
+        catch (IllegalArgumentException e) {
+            return Response.status(BAD_REQUEST).entity(e.getMessage()).build();
+        }
+        catch (IOException e) {
+            log.error("Internal server error", e);
+            return Response.status(INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @Override
+    public Response itemstoreCopyFileOutOfPost(CopyFileFromRequestDto copyFileFromRequestDto) {
+        if (!Boolean.TRUE.equals(itemstoreConfig.getEnableEndpoints().getCopyFileFrom())) {
+            log.warn("End-point called while disabled: itemstoreCopyFileOutOfPost");
+            return Response.status(Response.Status.FORBIDDEN).build();
+        }
+        try {
+            var destination = Paths.get(copyFileFromRequestDto.getDestination());
+            if (!destination.isAbsolute()) {
+                log.warn("Destination path must be absolute: {}", destination);
+                return Response.status(BAD_REQUEST).entity("Destination path must be absolute").build();
+            }
+            try (var is = layeredItemStore.readFile(removeLeadingSlashes(copyFileFromRequestDto.getSource()))) {
+                Files.copy(is, destination);
+                log.debug("Copied file {} from item store to {}", copyFileFromRequestDto.getSource(), copyFileFromRequestDto.getDestination());
             }
             return Response.status(OK).build();
         }

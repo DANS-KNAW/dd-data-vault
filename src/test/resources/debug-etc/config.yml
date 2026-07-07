@@ -105,6 +105,7 @@ dataVault:
     workDir: data/itemstore-work
     enableEndpoints:
       copyDirectoryInto: true
+      copyFileFrom: true
       copyFileTo: true
       createDirectory: true
       deleteDirectory: true

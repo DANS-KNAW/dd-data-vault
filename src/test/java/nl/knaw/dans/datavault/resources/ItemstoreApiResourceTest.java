@@ -16,6 +16,7 @@
 package nl.knaw.dans.datavault.resources;
 
 import nl.knaw.dans.datavault.api.CopyDirectoryIntoRequestDto;
+import nl.knaw.dans.datavault.api.CopyFileFromRequestDto;
 import nl.knaw.dans.datavault.api.CopyFileToRequestDto;
 import nl.knaw.dans.datavault.config.ItemstoreConfig;
 import nl.knaw.dans.datavault.config.ItemstoreEndpointsConfig;
@@ -39,6 +40,7 @@ public class ItemstoreApiResourceTest {
         itemstoreConfig = new ItemstoreConfig();
         var endpoints = new ItemstoreEndpointsConfig();
         endpoints.setCopyDirectoryInto(true);
+        endpoints.setCopyFileFrom(true);
         endpoints.setCopyFileTo(true);
         itemstoreConfig.setEnableEndpoints(endpoints);
         itemstoreConfig.setWorkDir("target/test/ItemstoreApiResourceTest/work");
@@ -63,9 +65,21 @@ public class ItemstoreApiResourceTest {
         request.setSource("relative/path.txt");
         request.setDestination("dest.txt");
 
-        var response = resource.itemstoreCopyFileToPost(request);
+        var response = resource.itemstoreCopyFileIntoPost(request);
 
         assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
         assertEquals("Source path must be absolute", response.getEntity());
+    }
+
+    @Test
+    public void itemstoreCopyFileOutOfPost_should_return_bad_request_when_destination_is_not_absolute() {
+        var request = new CopyFileFromRequestDto();
+        request.setSource("source.txt");
+        request.setDestination("relative/dest.txt");
+
+        var response = resource.itemstoreCopyFileOutOfPost(request);
+
+        assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
+        assertEquals("Destination path must be absolute", response.getEntity());
     }
 }
