@@ -120,7 +120,7 @@ public class ItemstoreApiResource implements ItemstoreApi {
             return Response.status(Response.Status.FORBIDDEN).build();
         }
         try {
-            layeredItemStore.createDirectory(removeLeadingSlashes(createDirectoryRequestDto.getPath()));
+            layeredItemStore.createDirectories(removeLeadingSlashes(createDirectoryRequestDto.getPath()));
             log.debug("Created directory in item store at {}", createDirectoryRequestDto.getPath());
             return Response.status(OK).build();
         }

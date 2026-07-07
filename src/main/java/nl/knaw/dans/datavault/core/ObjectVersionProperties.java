@@ -75,7 +75,7 @@ public class ObjectVersionProperties {
         var propertiesJsonFile = getExtensionDir().resolve(VERSION_PROPERTIES_FILE);
 
         try {
-            itemStore.createDirectory(propertiesJsonFile.getParent().toString());
+            itemStore.createDirectories(propertiesJsonFile.getParent().toString());
             itemStore.writeFile(propertiesJsonFile.toString(), new ByteArrayInputStream(mapper.writeValueAsString(properties).getBytes(StandardCharsets.UTF_8)));
         }
         catch (IOException e) {

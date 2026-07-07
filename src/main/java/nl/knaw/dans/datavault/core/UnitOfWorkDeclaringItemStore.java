@@ -85,8 +85,8 @@ public class UnitOfWorkDeclaringItemStore implements ItemStore {
 
     @UnitOfWork
     @Override
-    public void createDirectory(String path) throws IOException {
-        delegate.createDirectory(path);
+    public void createDirectories(String path) throws IOException {
+        delegate.createDirectories(path);
     }
 
     @Override
