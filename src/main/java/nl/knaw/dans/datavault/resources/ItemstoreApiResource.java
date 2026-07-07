@@ -18,8 +18,8 @@ package nl.knaw.dans.datavault.resources;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import nl.knaw.dans.datavault.api.CopyDirectoryIntoRequestDto;
-import nl.knaw.dans.datavault.api.CopyFileFromRequestDto;
-import nl.knaw.dans.datavault.api.CopyFileToRequestDto;
+import nl.knaw.dans.datavault.api.CopyFileIntoRequestDto;
+import nl.knaw.dans.datavault.api.CopyFileOutOfRequestDto;
 import nl.knaw.dans.datavault.api.CreateDirectoryRequestDto;
 import nl.knaw.dans.datavault.api.DeleteDirectoryRequestDto;
 import nl.knaw.dans.datavault.api.DeleteFilesRequestDto;
@@ -85,20 +85,20 @@ public class ItemstoreApiResource implements ItemstoreApi {
     }
 
     @Override
-    public Response itemstoreCopyFileIntoPost(CopyFileToRequestDto copyFileToRequestDto) {
-        if (!Boolean.TRUE.equals(itemstoreConfig.getEnableEndpoints().getCopyFileTo())) {
+    public Response itemstoreCopyFileIntoPost(CopyFileIntoRequestDto copyFileIntoRequestDto) {
+        if (!Boolean.TRUE.equals(itemstoreConfig.getEnableEndpoints().getCopyFileInto())) {
             log.warn("End-point called while disabled: itemstoreCopyFileToPost");
             return Response.status(Response.Status.FORBIDDEN).build();
         }
         try {
-            var source = Paths.get(copyFileToRequestDto.getSource());
+            var source = Paths.get(copyFileIntoRequestDto.getSource());
             if (!source.isAbsolute()) {
                 log.warn("Source path must be absolute: {}", source);
                 return Response.status(BAD_REQUEST).entity("Source path must be absolute").build();
             }
-            try (var is = new FileInputStream(copyFileToRequestDto.getSource())) {
-                layeredItemStore.writeFile(removeLeadingSlashes(copyFileToRequestDto.getDestination()), is);
-                log.debug("Copied file {} to item store at {}", copyFileToRequestDto.getSource(), copyFileToRequestDto.getDestination());
+            try (var is = new FileInputStream(copyFileIntoRequestDto.getSource())) {
+                layeredItemStore.writeFile(removeLeadingSlashes(copyFileIntoRequestDto.getDestination()), is);
+                log.debug("Copied file {} to item store at {}", copyFileIntoRequestDto.getSource(), copyFileIntoRequestDto.getDestination());
             }
             return Response.status(OK).build();
         }
@@ -115,20 +115,20 @@ public class ItemstoreApiResource implements ItemstoreApi {
     }
 
     @Override
-    public Response itemstoreCopyFileOutOfPost(CopyFileFromRequestDto copyFileFromRequestDto) {
-        if (!Boolean.TRUE.equals(itemstoreConfig.getEnableEndpoints().getCopyFileFrom())) {
+    public Response itemstoreCopyFileOutOfPost(CopyFileOutOfRequestDto copyFileOutOfRequestDto) {
+        if (!Boolean.TRUE.equals(itemstoreConfig.getEnableEndpoints().getCopyFileOutOf())) {
             log.warn("End-point called while disabled: itemstoreCopyFileOutOfPost");
             return Response.status(Response.Status.FORBIDDEN).build();
         }
         try {
-            var destination = Paths.get(copyFileFromRequestDto.getDestination());
+            var destination = Paths.get(copyFileOutOfRequestDto.getDestination());
             if (!destination.isAbsolute()) {
                 log.warn("Destination path must be absolute: {}", destination);
                 return Response.status(BAD_REQUEST).entity("Destination path must be absolute").build();
             }
-            try (var is = layeredItemStore.readFile(removeLeadingSlashes(copyFileFromRequestDto.getSource()))) {
+            try (var is = layeredItemStore.readFile(removeLeadingSlashes(copyFileOutOfRequestDto.getSource()))) {
                 Files.copy(is, destination);
-                log.debug("Copied file {} from item store to {}", copyFileFromRequestDto.getSource(), copyFileFromRequestDto.getDestination());
+                log.debug("Copied file {} from item store to {}", copyFileOutOfRequestDto.getSource(), copyFileOutOfRequestDto.getDestination());
             }
             return Response.status(OK).build();
         }

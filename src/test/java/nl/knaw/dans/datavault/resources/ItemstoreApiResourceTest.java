@@ -16,8 +16,8 @@
 package nl.knaw.dans.datavault.resources;
 
 import nl.knaw.dans.datavault.api.CopyDirectoryIntoRequestDto;
-import nl.knaw.dans.datavault.api.CopyFileFromRequestDto;
-import nl.knaw.dans.datavault.api.CopyFileToRequestDto;
+import nl.knaw.dans.datavault.api.CopyFileIntoRequestDto;
+import nl.knaw.dans.datavault.api.CopyFileOutOfRequestDto;
 import nl.knaw.dans.datavault.config.ItemstoreConfig;
 import nl.knaw.dans.datavault.config.ItemstoreEndpointsConfig;
 import nl.knaw.dans.layerstore.ItemStore;
@@ -40,8 +40,8 @@ public class ItemstoreApiResourceTest {
         itemstoreConfig = new ItemstoreConfig();
         var endpoints = new ItemstoreEndpointsConfig();
         endpoints.setCopyDirectoryInto(true);
-        endpoints.setCopyFileFrom(true);
-        endpoints.setCopyFileTo(true);
+        endpoints.setCopyFileOutOf(true);
+        endpoints.setCopyFileInto(true);
         itemstoreConfig.setEnableEndpoints(endpoints);
         itemstoreConfig.setWorkDir("target/test/ItemstoreApiResourceTest/work");
         resource = new ItemstoreApiResource(layeredItemStore, itemstoreConfig);
@@ -60,8 +60,8 @@ public class ItemstoreApiResourceTest {
     }
 
     @Test
-    public void itemstoreCopyFileToPost_should_return_bad_request_when_source_is_not_absolute() {
-        var request = new CopyFileToRequestDto();
+    public void itemstoreCopyFileIntoPost_should_return_bad_request_when_source_is_not_absolute() {
+        var request = new CopyFileIntoRequestDto();
         request.setSource("relative/path.txt");
         request.setDestination("dest.txt");
 
@@ -73,7 +73,7 @@ public class ItemstoreApiResourceTest {
 
     @Test
     public void itemstoreCopyFileOutOfPost_should_return_bad_request_when_destination_is_not_absolute() {
-        var request = new CopyFileFromRequestDto();
+        var request = new CopyFileOutOfRequestDto();
         request.setSource("source.txt");
         request.setDestination("relative/dest.txt");
 

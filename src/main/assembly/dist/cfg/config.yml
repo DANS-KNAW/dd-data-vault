@@ -115,8 +115,8 @@ dataVault:
     workDir: /data/vault/tmp/itemstore
     enableEndpoints:
       copyDirectoryInto: false
-      copyFileFrom: false
-      copyFileTo: false
+      copyFileOutOf: false
+      copyFileInto: false
       createDirectory: false
       deleteDirectory: false
       deleteFiles: false
