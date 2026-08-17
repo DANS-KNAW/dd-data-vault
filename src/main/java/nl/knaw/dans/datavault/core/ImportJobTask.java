@@ -17,11 +17,9 @@ package nl.knaw.dans.datavault.core;
 
 import io.dropwizard.hibernate.UnitOfWork;
 import lombok.Data;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import nl.knaw.dans.datavault.core.ImportJob.Status;
 import nl.knaw.dans.datavault.db.ImportJobDao;
-import org.apache.commons.io.FileUtils;
 
 import java.io.IOException;
 import java.nio.file.DirectoryStream;
@@ -39,7 +37,6 @@ import java.util.concurrent.Future;
 import java.util.regex.Pattern;
 
 @Slf4j
-@RequiredArgsConstructor
 public class ImportJobTask implements Runnable {
     private final UUID id;
     /**
@@ -53,14 +50,46 @@ public class ImportJobTask implements Runnable {
     private final Pattern validObjectIdentifierPattern;
     private final LayerThresholdHandler layerThresholdHandler;
     private final boolean autoclean;
+    private final BatchCleaner batchCleaner;
 
     private ImportJob importJob;
 
-    @Data
-    private static class ObjectValidationResult {
-        private boolean hasInvalidObjectImportDirName;
-        private boolean hasNonConsecutiveVersions;
-        private final List<String> invalidVersionDirectories = new ArrayList<>(); // Now stores error messages with reasons
+    public ImportJobTask(
+        UUID id,
+        Path batchOrObjectImportDir,
+        Path batchOutbox,
+        ImportJobDao importJobDao,
+        ExecutorService executorService,
+        RepositoryProvider repositoryProvider,
+        Pattern validObjectIdentifierPattern,
+        LayerThresholdHandler layerThresholdHandler,
+        boolean autoclean
+    ) {
+        this(id, batchOrObjectImportDir, batchOutbox, importJobDao, executorService, repositoryProvider, validObjectIdentifierPattern, layerThresholdHandler, autoclean, null);
+    }
+
+    public ImportJobTask(
+        UUID id,
+        Path batchOrObjectImportDir,
+        Path batchOutbox,
+        ImportJobDao importJobDao,
+        ExecutorService executorService,
+        RepositoryProvider repositoryProvider,
+        Pattern validObjectIdentifierPattern,
+        LayerThresholdHandler layerThresholdHandler,
+        boolean autoclean,
+        BatchCleaner batchCleaner
+    ) {
+        this.id = id;
+        this.batchOrObjectImportDir = batchOrObjectImportDir;
+        this.batchOutbox = batchOutbox;
+        this.importJobDao = importJobDao;
+        this.executorService = executorService;
+        this.repositoryProvider = repositoryProvider;
+        this.validObjectIdentifierPattern = validObjectIdentifierPattern;
+        this.layerThresholdHandler = layerThresholdHandler;
+        this.autoclean = autoclean;
+        this.batchCleaner = batchCleaner != null ? batchCleaner : new BatchCleaner(batchOrObjectImportDir, batchOutbox);
     }
 
     @UnitOfWork
@@ -87,7 +116,8 @@ public class ImportJobTask implements Runnable {
     private void processImportJob() throws IOException, InterruptedException {
         if (importJob.isSingleObject()) {
             processSingleObjectImport();
-        } else {
+        }
+        else {
             processBatchObjectImport();
         }
     }
@@ -117,10 +147,11 @@ public class ImportJobTask implements Runnable {
         if (checkFuture(future)) {
             success();
             if (autoclean) {
-                cleanProcessedObject(batchOrObjectImportDir);
-                deleteBatchDirsIfSucceeded();
+                batchCleaner.cleanProcessedObject(batchOrObjectImportDir);
+                batchCleaner.deleteBatchDirsIfSucceeded();
             }
-        } else {
+        }
+        else {
             failed("Updated failed. Check error documents in '" + batchOutbox + "'.");
         }
     }
@@ -131,7 +162,7 @@ public class ImportJobTask implements Runnable {
         var tasks = createObjectTasksFromDirs(objectImportDirs);
         log.info("Starting {} tasks for batch directory {}", tasks.size(), batchOrObjectImportDir);
         @SuppressWarnings("unchecked")
-        var futures = (List<Future<?>>)(List<?>)executorService.invokeAll(tasks.stream().map(Executors::callable).toList());
+        var futures = (List<Future<?>>) (List<?>) executorService.invokeAll(tasks.stream().map(Executors::callable).toList());
         handleBatchImportResults(tasks, objectImportDirs, futures);
     }
 
@@ -164,40 +195,24 @@ public class ImportJobTask implements Runnable {
                 log.info("All tasks for batch directory {} finished successfully", batchOrObjectImportDir);
                 try {
                     layerThresholdHandler.newTopLayerIfThresholdReached();
-                } catch (IOException e) {
+                }
+                catch (IOException e) {
                     log.error("Error updating top layer after threshold reached", e);
                 }
                 if (autoclean) {
-                    cleanProcessedObjects(objectImportDirs);
-                    deleteBatchDirsIfSucceeded();
+                    batchCleaner.cleanProcessedObjects(objectImportDirs);
+                    batchCleaner.deleteBatchDirsIfSucceeded();
                 }
-            } else {
+            }
+            else {
                 if (autoclean) {
-                    cleanSuccessfulProcessedObjects(tasks, objectImportDirs);
+                    batchCleaner.cleanSuccessfulProcessedObjects(tasks, objectImportDirs);
                 }
                 failed("One or more tasks failed. Check error documents in '" + batchOutbox + "'.");
             }
-        } else {
+        }
+        else {
             failed("One or more tasks threw an exception. Check the logs for more information.");
-        }
-    }
-
-    private void cleanProcessedObject(Path objectImportDir) {
-        deleteSilently(batchOutbox.resolve("processed").resolve(objectImportDir.getFileName()));
-    }
-
-    private void cleanProcessedObjects(List<Path> objectImportDirs) {
-        for (var objectImportDir : objectImportDirs) {
-            cleanProcessedObject(objectImportDir);
-        }
-    }
-
-    private void cleanSuccessfulProcessedObjects(List<ObjectCreateOrUpdateTask> tasks, List<Path> objectImportDirs) {
-        for (int i = 0; i < tasks.size(); i++) {
-            var task = tasks.get(i);
-            if (task.getStatus() == ObjectCreateOrUpdateTask.Status.SUCCESS) {
-                cleanProcessedObject(objectImportDirs.get(i));
-            }
         }
     }
 
@@ -284,20 +299,16 @@ public class ImportJobTask implements Runnable {
                 var jsonFile = objectImportDir.resolve(baseName + ".json");
                 try {
                     new VersionInfoJsonReader(jsonFile); // Constructor validates file
-                } catch (Exception e) {
+                }
+                catch (Exception e) {
                     result.getInvalidVersionDirectories().add(jsonFile + ": invalid version info JSON file: " + e.getClass().getSimpleName() + ": " + e.getMessage());
                 }
             }
-        } else {
+        }
+        else {
             result.setHasInvalidObjectImportDirName(true);
         }
         return result;
-    }
-
-    private static class EntryClassification {
-        List<String> versionDirNames = new ArrayList<>();
-        List<String> versionInfoBaseNames = new ArrayList<>();
-        List<Path> unknownEntries = new ArrayList<>();
     }
 
     private EntryClassification classifyObjectDirEntries(Path objectDir) throws IOException {
@@ -307,9 +318,11 @@ public class ImportJobTask implements Runnable {
                 var name = entry.getFileName().toString();
                 if (isValidObjectVersionImportDirName(name)) {
                     classification.versionDirNames.add(name);
-                } else if (isValidVersionPropertiesFileName(name)) {
+                }
+                else if (isValidVersionPropertiesFileName(name)) {
                     classification.versionInfoBaseNames.add(name.substring(0, name.length() - ".json".length()));
-                } else {
+                }
+                else {
                     classification.unknownEntries.add(entry);
                 }
             }
@@ -340,7 +353,8 @@ public class ImportJobTask implements Runnable {
             for (var dirName : versionDirNames) {
                 try {
                     versionNumbers.add(Integer.parseInt(dirName.substring(1))); // skip 'v'
-                } catch (NumberFormatException e) {
+                }
+                catch (NumberFormatException e) {
                     result.getInvalidVersionDirectories().add(objectDir.resolve(dirName) + ": invalid version directory name");
                 }
             }
@@ -366,30 +380,16 @@ public class ImportJobTask implements Runnable {
         return fileName.matches("v\\d+\\.json");
     }
 
-    private void deleteBatchDirsIfSucceeded() {
-        try {
-            deleteSilently(batchOrObjectImportDir);
-            deleteSilently(batchOutbox);
-        }
-        catch (Exception e) {
-            log.warn("Autoclean failed to delete batch directories for {}", importJob.getPath(), e);
-        }
+    @Data
+    private static class ObjectValidationResult {
+        private final List<String> invalidVersionDirectories = new ArrayList<>(); // Now stores error messages with reasons
+        private boolean hasInvalidObjectImportDirName;
+        private boolean hasNonConsecutiveVersions;
     }
 
-    private void deleteSilently(Path path) {
-        try {
-            if (Files.exists(path)) {
-                var file = path.toFile();
-                if (file.isDirectory()) {
-                    FileUtils.deleteDirectory(file);
-                }
-                else {
-                    Files.deleteIfExists(path);
-                }
-            }
-        }
-        catch (IOException e) {
-            log.debug("Failed to delete {}", path, e);
-        }
+    private static class EntryClassification {
+        List<String> versionDirNames = new ArrayList<>();
+        List<String> versionInfoBaseNames = new ArrayList<>();
+        List<Path> unknownEntries = new ArrayList<>();
     }
 }
