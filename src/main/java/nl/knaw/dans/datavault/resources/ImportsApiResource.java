@@ -19,6 +19,7 @@ import io.dropwizard.hibernate.UnitOfWork;
 import lombok.AllArgsConstructor;
 import nl.knaw.dans.datavault.Conversions;
 import nl.knaw.dans.datavault.api.ImportCommandDto;
+import nl.knaw.dans.datavault.core.BatchCleaner;
 import nl.knaw.dans.datavault.core.ImportJob;
 import nl.knaw.dans.datavault.db.ImportJobDao;
 import org.mapstruct.factory.Mappers;
@@ -35,6 +36,7 @@ public class ImportsApiResource implements ImportsApi {
     private final Conversions conversions = Mappers.getMapper(Conversions.class);
     private final ImportJobDao importJobDao;
     private final Path inbox;
+    private final Path outbox;
 
     @Override
     @UnitOfWork
@@ -69,6 +71,18 @@ public class ImportsApiResource implements ImportsApi {
         catch (IllegalArgumentException e) {
             return Response.status(Response.Status.BAD_REQUEST).entity(e.getMessage()).build();
         }
+    }
+
+    @Override
+    @UnitOfWork
+    public Response importsCleanupPost() {
+        var successfulJobs = importJobDao.findByStatus(ImportJob.Status.SUCCESS);
+        for (var job : successfulJobs) {
+            var cleaner = new BatchCleaner(inbox.resolve(job.getPath()), outbox.resolve(job.getPath()));
+            cleaner.cleanProcessedObjects();
+            cleaner.deleteBatchDirs();
+        }
+        return Response.ok().build();
     }
 
     private String getInboxRelativePath(Path path) {

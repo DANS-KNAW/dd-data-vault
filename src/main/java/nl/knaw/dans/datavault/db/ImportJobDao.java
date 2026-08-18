@@ -62,6 +62,16 @@ public class ImportJobDao extends AbstractDAO<ImportJob> implements TaskSource<I
         currentSession().update(batch);
     }
 
+    public List<ImportJob> findByStatus(ImportJob.Status status) {
+        var criteria = currentSession().getCriteriaBuilder();
+        var query = criteria.createQuery(ImportJob.class);
+        var root = query.from(ImportJob.class);
+        var statusPath = root.get("status");
+        query.where(criteria.equal(statusPath, status));
+        query.orderBy(criteria.asc(root.get("created")));
+        return currentSession().createQuery(query).getResultList();
+    }
+
     public List<ImportJob> list() {
         var criteria = currentSession().getCriteriaBuilder();
         var query = criteria.createQuery(ImportJob.class);
