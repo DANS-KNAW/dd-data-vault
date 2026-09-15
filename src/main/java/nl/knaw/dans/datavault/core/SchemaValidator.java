@@ -16,16 +16,15 @@
 package nl.knaw.dans.datavault.core;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.networknt.schema.JsonSchema;
-import com.networknt.schema.JsonSchemaFactory;
-import com.networknt.schema.SpecVersion;
-import com.networknt.schema.ValidationMessage;
+import com.networknt.schema.Error;
+import com.networknt.schema.InputFormat;
+import com.networknt.schema.Schema;
+import com.networknt.schema.SchemaRegistry;
+import com.networknt.schema.SpecificationVersion;
 import lombok.NonNull;
 import nl.knaw.dans.layerstore.ItemStore;
 
-import java.io.IOException;
-import java.util.Set;
+import java.util.List;
 import java.util.stream.Collectors;
 
 /**
@@ -33,28 +32,26 @@ import java.util.stream.Collectors;
  */
 public class SchemaValidator {
     private final ItemStore itemStore;
-    private final ObjectMapper mapper = new ObjectMapper();
-    private final JsonSchemaFactory schemaFactory = JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V202012);
+    private final SchemaRegistry schemaRegistry = SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12);
 
     public SchemaValidator(@NonNull ItemStore itemStore) {
         this.itemStore = itemStore;
     }
 
     public void validate(String schemaFileName, JsonNode document) {
-        JsonSchema schema = loadSchema(schemaFileName);
-        Set<ValidationMessage> messages = schema.validate(document);
+        var schema = loadSchema(schemaFileName);
+        List<Error> messages = schema.validate(document.toString(), InputFormat.JSON);
         if (!messages.isEmpty()) {
-            String errors = messages.stream().map(ValidationMessage::getMessage).collect(Collectors.joining("; "));
+            var errors = messages.stream().map(Error::getMessage).collect(Collectors.joining("; "));
             throw new IllegalStateException("Schema validation failed for '" + schemaFileName + "': " + errors);
         }
     }
 
-    private JsonSchema loadSchema(String schemaFileName) {
+    private Schema loadSchema(String schemaFileName) {
         try (var in = itemStore.readFile(schemaFileName)) {
-            JsonNode schemaJson = mapper.readTree(in);
-            return schemaFactory.getSchema(schemaJson);
+            return schemaRegistry.getSchema(in);
         }
-        catch (IOException e) {
+        catch (Exception e) {
             throw new IllegalStateException("Failed to load schema from OCFL root: " + schemaFileName, e);
         }
     }

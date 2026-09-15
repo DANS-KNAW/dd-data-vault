@@ -22,16 +22,21 @@
     <parent>
         <groupId>nl.knaw.dans</groupId>
         <artifactId>dd-parent</artifactId>
-        <version>1.12.0</version>
+        <version>3.0.0-SNAPSHOT</version>
     </parent>
 
     <artifactId>dd-data-vault</artifactId>
     <version>4.6.1-SNAPSHOT</version>
 
     <name>DD Data Vault</name>
-    <url>https://github.com/DANS-KNAW/dd-data-vault</url>
     <description>Manages a DANS Data Vault Storage Root</description>
+    <url>https://github.com/DANS-KNAW/dd-data-vault</url>
     <inceptionYear>2024</inceptionYear>
+
+    <scm>
+        <developerConnection>scm:git:ssh://github.com/DANS-KNAW/dd-data-vault</developerConnection>
+        <tag>HEAD</tag>
+    </scm>
 
     <properties>
         <!-- TODO: move to dd-parent -->
@@ -43,11 +48,6 @@
         <dans-java-utils.version>4.0.0</dans-java-utils.version>
         <main-class>nl.knaw.dans.datavault.DdDataVaultApplication</main-class>
     </properties>
-
-    <scm>
-        <developerConnection>scm:git:ssh://github.com/DANS-KNAW/dd-data-vault</developerConnection>
-        <tag>HEAD</tag>
-    </scm>
 
     <dependencies>
         <dependency>
@@ -96,7 +96,7 @@
             <version>${commons-validator.version}</version>
         </dependency>
         <dependency>
-            <groupId>nl.knaw.dans</groupId>
+            <groupId>nl.datastations</groupId>
             <artifactId>dans-validation-lib</artifactId>
         </dependency>
         <dependency>
@@ -128,7 +128,7 @@
         <dependency>
             <groupId>com.networknt</groupId>
             <artifactId>json-schema-validator</artifactId>
-            <version>1.0.88</version>
+            <version>3.0.7</version>
         </dependency>
         <dependency>
             <!-- Dependency so version is checked for snapshot on release -->
@@ -185,10 +185,10 @@
                 <artifactId>maven-dependency-plugin</artifactId>
                 <executions>
                     <execution>
-                        <phase>initialize</phase>
                         <goals>
                             <goal>unpack</goal>
                         </goals>
+                        <phase>initialize</phase>
                         <configuration>
                             <artifactItems>
                                 <artifactItem>
@@ -203,10 +203,10 @@
                     <!-- Unpack OCFL extension docs from dans-ocfl-extensions resource jar -->
                     <execution>
                         <id>unpack-ocfl-extension-docs</id>
-                        <phase>initialize</phase>
                         <goals>
                             <goal>unpack</goal>
                         </goals>
+                        <phase>initialize</phase>
                         <configuration>
                             <artifactItems>
                                 <artifactItem>
@@ -243,54 +243,6 @@
         </plugins>
     </build>
 
-
-    <repositories>
-        <repository>
-            <id>dans-releases</id>
-            <releases>
-                <enabled>true</enabled>
-            </releases>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
-            <url>https://maven.dans.knaw.nl/releases/</url>
-        </repository>
-        <repository>
-            <id>dans-snapshots</id>
-            <releases>
-                <enabled>false</enabled>
-            </releases>
-            <snapshots>
-                <enabled>true</enabled>
-            </snapshots>
-            <url>https://maven.dans.knaw.nl/snapshots/</url>
-        </repository>
-    </repositories>
-
-    <pluginRepositories>
-        <pluginRepository>
-            <id>dans-releases</id>
-            <releases>
-                <enabled>true</enabled>
-            </releases>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
-            <url>https://maven.dans.knaw.nl/releases/</url>
-        </pluginRepository>
-        <pluginRepository>
-            <id>dans-snapshots</id>
-            <releases>
-                <enabled>false</enabled>
-            </releases>
-            <snapshots>
-                <enabled>true</enabled>
-            </snapshots>
-            <url>https://maven.dans.knaw.nl/snapshots/</url>
-        </pluginRepository>
-    </pluginRepositories>
-
-
     <profiles>
         <profile>
             <id>rpm</id>
@@ -307,7 +259,7 @@
                         <artifactId>rpm-maven-plugin</artifactId>
                         <configuration>
                             <group>Applications/Archiving</group>
-                            <mappings combine.self="append" combine.children="append">
+                            <mappings combine.children="append" combine.self="append">
                                 <mapping>
                                     <directory>/etc/opt/${dans-provider-name}/${project.artifactId}/ocfl-root-docs</directory>
                                     <configuration>${rpm-replace-configuration}</configuration>
