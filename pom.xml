@@ -22,7 +22,8 @@
     <parent>
         <groupId>nl.knaw.dans</groupId>
         <artifactId>dd-parent</artifactId>
-        <version>3.0.3</version>
+        <version>3.0.4-SNAPSHOT</version>
+        <relativePath>../dd-parent</relativePath>
     </parent>
 
     <artifactId>dd-data-vault</artifactId>
@@ -41,8 +42,6 @@
     </scm>
 
     <properties>
-        <dans-ocfl-extensions.version>1.1.0</dans-ocfl-extensions.version>
-        <json-schema-validator.version>3.0.7</json-schema-validator.version>
         <main-class>nl.knaw.dans.datavault.DdDataVaultApplication</main-class>
     </properties>
 
@@ -124,13 +123,11 @@
         <dependency>
             <groupId>com.networknt</groupId>
             <artifactId>json-schema-validator</artifactId>
-            <version>${json-schema-validator.version}</version>
         </dependency>
         <dependency>
             <!-- Dependency so version is checked for snapshot on release -->
             <groupId>nl.knaw.dans</groupId>
             <artifactId>dans-ocfl-extensions</artifactId>
-            <version>${dans-ocfl-extensions.version}</version>
         </dependency>
         <dependency>
             <groupId>com.jayway.jsonpath</groupId>
