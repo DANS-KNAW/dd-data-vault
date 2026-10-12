@@ -136,7 +136,7 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
                 environment.lifecycle().scheduledExecutorService("consistency-checker").build(),
                 configuration.getDataVault().getLayerStore().getConsistencyCheckExecutor().getPollingInterval().toJavaDuration(),
                 consistencyCheckDao,
-                new ConsistencyCheckTaskFactory(consistencyCheckDao, layeredItemStore))));
+                new ConsistencyCheckTaskFactory(uowFactory, consistencyCheckDao, layeredItemStore))));
         environment.lifecycle().manage(createUnitOfWorkAwareProxy(uowFactory,
             new PollingTaskExecutor<>(
                 "import-executor-task-executor",
