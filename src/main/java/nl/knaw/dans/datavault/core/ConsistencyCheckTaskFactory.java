@@ -15,6 +15,7 @@
  */
 package nl.knaw.dans.datavault.core;
 
+import io.dropwizard.hibernate.UnitOfWorkAwareProxyFactory;
 import lombok.RequiredArgsConstructor;
 import nl.knaw.dans.datavault.db.ConsistencyCheckDao;
 import nl.knaw.dans.layerstore.LayeredItemStore;
@@ -22,11 +23,15 @@ import nl.knaw.dans.lib.util.pollingtaskexec.TaskFactory;
 
 @RequiredArgsConstructor
 public class ConsistencyCheckTaskFactory implements TaskFactory<ConsistencyCheck> {
+    private final UnitOfWorkAwareProxyFactory unitOfWorkAwareProxyFactory;
     private final ConsistencyCheckDao dao;
     private final LayeredItemStore layeredItemStore;
 
     @Override
     public Runnable create(ConsistencyCheck record) {
-        return new ConsistencyCheckTask(dao, record, layeredItemStore);
+        return unitOfWorkAwareProxyFactory.create(
+            ConsistencyCheckTask.class,
+            new Class<?>[] { ConsistencyCheckDao.class, ConsistencyCheck.class, LayeredItemStore.class },
+            new Object[] { dao, record, layeredItemStore });
     }
 }
