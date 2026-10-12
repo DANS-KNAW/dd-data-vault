@@ -21,15 +21,9 @@ import javax.ws.rs.core.Response;
 
 public class DefaultApiResource implements DefaultApi {
     @Override
-    public Response rootGet(String accept) {
-        if ("text/plain".equals(accept)) {
-            return Response.ok("Welcome to the Data Vault API!").build();
-        }
-        else {
-            return Response.ok(new AppInfoDto().name("dd-data-vault")
-                    .version(this.getClass().getPackage().getImplementationVersion()))
-                .build();
-        }
-
+    public Response rootGet() {
+        return Response.ok(new AppInfoDto().name("dd-data-vault")
+                .version(this.getClass().getPackage().getImplementationVersion()))
+            .build();
     }
 }
