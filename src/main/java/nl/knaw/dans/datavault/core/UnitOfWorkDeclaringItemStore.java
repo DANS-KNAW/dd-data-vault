@@ -37,6 +37,12 @@ public class UnitOfWorkDeclaringItemStore implements ItemStore {
 
     @Override
     @UnitOfWork
+    public boolean directoryIsEmpty(String directoryPath) throws IOException {
+        return delegate.directoryIsEmpty(directoryPath);
+    }
+
+    @Override
+    @UnitOfWork
     public List<Item> listRecursive(String directoryPath) throws IOException {
         return delegate.listRecursive(directoryPath);
     }

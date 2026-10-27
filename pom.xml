@@ -43,6 +43,7 @@
     <properties>
         <dans-ocfl-extensions.version>1.1.0</dans-ocfl-extensions.version>
         <main-class>nl.knaw.dans.datavault.DdDataVaultApplication</main-class>
+        <dans-layer-store-lib.version>5.0.0</dans-layer-store-lib.version>
     </properties>
 
     <dependencies>
@@ -72,7 +73,12 @@
         </dependency>
         <dependency>
             <groupId>nl.datastations</groupId>
+            <artifactId>dans-layer-store-lib</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>nl.datastations</groupId>
             <artifactId>dans-ocfl-java-extensions-lib</artifactId>
+            <version>4.0.3-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>io.ocfl</groupId>
