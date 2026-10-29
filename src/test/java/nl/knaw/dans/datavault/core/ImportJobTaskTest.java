@@ -243,6 +243,49 @@ public class ImportJobTaskTest extends AbstractTestFixture {
     }
 
     @Test
+    public void autoclean_true_should_remove_processed_entries_when_threshold_handler_throws() throws Exception {
+        // Given
+        var simpleObject = copyToTestDir("simple-object", "batchAutoThresholdFailure");
+        var outbox = testDir.resolve("outbox");
+        Files.createDirectories(outbox);
+
+        var id = UUID.randomUUID();
+        var importJob = new ImportJob();
+        importJob.setId(id);
+        importJob.setPath(simpleObject.getParent().toString());
+        importJob.setSingleObject(false);
+        importJob.setStatus(ImportJob.Status.PENDING);
+
+        var importBatchDao = Mockito.mock(ImportJobDao.class);
+        Mockito.when(importBatchDao.get(id)).thenReturn(importJob);
+        doThrow(new RuntimeException("Failed to create new top layer"))
+            .when(layerThresholdHandler).newTopLayerIfThresholdReached();
+
+        // When
+        var task = new ImportJobTask(
+            id,
+            simpleObject.getParent(),
+            outbox,
+            importBatchDao,
+            executorService,
+            repositoryProvider,
+            Pattern.compile(".+"),
+            layerThresholdHandler,
+            true
+        );
+        task.run();
+
+        // Then
+        Mockito.verify(repositoryProvider).addVersion(Mockito.anyString(), eq(1), eq(simpleObject.resolve("v1")));
+        Mockito.verify(repositoryProvider).addVersion(Mockito.anyString(), eq(2), eq(simpleObject.resolve("v2")));
+        Mockito.verify(layerThresholdHandler).newTopLayerIfThresholdReached();
+        assertThat(importJob.getStatus()).isEqualTo(ImportJob.Status.SUCCESS);
+        assertThat(outbox.resolve("processed/simple-object")).doesNotExist();
+        assertThat(outbox).doesNotExist();
+        assertThat(simpleObject.getParent()).doesNotExist();
+    }
+
+    @Test
     public void autoclean_false_should_keep_processed_entries_and_batch_dirs() throws Exception {
         // Given
         var simpleObject = copyToTestDir("simple-object", "batchAuto2");

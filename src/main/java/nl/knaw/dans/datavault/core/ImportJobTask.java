@@ -196,7 +196,7 @@ public class ImportJobTask implements Runnable {
                 try {
                     layerThresholdHandler.newTopLayerIfThresholdReached();
                 }
-                catch (IOException e) {
+                catch (Exception e) {
                     log.error("Error updating top layer after threshold reached", e);
                 }
                 if (autoclean) {
