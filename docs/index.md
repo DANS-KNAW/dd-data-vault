@@ -42,6 +42,22 @@ This service has the following interfaces:
 * _Purpose_: to create DMFTAR archives in the [SURF Data Archive]{:target=_blank}. This interface is optional because it is only used if the DMFTAR
   archive provider has been configured. (The other archive providers use Java code to create the archives and do not require an external interface.)
 
+  A layer is archived in the following steps, so that a connection problem does not force the whole layer to be packaged and transferred again:
+
+    1. The layer is packaged locally with `dmftar` in `localPackagingDir`.
+    2. The package is uploaded with `rsync` to a hidden `.incoming` directory under the `archiveRoot` on the Data Archive. If the upload is interrupted, it is
+       retried (up to `maxRetries` times, every `retryInterval`) and resumes where it stopped (`--partial --append`).
+    3. The uploaded archive is verified with `dmftar --verify` (if `verify` is enabled).
+    4. The archive is moved to its final name, replacing any existing archive of the same layer, and the local package is removed.
+
+  If the retries are exhausted, the layer stays staged and can be archived again with the `layer archive` command. A complete local package is reused
+  in that case, provided the staged layer has not changed.
+
+  If the output of a failed command contains the `moratorium.triggerOn` text (by default `Connection refused`), all connections to the Data Archive,
+  including reads, are suspended for `moratorium.duration`, so that the hammer protection of the Data Archive does not lock out the service.
+  Archiving waits for the moratorium to end; the waiting time does not count as a retry. The local disk must have room for the staged layers
+  and for the packaging directory.
+
 [SURF Data Archive]: {{ surf_data_archive }}
 
 ### Object Import Directories

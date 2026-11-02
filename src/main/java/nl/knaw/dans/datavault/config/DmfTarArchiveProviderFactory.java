@@ -17,15 +17,24 @@ package nl.knaw.dans.datavault.config;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonTypeName;
+import io.dropwizard.util.Duration;
 import nl.knaw.dans.layerstore.ArchiveProvider;
+import nl.knaw.dans.layerstore.DmfTarArchiveOptions;
 import nl.knaw.dans.layerstore.DmfTarArchiveProvider;
 import nl.knaw.dans.layerstore.DmfTarRunner;
+import nl.knaw.dans.layerstore.MoratoriumManager;
+import nl.knaw.dans.layerstore.RsyncRunner;
 import nl.knaw.dans.layerstore.SshRunner;
 
+import javax.validation.Valid;
+import javax.validation.constraints.NotNull;
 import java.nio.file.Path;
+import java.util.List;
 
 @JsonTypeName("DMFTAR")
 public class DmfTarArchiveProviderFactory implements ArchiveProviderFactory {
+    private static final int SSH_CONNECTION_TIMEOUT_SECONDS = 10;
+
     @JsonProperty
     private Path dmfTarExecutable;
 
@@ -33,18 +42,49 @@ public class DmfTarArchiveProviderFactory implements ArchiveProviderFactory {
     private Path sshExecutable;
 
     @JsonProperty
+    private Path rsyncExecutable = Path.of("/usr/bin/rsync");
+
+    @JsonProperty
+    private List<String> rsyncArgs = List.of("-av", "--partial", "--append");
+
+    @JsonProperty
     private String user;
 
     @JsonProperty
     private String host;
+
     @JsonProperty
     private Path archiveRoot;
 
+    @JsonProperty
+    @NotNull
+    private Path localPackagingDir;
+
+    @JsonProperty
+    private int maxRetries = 10;
+
+    @JsonProperty
+    private Duration retryInterval = Duration.minutes(1);
+
+    @JsonProperty
+    private boolean verify = true;
+
+    @JsonProperty
+    private String invalidOn = "checksum failure";
+
+    @JsonProperty
+    @Valid
+    private MoratoriumConfig moratorium = new MoratoriumConfig();
+
     @Override
     public ArchiveProvider build() {
-        var ssh = new SshRunner(sshExecutable, user, host, archiveRoot);
+        var moratoriumManager = new MoratoriumManager(moratorium.getTriggerOn(), moratorium.getDuration().toJavaDuration());
+        var ssh = new SshRunner(sshExecutable, user, host, archiveRoot, SSH_CONNECTION_TIMEOUT_SECONDS, moratoriumManager);
+        var rsync = new RsyncRunner(rsyncExecutable, rsyncArgs, user, host, archiveRoot, moratoriumManager);
+        var options = new DmfTarArchiveOptions(localPackagingDir, maxRetries, retryInterval.toJavaDuration(), verify, invalidOn);
         return new DmfTarArchiveProvider(
-            new DmfTarRunner(dmfTarExecutable, ssh, user, host, archiveRoot),
-            ssh);
+            new DmfTarRunner(dmfTarExecutable, ssh, rsync, user, host, archiveRoot, moratoriumManager),
+            ssh,
+            options);
     }
 }

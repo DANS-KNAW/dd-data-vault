@@ -141,9 +141,31 @@ dataVault:
     #   type: DMFTAR
     #   dmfTarExecutable: /usr/local/bin/dmftar # path to the dmftar executable
     #   sshExecutable: /usr/bin/ssh # path to the ssh executable
+    #   rsyncExecutable: /usr/bin/rsync # path to the rsync executable
     #   host: <host where DMF runs>
     #   user: <user to log in to DMF host>
     #   archiveRoot: <directory on DMF host where the archive files are stored>
+    #   #
+    #   # A layer is first packaged locally with dmftar in this directory, and then uploaded with rsync to a temporary location on the Data Archive. The
+    #   # upload can be resumed after an interruption. After the upload is complete (and verified) it is moved to its final name. The directory must have
+    #   # room for at least the largest layer. The local package is removed after a successful upload.
+    #   localPackagingDir: /data/vault/packaging
+    #   # Arguments for rsync, placed before the source and destination. They must allow resuming an interrupted upload.
+    #   rsyncArgs: [ "-av", "--partial", "--append" ]
+    #   # How many times a failed archiving attempt (packaging, upload, verification or moving) is retried before giving up. A layer that was not
+    #   # archived stays staged, and can be archived again with the "layer archive" command.
+    #   maxRetries: 10
+    #   retryInterval: 1 minute
+    #   # Verify the archive on the Data Archive after the upload is complete, and before it is moved to its final name.
+    #   verify: true
+    #   # If the output of the failed verification contains this text, the archive is considered corrupt, and archiving is not retried.
+    #   invalidOn: "checksum failure"
+    #   #
+    #   # Temporarily suspend all connections to the Data Archive (also reading) when this text is in the output of a failed command, to prevent
+    #   # hammer protection from locking us out indefinitely.
+    #   moratorium:
+    #     triggerOn: "Connection refused"
+    #     duration: 15 minutes
 
     #
     # The service can do the following consistency checks on the layered store:
