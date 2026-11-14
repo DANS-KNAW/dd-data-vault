@@ -15,30 +15,62 @@
  */
 package nl.knaw.dans.datavault.config;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonTypeName;
+import lombok.Data;
 import nl.knaw.dans.layerstore.ArchiveProvider;
 import nl.knaw.dans.layerstore.DmfTarArchiveProvider;
 import nl.knaw.dans.layerstore.DmfTarRunner;
 import nl.knaw.dans.layerstore.SshRunner;
 
+import javax.validation.Valid;
+import javax.validation.constraints.NotNull;
 import java.nio.file.Path;
+import java.util.List;
 
+@Data
 @JsonTypeName("DMFTAR")
 public class DmfTarArchiveProviderFactory implements ArchiveProviderFactory {
-    @JsonProperty
+    @NotNull
     private Path dmfTarExecutable;
 
-    @JsonProperty
+    @NotNull
     private Path sshExecutable;
 
-    @JsonProperty
+    @NotNull
     private String user;
 
-    @JsonProperty
+    @NotNull
     private String host;
-    @JsonProperty
+
+    // Directory on the remote host where the archive files are stored
+    @NotNull
     private Path archiveRoot;
+
+    // Local directory in which dmftar directories are created before being transferred to the remote host, and into which they are fetched before being unpacked
+    @NotNull
+    private Path localTransferRoot;
+
+    @Valid
+    @NotNull
+    private ExternalCommandConfig rsyncUpload = new ExternalCommandConfig("/usr/bin/rsync",
+        List.of("-av", "--partial", "--append-verify", "${localDir}/${name}", "${user}@${host}:${remoteDir}/"));
+
+    @Valid
+    @NotNull
+    private ExternalCommandConfig rsyncDownload = new ExternalCommandConfig("/usr/bin/rsync",
+        List.of("-av", "--partial", "--append-verify", "${user}@${host}:${remoteDir}/${name}", "${localDir}/"));
+
+    @Valid
+    @NotNull
+    private VerifyCommandConfig verify = new VerifyCommandConfig();
+
+    @Valid
+    @NotNull
+    private RetryConfig retry = new RetryConfig();
+
+    @Valid
+    @NotNull
+    private MoratoriumConfig moratorium = new MoratoriumConfig();
 
     @Override
     public ArchiveProvider build() {

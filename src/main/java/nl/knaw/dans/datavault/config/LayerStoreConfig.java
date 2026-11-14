@@ -15,10 +15,12 @@
  */
 package nl.knaw.dans.datavault.config;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.dropwizard.util.DataSize;
 import lombok.Data;
 
 import javax.validation.Valid;
+import javax.validation.constraints.AssertTrue;
 import javax.validation.constraints.NotNull;
 import java.nio.file.Path;
 
@@ -36,4 +38,16 @@ public class LayerStoreConfig {
     @Valid
     @NotNull
     private InitChecksConfig initChecks;
+    @Valid
+    @NotNull
+    private LayerArchiverConfig layerArchiver = new LayerArchiverConfig();
+
+    @JsonIgnore
+    @AssertTrue(message = "localTransferRoot of the DMFTAR archiveProvider must not be, or be inside, the stagingRoot")
+    public boolean isLocalTransferRootOutsideStagingRoot() {
+        if (stagingRoot == null || !(archiveProvider instanceof DmfTarArchiveProviderFactory dmfTar) || dmfTar.getLocalTransferRoot() == null) {
+            return true;
+        }
+        return !dmfTar.getLocalTransferRoot().toAbsolutePath().normalize().startsWith(stagingRoot.toAbsolutePath().normalize());
+    }
 }

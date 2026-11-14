@@ -39,8 +39,11 @@ This service has the following interfaces:
 
 * _Protocol type_: Local command invocation
 * _Internal or external_: **external**
-* _Purpose_: to create DMFTAR archives in the [SURF Data Archive]{:target=_blank}. This interface is optional because it is only used if the DMFTAR
-  archive provider has been configured. (The other archive providers use Java code to create the archives and do not require an external interface.)
+* _Purpose_: to create DMFTAR archives in the [SURF Data Archive]{:target=_blank}. The `localTransferRoot` setting of the archive provider specifies the
+  local directory in which dmftar directories are created before being transferred (with `rsync`, configurable) to the archive, and into which they are fetched
+  before being unpacked. The `rsync`, `ssh` (verify), retry and moratorium settings are documented in the configuration file. This interface is optional because
+  it is only used if the DMFTAR archive provider has been configured. (The other archive providers use Java code to create the archives and do not require an
+  external interface.)
 
 [SURF Data Archive]: {{ surf_data_archive }}
 
