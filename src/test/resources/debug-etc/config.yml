@@ -149,8 +149,8 @@ dataVault:
     #   localTransferRoot: <local directory>
     #
     #   # The settings below are optional. The values shown are the defaults. In the args the following placeholders can be used: ${user}, ${host},
-    #   # ${remoteDir} (archiveRoot), ${remoteTransferDir} (hidden directory .incoming in archiveRoot, where uploads are verified before being moved into
-    #   # place), ${localDir} (localTransferRoot) and ${name} (name of the dmftar directory, e.g. 1700000000000.dmftar).
+    #   # ${remoteDir} (archiveRoot), ${remoteTransferDir} (directory <name>.partial in archiveRoot, in which the upload is verified before being moved
+    #   # into place), ${localDir} (localTransferRoot) and ${name} (name of the dmftar directory, e.g. 1700000000000.dmftar).
     #   rsyncUpload:
     #     executable: /usr/bin/rsync
     #     args: [ "-av", "--partial", "--append-verify", "${localDir}/${name}", "${user}@${host}:${remoteTransferDir}/" ]

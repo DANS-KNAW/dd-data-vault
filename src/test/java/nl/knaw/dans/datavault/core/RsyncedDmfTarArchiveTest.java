@@ -122,7 +122,7 @@ public class RsyncedDmfTarArchiveTest {
 
         assertThat(archive.isArchived()).isTrue();
         assertThat(remoteRoot.resolve(NAME).resolve("0000-volume")).exists();
-        assertThat(remoteRoot.resolve(".incoming").resolve(NAME)).doesNotExist();
+        assertThat(remoteRoot.resolve(NAME + ".partial")).doesNotExist();
         assertThat(localTransferRoot.resolve(NAME)).doesNotExist();
         assertThat(localTransferRoot.resolve(NAME + ".complete")).doesNotExist();
         assertThat(stagingDir.resolve("data.txt")).exists();
@@ -182,7 +182,7 @@ public class RsyncedDmfTarArchiveTest {
 
         assertThat(archive.isArchived()).isFalse();
         assertThat(remoteRoot.resolve(NAME)).doesNotExist();
-        assertThat(remoteRoot.resolve(".incoming").resolve(NAME)).doesNotExist();
+        assertThat(remoteRoot.resolve(NAME + ".partial")).doesNotExist();
         assertThat(localTransferRoot.resolve(NAME)).doesNotExist();
         assertThat(localTransferRoot.resolve(NAME + ".complete")).doesNotExist();
     }
@@ -197,15 +197,15 @@ public class RsyncedDmfTarArchiveTest {
 
         assertThat(remoteRoot.resolve(NAME).resolve("0000-volume")).exists();
         assertThat(remoteRoot.resolve(NAME).resolve("old-volume")).doesNotExist();
-        assertThat(remoteRoot.resolve(".incoming").resolve(NAME + ".bak")).doesNotExist();
+        assertThat(remoteRoot.resolve(NAME + ".partial")).doesNotExist();
     }
 
     @Test
     public void archiveFrom_rebuilds_incomplete_local_dmftar_and_removes_stale_remote_upload() throws Exception {
         Files.createDirectories(localTransferRoot.resolve(NAME));
         Files.writeString(localTransferRoot.resolve(NAME).resolve("junk"), "partial");
-        Files.createDirectories(remoteRoot.resolve(".incoming").resolve(NAME));
-        Files.writeString(remoteRoot.resolve(".incoming").resolve(NAME).resolve("stale-volume"), "stale");
+        Files.createDirectories(remoteRoot.resolve(NAME + ".partial").resolve(NAME));
+        Files.writeString(remoteRoot.resolve(NAME + ".partial").resolve(NAME).resolve("stale-volume"), "stale");
         var archive = createArchive(false);
 
         archive.archiveFrom(stagingDir);

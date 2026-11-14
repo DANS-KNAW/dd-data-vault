@@ -18,7 +18,6 @@ package nl.knaw.dans.datavault.core;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import nl.knaw.dans.datavault.config.DmfTarArchiveProviderFactory;
-import nl.knaw.dans.datavault.config.ExternalCommandConfig;
 import nl.knaw.dans.layerstore.Archive;
 import nl.knaw.dans.layerstore.Item;
 import org.apache.commons.io.FileUtils;
@@ -29,7 +28,6 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -39,19 +37,20 @@ import java.util.Map;
  * Archiving a layer takes these steps, each of which can be repeated after a failure or a restart of the service:
  * <ol>
  *     <li>create the dmftar directory in the local transfer root (a leftover complete one from an earlier attempt is reused);</li>
- *     <li>rsync it to the hidden directory {@value #REMOTE_TRANSFER_DIR_NAME} under the remote archive root, retrying until it is complete;</li>
+ *     <li>rsync it into the directory <code>&lt;name&gt;.partial</code> under the remote archive root, retrying until it is complete;</li>
  *     <li>run dmftar's verify on the remote copy;</li>
  *     <li>move the verified copy to its final place in the remote archive root, replacing an existing one;</li>
  *     <li>remove the local dmftar directory.</li>
  * </ol>
- * The archive only becomes visible in the remote archive root at step 4, so a partial transfer is never mistaken for an archive. The caller removes the staging directory after
+ * The dmftar directory itself cannot be renamed after the transfer, because the names of the volumes inside it are derived from its name; therefore the <code>.partial</code>
+ * directory is a wrapper around it. The archive only becomes visible in the remote archive root at step 4, so a partial transfer is never mistaken for an archive. The caller removes the staging directory after
  * {@link #archiveFrom(Path)} returns normally.
  * <p>
  * Reading from the archive is delegated to the given remote archive.
  */
 @Slf4j
 public class RsyncedDmfTarArchive implements Archive {
-    public static final String REMOTE_TRANSFER_DIR_NAME = ".incoming";
+    public static final String PARTIAL_SUFFIX = ".partial";
     private static final String COMPLETE_MARKER_SUFFIX = ".complete";
 
     private final Archive remoteArchive;
@@ -79,7 +78,7 @@ public class RsyncedDmfTarArchive implements Archive {
         this.moratoriumManager = moratoriumManager;
         this.name = layerId + ".dmftar";
         this.remoteDir = config.getArchiveRoot();
-        this.remoteTransferDir = remoteDir.resolve(REMOTE_TRANSFER_DIR_NAME);
+        this.remoteTransferDir = remoteDir.resolve(name + PARTIAL_SUFFIX);
         var localTransferRoot = config.getLocalTransferRoot().toAbsolutePath();
         this.localDmfTar = localTransferRoot.resolve(name);
         this.completeMarker = localTransferRoot.resolve(name + COMPLETE_MARKER_SUFFIX);
@@ -126,7 +125,7 @@ public class RsyncedDmfTarArchive implements Archive {
         }
         deleteLocalDmfTar();
         // A copy from an earlier attempt may be based on different content, which rsync does not clean up
-        runRemote("rm -rf " + quote(remoteTransferDir.resolve(name)), "Removing stale upload of " + name);
+        runRemote("rm -rf " + quote(remoteTransferDir), "Removing stale upload of " + name);
         Files.createDirectories(localDmfTar.getParent());
         log.info("Creating local dmftar {}", localDmfTar);
         localDmfTarRunner.tarDirectory(stagingDir, localDmfTar);
@@ -138,21 +137,21 @@ public class RsyncedDmfTarArchive implements Archive {
         var result = commandRunner.runWithRetry(verify.getCommand(), placeholders, "Verifying " + name, verify.getInvalidOn());
         if (!result.succeeded()) {
             // Start from scratch on the next attempt
-            runRemote("rm -rf " + quote(remoteTransferDir.resolve(name)), "Removing invalid upload of " + name);
+            runRemote("rm -rf " + quote(remoteTransferDir), "Removing invalid upload of " + name);
             deleteLocalDmfTar();
             throw new IllegalStateException("Verification of uploaded " + name + " failed: " + result.output());
         }
     }
 
     /*
-     * Can be repeated safely: if the verified copy has been moved already, it does nothing. An existing archive is moved aside while the new one is moved into place, and
-     * only removed after that.
+     * Can be repeated safely: if the verified copy has been moved already, it only removes the wrapper directory. An existing archive is moved aside while the new one is moved
+     * into place, and only removed after that.
      */
     private void moveRemoteCopyIntoPlace() {
         var uploaded = quote(remoteTransferDir.resolve(name));
         var existing = quote(remoteDir.resolve(name));
         var backup = quote(remoteTransferDir.resolve(name + ".bak"));
-        runRemote("if [ -e %1$s ]; then { if [ -e %2$s ]; then rm -rf %3$s && mv %2$s %3$s; fi; } && mv %1$s %2$s; fi && rm -rf %3$s".formatted(uploaded, existing, backup),
+        runRemote("if [ -e %1$s ]; then { if [ -e %2$s ]; then rm -rf %3$s && mv %2$s %3$s; fi; } && mv %1$s %2$s; fi && rm -rf %4$s".formatted(uploaded, existing, backup, quote(remoteTransferDir)),
             "Moving " + name + " into place");
     }
 
@@ -162,11 +161,10 @@ public class RsyncedDmfTarArchive implements Archive {
     }
 
     private void runRemote(String script, String description) {
-        var ssh = new ExternalCommandConfig(config.getSshExecutable().toString(), List.of("-o", "BatchMode=yes", "-o", "ConnectTimeout=10", "${user}@${host}", script));
-        commandRunner.runWithRetry(ssh, placeholders, description, null);
+        commandRunner.runWithRetry(config.sshCommand(script), placeholders, description, null);
     }
 
-    private static String quote(Path path) {
+    static String quote(Path path) {
         return "'" + path.toString().replace("'", "'\\''") + "'";
     }
 

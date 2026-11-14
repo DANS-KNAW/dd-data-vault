@@ -21,11 +21,16 @@ import nl.knaw.dans.layerstore.ArchiveProvider;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
+import java.util.regex.Pattern;
 
 /**
  * Provides {@link RsyncedDmfTarArchive}s. Operations on the remote archive root are delegated to the given provider, which also creates the archives that are read from.
  */
 public class RsyncedDmfTarArchiveProvider implements ArchiveProvider {
+    // ls -F appends a / to directories
+    private static final Pattern VALID_ENTRY = Pattern.compile("^\\d{13,}\\.dmftar(\\" + RsyncedDmfTarArchive.PARTIAL_SUFFIX + ")?/$");
+
     private final ArchiveProvider remoteProvider;
     private final DmfTarArchiveProviderFactory config;
     private final ExternalCommandRunner commandRunner;
@@ -58,9 +63,19 @@ public class RsyncedDmfTarArchiveProvider implements ArchiveProvider {
         return remoteProvider.listLayerIds();
     }
 
+    /**
+     * Checks that the remote archive root contains only archives and the <code>.partial</code> directories of archives that are being transferred.
+     */
     @Override
-    public void validateRoot() throws IOException {
-        moratoriumManager.failIfUnderMoratorium();
-        remoteProvider.validateRoot();
+    public void validateRoot() {
+        var remoteDir = config.getArchiveRoot();
+        var result = commandRunner.runWithRetry(config.sshCommand("ls -1 -F " + RsyncedDmfTarArchive.quote(remoteDir)),
+            Map.of("user", config.getUser(), "host", config.getHost()), "Listing " + remoteDir, null);
+        var illegalFiles = result.output().lines()
+            .filter(line -> !line.isBlank() && !VALID_ENTRY.matcher(line).matches())
+            .toList();
+        if (!illegalFiles.isEmpty()) {
+            throw new IllegalStateException(String.format("Archive root '%s' on '%s' contains illegal files: %s", remoteDir, config.getHost(), String.join(", ", illegalFiles)));
+        }
     }
 }

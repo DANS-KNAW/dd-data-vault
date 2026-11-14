@@ -76,6 +76,13 @@ public class DmfTarArchiveProviderFactory implements ArchiveProviderFactory {
     @NotNull
     private MoratoriumConfig moratorium = new MoratoriumConfig();
 
+    /**
+     * Creates the command line for running a script on the remote host.
+     */
+    public ExternalCommandConfig sshCommand(String script) {
+        return new ExternalCommandConfig(sshExecutable.toString(), List.of("-o", "BatchMode=yes", "-o", "ConnectTimeout=10", "${user}@${host}", script));
+    }
+
     @Override
     public ArchiveProvider build() {
         var ssh = new SshRunner(sshExecutable, user, host, archiveRoot);
