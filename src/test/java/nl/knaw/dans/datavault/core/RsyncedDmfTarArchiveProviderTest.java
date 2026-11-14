@@ -25,6 +25,7 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.concurrent.Semaphore;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -58,7 +59,7 @@ public class RsyncedDmfTarArchiveProviderTest {
         config.getRetry().setMaxAttempts(1);
         config.getRetry().setBackoff(Duration.milliseconds(1));
         var moratoriumManager = new MoratoriumManager(config.getMoratorium());
-        provider = new RsyncedDmfTarArchiveProvider(mock(ArchiveProvider.class), config, new ExternalCommandRunner(moratoriumManager, config.getRetry()),
+        provider = new RsyncedDmfTarArchiveProvider(mock(ArchiveProvider.class), config, new Semaphore(1), new ExternalCommandRunner(moratoriumManager, config.getRetry()),
             new LocalDmfTarRunner(config.getDmfTarExecutable()), moratoriumManager);
     }
 

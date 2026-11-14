@@ -27,9 +27,11 @@ import nl.knaw.dans.layerstore.DmfTarRunner;
 import nl.knaw.dans.layerstore.SshRunner;
 
 import javax.validation.Valid;
+import javax.validation.constraints.Min;
 import javax.validation.constraints.NotNull;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.concurrent.Semaphore;
 
 @Data
 @JsonTypeName("DMFTAR")
@@ -68,6 +70,13 @@ public class DmfTarArchiveProviderFactory implements ArchiveProviderFactory {
     @NotNull
     private VerifyCommandConfig verify = new VerifyCommandConfig();
 
+    // Whether to run a local dmftar verify on a downloaded dmftar before unpacking it
+    private boolean verifyDownloadedCopy = false;
+
+    // The maximum number of layers that are unarchived in parallel; each needs room for its dmftar in localTransferRoot
+    @Min(1)
+    private int maxParallelUnarchive = 2;
+
     @Valid
     @NotNull
     private RetryConfig retry = new RetryConfig();
@@ -88,6 +97,6 @@ public class DmfTarArchiveProviderFactory implements ArchiveProviderFactory {
         var ssh = new SshRunner(sshExecutable, user, host, archiveRoot);
         var remoteProvider = new DmfTarArchiveProvider(new DmfTarRunner(dmfTarExecutable, ssh, user, host, archiveRoot), ssh);
         var moratoriumManager = new MoratoriumManager(moratorium);
-        return new RsyncedDmfTarArchiveProvider(remoteProvider, this, new ExternalCommandRunner(moratoriumManager, retry), new LocalDmfTarRunner(dmfTarExecutable), moratoriumManager);
+        return new RsyncedDmfTarArchiveProvider(remoteProvider, this, new Semaphore(maxParallelUnarchive), new ExternalCommandRunner(moratoriumManager, retry), new LocalDmfTarRunner(dmfTarExecutable), moratoriumManager);
     }
 }

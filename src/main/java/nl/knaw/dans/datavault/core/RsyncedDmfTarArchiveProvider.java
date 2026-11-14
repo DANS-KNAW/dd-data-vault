@@ -22,6 +22,7 @@ import nl.knaw.dans.layerstore.ArchiveProvider;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Semaphore;
 import java.util.regex.Pattern;
 
 /**
@@ -33,14 +34,16 @@ public class RsyncedDmfTarArchiveProvider implements ArchiveProvider {
 
     private final ArchiveProvider remoteProvider;
     private final DmfTarArchiveProviderFactory config;
+    private final Semaphore unarchiveSlots;
     private final ExternalCommandRunner commandRunner;
     private final LocalDmfTarRunner localDmfTarRunner;
     private final MoratoriumManager moratoriumManager;
 
-    public RsyncedDmfTarArchiveProvider(ArchiveProvider remoteProvider, DmfTarArchiveProviderFactory config, ExternalCommandRunner commandRunner, LocalDmfTarRunner localDmfTarRunner,
+    public RsyncedDmfTarArchiveProvider(ArchiveProvider remoteProvider, DmfTarArchiveProviderFactory config, Semaphore unarchiveSlots, ExternalCommandRunner commandRunner, LocalDmfTarRunner localDmfTarRunner,
         MoratoriumManager moratoriumManager) {
         this.remoteProvider = remoteProvider;
         this.config = config;
+        this.unarchiveSlots = unarchiveSlots;
         this.commandRunner = commandRunner;
         this.localDmfTarRunner = localDmfTarRunner;
         this.moratoriumManager = moratoriumManager;
@@ -48,7 +51,7 @@ public class RsyncedDmfTarArchiveProvider implements ArchiveProvider {
 
     @Override
     public Archive createArchive(long layerId, boolean exists) {
-        return new RsyncedDmfTarArchive(layerId, remoteProvider.createArchive(layerId, exists), exists, config, commandRunner, localDmfTarRunner, moratoriumManager);
+        return new RsyncedDmfTarArchive(layerId, remoteProvider.createArchive(layerId, exists), exists, config, commandRunner, localDmfTarRunner, moratoriumManager, unarchiveSlots);
     }
 
     @Override

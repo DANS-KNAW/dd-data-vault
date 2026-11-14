@@ -28,7 +28,4 @@ public class LayerArchiverConfig {
 
     @Min(1)
     private int maxParallelArchiveJobs = 2;
-
-    @Min(1)
-    private int maxParallelUnarchive = 2;
 }

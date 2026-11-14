@@ -164,6 +164,10 @@ dataVault:
     #       args: [ "${user}@${host}", "dmftar", "--verify", "-f", "${remoteTransferDir}/${name}" ]
     #     # If this text is in the output, conclude that the dmftar is invalid
     #     invalidOn: "checksum failure"
+    #   # Run dmftar verify on the downloaded copy before unpacking it when a layer is reopened.
+    #   verifyDownloadedCopy: false
+    #   # The maximum number of layers that are unarchived (when reopening them) in parallel. Each needs room for its dmftar in localTransferRoot.
+    #   maxParallelUnarchive: 2
     #   # A failed transfer is retried (resuming where it left off) this many times in total, waiting between attempts.
     #   retry:
     #     maxAttempts: 10
@@ -182,8 +186,6 @@ dataVault:
       pollingInterval: 10 seconds
       # The maximum number of layers that are archived in parallel.
       maxParallelArchiveJobs: 2
-      # The maximum number of layers that are unarchived (when reopening them) in parallel.
-      maxParallelUnarchive: 2
 
     #
     # The service can do the following consistency checks on the layered store:

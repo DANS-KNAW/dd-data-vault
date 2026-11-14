@@ -91,6 +91,8 @@ public class DdDataVaultConfigTest {
         assertThat(factory.getRsyncDownload().getArgs()).contains("${localDir}/");
         assertThat(factory.getVerify().getInvalidOn()).isEqualTo("checksum failure");
         assertThat(factory.getRetry().getMaxAttempts()).isEqualTo(10);
+        assertThat(factory.isVerifyDownloadedCopy()).isFalse();
+        assertThat(factory.getMaxParallelUnarchive()).isEqualTo(2);
         assertThat(factory.getMoratorium().getTriggerOn()).isEqualTo("Connection refused");
         assertThat(factory.getMoratorium().getDuration()).isEqualTo(Duration.minutes(15));
     }
@@ -117,6 +119,8 @@ public class DdDataVaultConfigTest {
                   executable: /bin/ssh
                   args: [ "${user}@${host}", "dmftar", "--verify", "-f", "${remoteDir}/${name}" ]
                 invalidOn: "bad"
+              verifyDownloadedCopy: true
+              maxParallelUnarchive: 4
               retry:
                 maxAttempts: 3
                 backoff: 5 seconds
@@ -128,6 +132,8 @@ public class DdDataVaultConfigTest {
         var factory = (DmfTarArchiveProviderFactory) parse(file).getDataVault().getLayerStore().getArchiveProvider();
 
         assertThat(factory.getRsyncUpload().getExecutable()).isEqualTo("/bin/rsync");
+        assertThat(factory.isVerifyDownloadedCopy()).isTrue();
+        assertThat(factory.getMaxParallelUnarchive()).isEqualTo(4);
         assertThat(factory.getVerify().getInvalidOn()).isEqualTo("bad");
         assertThat(factory.getRetry().getBackoff()).isEqualTo(Duration.seconds(5));
         assertThat(factory.getMoratorium().getDuration()).isEqualTo(Duration.hours(1));

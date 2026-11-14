@@ -29,6 +29,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.concurrent.Semaphore;
 
 /**
  * An {@link Archive} that is a dmftar directory on a remote host, which is not written to the remote host directly by dmftar, but created locally first and then transferred with rsync,
@@ -57,6 +58,7 @@ public class RsyncedDmfTarArchive implements Archive {
     private final MoratoriumManager moratoriumManager;
     private final ExternalCommandRunner commandRunner;
     private final LocalDmfTarRunner localDmfTarRunner;
+    private final Semaphore unarchiveSlots;
     private final DmfTarArchiveProviderFactory config;
     private final String name;
     private final Path remoteDir;
@@ -69,13 +71,14 @@ public class RsyncedDmfTarArchive implements Archive {
     private boolean archived;
 
     public RsyncedDmfTarArchive(long layerId, Archive remoteArchive, boolean archived, DmfTarArchiveProviderFactory config, ExternalCommandRunner commandRunner,
-        LocalDmfTarRunner localDmfTarRunner, MoratoriumManager moratoriumManager) {
+        LocalDmfTarRunner localDmfTarRunner, MoratoriumManager moratoriumManager, Semaphore unarchiveSlots) {
         this.remoteArchive = remoteArchive;
         this.archived = archived;
         this.config = config;
         this.commandRunner = commandRunner;
         this.localDmfTarRunner = localDmfTarRunner;
         this.moratoriumManager = moratoriumManager;
+        this.unarchiveSlots = unarchiveSlots;
         this.name = layerId + ".dmftar";
         this.remoteDir = config.getArchiveRoot();
         this.remoteTransferDir = remoteDir.resolve(name + PARTIAL_SUFFIX);
@@ -97,10 +100,41 @@ public class RsyncedDmfTarArchive implements Archive {
         return remoteArchive.readFile(filePath);
     }
 
+    /**
+     * Downloads the dmftar directory with rsync (retrying and resuming as needed), optionally verifies it, unpacks it into the staging directory and removes the local copy. At most
+     * the configured number of layers is unarchived at the same time.
+     */
     @Override
     public void unarchiveTo(Path stagingDir) {
         moratoriumManager.failIfUnderMoratorium();
-        remoteArchive.unarchiveTo(stagingDir);
+        try {
+            unarchiveSlots.acquire();
+        }
+        catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Interrupted while waiting to unarchive " + name, e);
+        }
+        try {
+            if (Files.exists(completeMarker)) {
+                // Leftover of archiving the layer; it may differ from what is in the archive
+                deleteLocalDmfTar();
+            }
+            Files.createDirectories(localDmfTar.getParent());
+            commandRunner.runWithRetry(config.getRsyncDownload(), placeholders, "Downloading " + name, null);
+            if (config.isVerifyDownloadedCopy() && !localDmfTarRunner.verify(localDmfTar)) {
+                // Download again next time
+                deleteLocalDmfTar();
+                throw new IllegalStateException("Verification of downloaded " + name + " failed");
+            }
+            localDmfTarRunner.untarArchive(localDmfTar, stagingDir);
+            deleteLocalDmfTar();
+        }
+        catch (IOException e) {
+            throw new UncheckedIOException("Could not unarchive " + name + " to " + stagingDir, e);
+        }
+        finally {
+            unarchiveSlots.release();
+        }
     }
 
     @Override

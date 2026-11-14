@@ -18,6 +18,7 @@ package nl.knaw.dans.datavault.core;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.exec.CommandLine;
 import org.apache.commons.exec.DefaultExecutor;
+import org.apache.commons.exec.ExecuteException;
 import org.apache.commons.io.FileUtils;
 
 import java.io.IOException;
@@ -53,6 +54,43 @@ public class LocalDmfTarRunner {
         }
         finally {
             removeCacheDirectories(directory);
+        }
+    }
+
+    /**
+     * Unpacks a local dmftar directory into the given directory. dmftar creates temporary cache directories in the target directory; these are removed, also if the command fails.
+     */
+    public void untarArchive(Path archive, Path directory) throws IOException {
+        var commandLine = new CommandLine(dmfTarExecutable.toAbsolutePath().toString())
+            .addArgument("-xf")
+            .addArgument(archive.toAbsolutePath().toString(), false)
+            .addArgument("--options=--directory=" + directory.toAbsolutePath(), false);
+        var executor = DefaultExecutor.builder().setWorkingDirectory(directory.toAbsolutePath().toFile()).get();
+        try {
+            executor.execute(commandLine);
+        }
+        finally {
+            removeCacheDirectories(directory);
+        }
+    }
+
+    /**
+     * Verifies the checksums of a local dmftar directory.
+     *
+     * @return whether the dmftar is valid
+     */
+    public boolean verify(Path archive) throws IOException {
+        var commandLine = new CommandLine(dmfTarExecutable.toAbsolutePath().toString())
+            .addArgument("--verify")
+            .addArgument("-f")
+            .addArgument(archive.toAbsolutePath().toString(), false);
+        try {
+            DefaultExecutor.builder().get().execute(commandLine);
+            return true;
+        }
+        catch (ExecuteException e) {
+            log.warn("Verification of {} failed: {}", archive, e.getMessage());
+            return false;
         }
     }
 
