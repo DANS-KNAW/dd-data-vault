@@ -149,18 +149,19 @@ dataVault:
     #   localTransferRoot: <local directory>
     #
     #   # The settings below are optional. The values shown are the defaults. In the args the following placeholders can be used: ${user}, ${host},
-    #   # ${remoteDir} (archiveRoot), ${localDir} (localTransferRoot) and ${name} (name of the dmftar directory, e.g. 1700000000000.dmftar).
+    #   # ${remoteDir} (archiveRoot), ${remoteTransferDir} (hidden directory .incoming in archiveRoot, where uploads are verified before being moved into
+    #   # place), ${localDir} (localTransferRoot) and ${name} (name of the dmftar directory, e.g. 1700000000000.dmftar).
     #   rsyncUpload:
     #     executable: /usr/bin/rsync
-    #     args: [ "-av", "--partial", "--append-verify", "${localDir}/${name}", "${user}@${host}:${remoteDir}/" ]
+    #     args: [ "-av", "--partial", "--append-verify", "${localDir}/${name}", "${user}@${host}:${remoteTransferDir}/" ]
     #   rsyncDownload:
     #     executable: /usr/bin/rsync
     #     args: [ "-av", "--partial", "--append-verify", "${user}@${host}:${remoteDir}/${name}", "${localDir}/" ]
-    #   # Run on the DMF host after the upload. The local dmftar directory and the staging directory are only removed if this succeeds.
+    #   # Run on the DMF host after the upload. Only if this succeeds is the upload moved into place and are the local dmftar directory and the staging directory removed.
     #   verify:
     #     command:
     #       executable: /usr/bin/ssh
-    #       args: [ "${user}@${host}", "dmftar", "--verify", "-f", "${remoteDir}/${name}" ]
+    #       args: [ "${user}@${host}", "dmftar", "--verify", "-f", "${remoteTransferDir}/${name}" ]
     #     # If this text is in the output, conclude that the dmftar is invalid
     #     invalidOn: "checksum failure"
     #   # A failed transfer is retried (resuming where it left off) this many times in total, waiting between attempts.

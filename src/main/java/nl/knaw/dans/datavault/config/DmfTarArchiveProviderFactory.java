@@ -17,6 +17,10 @@ package nl.knaw.dans.datavault.config;
 
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import lombok.Data;
+import nl.knaw.dans.datavault.core.ExternalCommandRunner;
+import nl.knaw.dans.datavault.core.LocalDmfTarRunner;
+import nl.knaw.dans.datavault.core.MoratoriumManager;
+import nl.knaw.dans.datavault.core.RsyncedDmfTarArchiveProvider;
 import nl.knaw.dans.layerstore.ArchiveProvider;
 import nl.knaw.dans.layerstore.DmfTarArchiveProvider;
 import nl.knaw.dans.layerstore.DmfTarRunner;
@@ -53,7 +57,7 @@ public class DmfTarArchiveProviderFactory implements ArchiveProviderFactory {
     @Valid
     @NotNull
     private ExternalCommandConfig rsyncUpload = new ExternalCommandConfig("/usr/bin/rsync",
-        List.of("-av", "--partial", "--append-verify", "${localDir}/${name}", "${user}@${host}:${remoteDir}/"));
+        List.of("-av", "--partial", "--append-verify", "${localDir}/${name}", "${user}@${host}:${remoteTransferDir}/"));
 
     @Valid
     @NotNull
@@ -75,8 +79,8 @@ public class DmfTarArchiveProviderFactory implements ArchiveProviderFactory {
     @Override
     public ArchiveProvider build() {
         var ssh = new SshRunner(sshExecutable, user, host, archiveRoot);
-        return new DmfTarArchiveProvider(
-            new DmfTarRunner(dmfTarExecutable, ssh, user, host, archiveRoot),
-            ssh);
+        var remoteProvider = new DmfTarArchiveProvider(new DmfTarRunner(dmfTarExecutable, ssh, user, host, archiveRoot), ssh);
+        var moratoriumManager = new MoratoriumManager(moratorium);
+        return new RsyncedDmfTarArchiveProvider(remoteProvider, this, new ExternalCommandRunner(moratoriumManager, retry), new LocalDmfTarRunner(dmfTarExecutable), moratoriumManager);
     }
 }

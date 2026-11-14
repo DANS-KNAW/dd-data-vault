@@ -25,7 +25,7 @@ import java.util.List;
 public class VerifyCommandConfig {
     @Valid
     @NotNull
-    private ExternalCommandConfig command = new ExternalCommandConfig("/usr/bin/ssh", List.of("${user}@${host}", "dmftar", "--verify", "-f", "${remoteDir}/${name}"));
+    private ExternalCommandConfig command = new ExternalCommandConfig("/usr/bin/ssh", List.of("${user}@${host}", "dmftar", "--verify", "-f", "${remoteTransferDir}/${name}"));
 
     // If this text is in the output of the command, the dmftar is concluded to be invalid.
     @NotNull

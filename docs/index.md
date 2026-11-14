@@ -41,7 +41,8 @@ This service has the following interfaces:
 * _Internal or external_: **external**
 * _Purpose_: to create DMFTAR archives in the [SURF Data Archive]{:target=_blank}. The `localTransferRoot` setting of the archive provider specifies the
   local directory in which dmftar directories are created before being transferred (with `rsync`, configurable) to the archive, and into which they are fetched
-  before being unpacked. The `rsync`, `ssh` (verify), retry and moratorium settings are documented in the configuration file. This interface is optional because
+  before being unpacked. When a layer is archived, its dmftar directory is first created locally, then rsynced to the hidden directory `.incoming` in the
+  remote archive root, verified there, and only then moved into place; afterwards the local copy is removed. Interrupted transfers are retried and resumed. The `rsync`, `ssh` (verify), retry and moratorium settings are documented in the configuration file. This interface is optional because
   it is only used if the DMFTAR archive provider has been configured. (The other archive providers use Java code to create the archives and do not require an
   external interface.)
 
