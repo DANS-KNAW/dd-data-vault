@@ -130,3 +130,11 @@ processes the object import directory ensures that the version directories are p
 After processing a batch, the service will check if the maximum size of the layer has been reached. If this is the case, the service will create a new layer
 and start the archiving process of the old layer. Since object import directories are processed in parallel, it is not possible to do a more fine-grained
 check for the maximum size of the layer.
+
+### Layer archive jobs
+
+Every request to archive a layer (automatic or via the API) is recorded as a job in the `layer_archive_job` table, with status `PENDING`, `RUNNING`, `SUCCESS` or
+`FAILED`. The service polls for pending jobs (`layerStore.layerArchiver.pollingInterval`) and runs at most `layerStore.layerArchiver.maxParallelArchiveJobs` of them
+in parallel. A job first runs the consistency check of the layer and then archives it. If the service is restarted, unfinished jobs are resumed. While a
+[moratorium](#dmftar-optional) on network actions towards the remote archive is in effect, no jobs are started, and a job that runs into the moratorium goes back to
+`PENDING`. A job that fails stays `FAILED`; the layer remains in the staging area and can be archived again via the API.

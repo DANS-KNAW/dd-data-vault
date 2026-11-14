@@ -49,6 +49,10 @@ public class RsyncedDmfTarArchiveProvider implements ArchiveProvider {
         this.moratoriumManager = moratoriumManager;
     }
 
+    public boolean isUnderMoratorium() {
+        return moratoriumManager.isUnderMoratorium();
+    }
+
     @Override
     public Archive createArchive(long layerId, boolean exists) {
         return new RsyncedDmfTarArchive(layerId, remoteProvider.createArchive(layerId, exists), exists, config, commandRunner, localDmfTarRunner, moratoriumManager, unarchiveSlots);
