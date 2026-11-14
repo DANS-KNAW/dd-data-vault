@@ -28,15 +28,19 @@ import io.dropwizard.hibernate.UnitOfWorkAwareProxyFactory;
 import lombok.extern.slf4j.Slf4j;
 import nl.knaw.dans.datavault.config.DdDataVaultConfig;
 import nl.knaw.dans.datavault.core.ConsistencyCheckTaskFactory;
+import nl.knaw.dans.datavault.core.DbBackedLayerArchiver;
 import nl.knaw.dans.datavault.core.ImportJobTaskFactory;
 import nl.knaw.dans.datavault.core.LayerThresholdHandler;
 import nl.knaw.dans.datavault.core.OcflRepositoryProvider;
+import nl.knaw.dans.datavault.core.PausableTaskSource;
 import nl.knaw.dans.datavault.core.RepositoryProvider;
+import nl.knaw.dans.datavault.core.RsyncedDmfTarArchiveProvider;
 import nl.knaw.dans.datavault.core.UnitOfWorkDeclaringItemStore;
 import nl.knaw.dans.datavault.core.UnitOfWorkDeclaringLayerConsistencyChecker;
 import nl.knaw.dans.datavault.core.UnitOfWorkDeclaringRepositoryProviderAdapter;
 import nl.knaw.dans.datavault.db.ConsistencyCheckDao;
 import nl.knaw.dans.datavault.db.ImportJobDao;
+import nl.knaw.dans.datavault.db.LayerArchiveJobDao;
 import nl.knaw.dans.datavault.resources.ConsistencyChecksApiResource;
 import nl.knaw.dans.datavault.resources.DefaultApiResource;
 import nl.knaw.dans.datavault.resources.ImportsApiResource;
@@ -44,7 +48,6 @@ import nl.knaw.dans.datavault.resources.ItemstoreApiResource;
 import nl.knaw.dans.datavault.resources.LayersApiResource;
 import nl.knaw.dans.datavault.resources.ObjectsApiResource;
 import nl.knaw.dans.datavault.resources.OcflApiResource;
-import nl.knaw.dans.layerstore.ConsistencyCheckingAsyncLayerArchiver;
 import nl.knaw.dans.layerstore.ItemRecord;
 import nl.knaw.dans.layerstore.ItemStore;
 import nl.knaw.dans.layerstore.LayerConsistencyChecker;
@@ -52,9 +55,12 @@ import nl.knaw.dans.layerstore.LayerDatabaseImpl;
 import nl.knaw.dans.layerstore.LayeredItemStore;
 import nl.knaw.dans.lib.ocflext.StoreInventoryDbBackedContentManager;
 import nl.knaw.dans.lib.util.PersistenceProviderImpl;
+import nl.knaw.dans.lib.util.pollingtaskexec.ExecutorServiceTaskScheduler;
 import nl.knaw.dans.lib.util.pollingtaskexec.PollingTaskExecutor;
+import org.hibernate.SessionFactory;
 
 import java.io.IOException;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
 
 @Slf4j
@@ -86,15 +92,23 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
         var uowFactory = new UnitOfWorkAwareProxyFactory(hibernateBundle);
 
         var layerDatabaseDao = new LayerDatabaseImpl(new PersistenceProviderImpl<>(hibernateBundle.getSessionFactory(), ItemRecord.class));
+        var layerStoreConfig = configuration.getDataVault().getLayerStore();
+        var archiveProvider = layerStoreConfig.getArchiveProvider().build();
+        var archiveJobDao = uowFactory.create(LayerArchiveJobDao.class, new Class<?>[] { SessionFactory.class, int.class },
+            new Object[] { hibernateBundle.getSessionFactory(), layerStoreConfig.getLayerArchiver().getMaxParallelArchiveJobs() });
+        var layerArchiverHolder = new AtomicReference<DbBackedLayerArchiver>();
         LayeredItemStore layeredItemStore;
         try {
             layeredItemStore = new LayeredItemStore.Builder()
                 .database(layerDatabaseDao)
                 .stagingRoot(configuration.getDataVault().getLayerStore().getStagingRoot())
-                .archiveProvider(configuration.getDataVault().getLayerStore().getArchiveProvider().build())
+                .archiveProvider(archiveProvider)
                 .layerConsistencyCheckerProxy(checker -> createUnitOfWorkAwareProxy(uowFactory, checker))
-                .layerArchiver(proxiedChecker -> new ConsistencyCheckingAsyncLayerArchiver(
-                    proxiedChecker, environment.lifecycle().executorService("archiver-worker").build()))
+                .layerArchiver(proxiedChecker -> {
+                    var archiver = new DbBackedLayerArchiver(archiveJobDao, proxiedChecker);
+                    layerArchiverHolder.set(archiver);
+                    return archiver;
+                })
                 .databaseBackedContentManager(new StoreInventoryDbBackedContentManager())
                 .validateArchiveRoot(configuration.getDataVault().getLayerStore().getInitChecks().isArchiveRoot())
                 .build();
@@ -104,6 +118,19 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
             throw new RuntimeException(e);
         }
         layeredItemStore.setAllowReadingContentFromArchives(false);
+        var layerArchiver = layerArchiverHolder.get();
+        layerArchiver.resumeUnfinishedJobs(layeredItemStore);
+        var maxParallelArchiveJobs = layerStoreConfig.getLayerArchiver().getMaxParallelArchiveJobs();
+        var archiveJobSource = new PausableTaskSource<>(archiveJobDao,
+            () -> archiveProvider instanceof RsyncedDmfTarArchiveProvider provider && provider.isUnderMoratorium());
+        environment.lifecycle().manage(new PollingTaskExecutor<>(
+            "layer-archiver-task-executor",
+            environment.lifecycle().scheduledExecutorService("layer-archiver").build(),
+            layerStoreConfig.getLayerArchiver().getPollingInterval().toJavaDuration(),
+            archiveJobSource,
+            layerArchiver.taskFactory(),
+            new ExecutorServiceTaskScheduler(environment.lifecycle().executorService("archiver-worker")
+                .minThreads(maxParallelArchiveJobs).maxThreads(maxParallelArchiveJobs).build())));
         var layerConsistencyChecker = layeredItemStore.getLayerConsistencyChecker();
         RepositoryProvider ocflRepositoryProvider = createUnitOfWorkAwareProxy(uowFactory, OcflRepositoryProvider.create(
             layeredItemStore,

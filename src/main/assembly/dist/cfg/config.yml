@@ -154,6 +154,48 @@ dataVault:
     #   host: <host where DMF runs>
     #   user: <user to log in to DMF host>
     #   archiveRoot: <directory on DMF host where the archive files are stored>
+    #   # Local directory in which the dmftar directory of a layer is created before it is rsynced to the DMF host, and into which it is rsynced
+    #   # before it is unpacked. Must be outside stagingRoot and have room for the dmftar of each layer being archived or unarchived in parallel.
+    #   localTransferRoot: <local directory>
+    #
+    #   # The settings below are optional. The values shown are the defaults. In the args the following placeholders can be used: ${user}, ${host},
+    #   # ${remoteDir} (archiveRoot), ${remoteTransferDir} (directory <name>.partial in archiveRoot, in which the upload is verified before being moved
+    #   # into place), ${localDir} (localTransferRoot) and ${name} (name of the dmftar directory, e.g. 1700000000000.dmftar).
+    #   rsyncUpload:
+    #     executable: /usr/bin/rsync
+    #     args: [ "-av", "--partial", "--append-verify", "${localDir}/${name}", "${user}@${host}:${remoteTransferDir}/" ]
+    #   rsyncDownload:
+    #     executable: /usr/bin/rsync
+    #     args: [ "-av", "--partial", "--append-verify", "${user}@${host}:${remoteDir}/${name}", "${localDir}/" ]
+    #   # Run on the DMF host after the upload. Only if this succeeds is the upload moved into place and are the local dmftar directory and the staging directory removed.
+    #   verify:
+    #     command:
+    #       executable: /usr/bin/ssh
+    #       args: [ "${user}@${host}", "dmftar", "--verify", "-f", "${remoteTransferDir}/${name}" ]
+    #     # If this text is in the output, conclude that the dmftar is invalid
+    #     invalidOn: "checksum failure"
+    #   # Run dmftar verify on the downloaded copy before unpacking it when a layer is reopened.
+    #   verifyDownloadedCopy: false
+    #   # The maximum number of layers that are unarchived (when reopening them) in parallel. Each needs room for its dmftar in localTransferRoot.
+    #   maxParallelUnarchive: 2
+    #   # A failed transfer is retried (resuming where it left off) this many times in total, waiting between attempts.
+    #   retry:
+    #     maxAttempts: 10
+    #     backoff: 1 minute
+    #   # Temporarily suspend all network actions towards the DMF host when this text is in the output of a command, to prevent hammer protection from
+    #   # locking us out indefinitely.
+    #   moratorium:
+    #     triggerOn: "Connection refused"
+    #     duration: 15 minutes
+
+    #
+    # Settings for the jobs that archive layers. (Currently only used by the DMFTAR archive provider.)
+    #
+    layerArchiver:
+      # How often to poll for layer archive jobs to start.
+      pollingInterval: 10 seconds
+      # The maximum number of layers that are archived in parallel.
+      maxParallelArchiveJobs: 2
 
     #
     # The service can do the following consistency checks on the layered store:

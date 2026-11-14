@@ -39,8 +39,12 @@ This service has the following interfaces:
 
 * _Protocol type_: Local command invocation
 * _Internal or external_: **external**
-* _Purpose_: to create DMFTAR archives in the [SURF Data Archive]{:target=_blank}. This interface is optional because it is only used if the DMFTAR
-  archive provider has been configured. (The other archive providers use Java code to create the archives and do not require an external interface.)
+* _Purpose_: to create DMFTAR archives in the [SURF Data Archive]{:target=_blank}. The `localTransferRoot` setting of the archive provider specifies the
+  local directory in which dmftar directories are created before being transferred (with `rsync`, configurable) to the archive, and into which they are fetched
+  before being unpacked. When a layer is archived, its dmftar directory is first created locally, then rsynced to a `<name>.partial` directory in the
+  remote archive root, verified there, and only then moved into place; afterwards the local copy is removed. Interrupted transfers are retried and resumed. When a layer is reopened, the dmftar directory is rsynced into `localTransferRoot` (resuming any partial download), optionally verified locally (`verifyDownloadedCopy`), extracted into the staging area and then removed locally; at most `maxParallelUnarchive` layers are unarchived at the same time. The `rsync`, `ssh` (verify), retry and moratorium settings are documented in the configuration file. This interface is optional because
+  it is only used if the DMFTAR archive provider has been configured. (The other archive providers use Java code to create the archives and do not require an
+  external interface.)
 
 [SURF Data Archive]: {{ surf_data_archive }}
 
@@ -126,3 +130,11 @@ processes the object import directory ensures that the version directories are p
 After processing a batch, the service will check if the maximum size of the layer has been reached. If this is the case, the service will create a new layer
 and start the archiving process of the old layer. Since object import directories are processed in parallel, it is not possible to do a more fine-grained
 check for the maximum size of the layer.
+
+### Layer archive jobs
+
+Every request to archive a layer (automatic or via the API) is recorded as a job in the `layer_archive_job` table, with status `PENDING`, `RUNNING`, `SUCCESS` or
+`FAILED`. The service polls for pending jobs (`layerStore.layerArchiver.pollingInterval`) and runs at most `layerStore.layerArchiver.maxParallelArchiveJobs` of them
+in parallel. A job first runs the consistency check of the layer and then archives it. If the service is restarted, unfinished jobs are resumed. While a
+[moratorium](#dmftar-optional) on network actions towards the remote archive is in effect, no jobs are started, and a job that runs into the moratorium goes back to
+`PENDING`. A job that fails stays `FAILED`; the layer remains in the staging area and can be archived again via the API.
