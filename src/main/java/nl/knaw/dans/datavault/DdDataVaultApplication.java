@@ -80,9 +80,6 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
     @Override
     public void initialize(final Bootstrap<DdDataVaultConfig> bootstrap) {
         bootstrap.addBundle(hibernateBundle);
-        bootstrap.setConfigurationSourceProvider(
-            new SubstitutingSourceProvider(bootstrap.getConfigurationSourceProvider(),
-                new EnvironmentVariableSubstitutor(true)));
     }
 
     @Override

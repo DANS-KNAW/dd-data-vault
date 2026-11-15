@@ -156,7 +156,7 @@ dataVault:
     #   archiveRoot: <directory on DMF host where the archive files are stored>
     #   # Local directory in which the dmftar directory of a layer is created before it is rsynced to the DMF host, and into which it is rsynced
     #   # before it is unpacked. Must be outside stagingRoot and have room for the dmftar of each layer being archived or unarchived in parallel.
-    #   localTransferRoot: <local directory>
+    #   localTransferRoot: data/vault/transfer
     #
     #   # The settings below are optional. The values shown are the defaults. In the args the following placeholders can be used: ${user}, ${host},
     #   # ${remoteDir} (archiveRoot), ${remoteTransferDir} (directory <name>.partial in archiveRoot, in which the upload is verified before being moved

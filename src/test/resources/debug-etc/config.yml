@@ -102,7 +102,7 @@ dataVault:
   # except temporarily, when needed to fix problems or when file deletion is required by law.
   #
   itemstore:
-    workDir: data/itemstore-work
+    workDir: data/vault/tmp/itemstore
     enableEndpoints:
       copyDirectoryInto: true
       copyFileOutOf: true

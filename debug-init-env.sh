@@ -24,6 +24,8 @@ echo -n "Pre-creating vault directory..."
 mkdir -p $TEMPDIR/vault
 mkdir -p $TEMPDIR/vault/archive
 mkdir -p $TEMPDIR/vault/staging
+mkdir -p $TEMPDIR/vault/transfer
+mkdir -p $TEMPDIR/vault/tmp/itemstore
 mkdir -p $TEMPDIR/ingest/inbox
 mkdir -p $TEMPDIR/ingest/outbox
 echo "OK"
