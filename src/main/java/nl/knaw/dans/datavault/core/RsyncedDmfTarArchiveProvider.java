@@ -39,7 +39,8 @@ public class RsyncedDmfTarArchiveProvider implements ArchiveProvider {
     private final LocalDmfTarRunner localDmfTarRunner;
     private final MoratoriumManager moratoriumManager;
 
-    public RsyncedDmfTarArchiveProvider(ArchiveProvider remoteProvider, DmfTarArchiveProviderFactory config, Semaphore unarchiveSlots, ExternalCommandRunner commandRunner, LocalDmfTarRunner localDmfTarRunner,
+    public RsyncedDmfTarArchiveProvider(ArchiveProvider remoteProvider, DmfTarArchiveProviderFactory config, Semaphore unarchiveSlots, ExternalCommandRunner commandRunner,
+        LocalDmfTarRunner localDmfTarRunner,
         MoratoriumManager moratoriumManager) {
         this.remoteProvider = remoteProvider;
         this.config = config;

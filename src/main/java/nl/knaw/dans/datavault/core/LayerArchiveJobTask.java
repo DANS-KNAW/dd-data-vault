@@ -25,8 +25,8 @@ import nl.knaw.dans.layerstore.LayeredItemStore;
 import java.util.UUID;
 
 /**
- * Executes one {@link LayerArchiveJob}. An existing archive is only overwritten when a rearchive was requested or when this is a retry of an interrupted job, as the earlier attempt may have left a partial
- * archive behind. The task does not hold a database session while archiving; the DAO and the consistency checker declare their own units of work.
+ * Executes one {@link LayerArchiveJob}. An existing archive is only overwritten when a rearchive was requested or when this is a retry of an interrupted job, as the earlier attempt may have left a
+ * partial archive behind. The task does not hold a database session while archiving; the DAO and the consistency checker declare their own units of work.
  */
 @Slf4j
 @RequiredArgsConstructor

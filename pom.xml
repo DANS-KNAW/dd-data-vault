@@ -26,7 +26,7 @@
     </parent>
 
     <artifactId>dd-data-vault</artifactId>
-    <version>4.6.5-SNAPSHOT</version>
+    <version>4.7.0-SNAPSHOT</version>
 
     <name>DD Data Vault</name>
     <description>Manages a DANS Data Vault Storage Root</description>
@@ -43,7 +43,7 @@
     <properties>
         <dans-ocfl-extensions.version>1.1.0</dans-ocfl-extensions.version>
         <main-class>nl.knaw.dans.datavault.DdDataVaultApplication</main-class>
-        <dans-layer-store-lib.version>5.0.1-SNAPSHOT</dans-layer-store-lib.version>
+        <dans-layer-store-lib.version>6.0.0-SNAPSHOT</dans-layer-store-lib.version>
         <dans-ocfl-java-extensions-lib.version>4.0.3</dans-ocfl-java-extensions-lib.version>
     </properties>
 
