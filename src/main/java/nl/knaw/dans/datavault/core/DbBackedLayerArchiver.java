@@ -31,12 +31,7 @@ public class DbBackedLayerArchiver implements LayerArchiver {
     private final LayerArchiveJobDao dao;
 
     @Override
-    public void archive(long layerId, Runnable archiveAction) {
-        archive(layerId, false, archiveAction);
-    }
-
-    @Override
-    public void archive(long layerId, boolean overwrite, Runnable archiveAction) {
+    public void archive(long layerId, boolean overwrite) {
         var job = dao.register(layerId, overwrite);
         log.info("Layer {} scheduled for archiving in job {}", layerId, job.getId());
     }

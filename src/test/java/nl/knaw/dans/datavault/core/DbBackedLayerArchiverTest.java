@@ -25,8 +25,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
-import java.util.concurrent.atomic.AtomicInteger;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 @ExtendWith(DropwizardExtensionsSupport.class)
@@ -47,31 +45,24 @@ public class DbBackedLayerArchiverTest {
     }
 
     @Test
-    public void archive_registers_pending_job_without_running_the_action() {
-        var count = new AtomicInteger();
+    public void archive_registers_pending_job() {
+        archiver.archive(1L, false);
 
-        archiver.archive(1L, count::incrementAndGet);
-
-        assertThat(count).hasValue(0);
         assertThat(dao.findByStatus(Status.PENDING)).singleElement().extracting(LayerArchiveJob::getLayerId).isEqualTo(1L);
     }
 
     @Test
     public void archive_twice_for_same_layer_registers_one_job() {
-        archiver.archive(1L, () -> {
-        });
-        archiver.archive(1L, () -> {
-        });
+        archiver.archive(1L, false);
+        archiver.archive(1L, false);
 
         assertThat(dao.list()).hasSize(1);
     }
 
     @Test
     public void rearchive_request_upgrades_existing_active_job_to_overwrite() {
-        archiver.archive(1L, false, () -> {
-        });
-        archiver.archive(1L, true, () -> {
-        });
+        archiver.archive(1L, false);
+        archiver.archive(1L, true);
 
         assertThat(dao.list()).singleElement().extracting(LayerArchiveJob::isOverwrite).isEqualTo(true);
     }
