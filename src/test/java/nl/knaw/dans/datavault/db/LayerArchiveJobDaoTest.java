@@ -43,7 +43,7 @@ public class LayerArchiveJobDaoTest {
 
     @Test
     public void register_creates_pending_job() {
-        var job = dao.register(1L);
+        var job = dao.register(1L, false);
 
         assertThat(job.getStatus()).isEqualTo(Status.PENDING);
         assertThat(dao.find(job.getId())).get().extracting(LayerArchiveJob::getLayerId).isEqualTo(1L);
@@ -51,8 +51,8 @@ public class LayerArchiveJobDaoTest {
 
     @Test
     public void register_returns_existing_unfinished_job_for_same_layer() {
-        var first = dao.register(1L);
-        var second = dao.register(1L);
+        var first = dao.register(1L, false);
+        var second = dao.register(1L, false);
 
         assertThat(second.getId()).isEqualTo(first.getId());
         assertThat(dao.list()).hasSize(1);
@@ -60,10 +60,10 @@ public class LayerArchiveJobDaoTest {
 
     @Test
     public void register_creates_new_job_when_previous_one_has_finished() {
-        var first = dao.register(1L);
+        var first = dao.register(1L, false);
         dao.finish(first.getId(), Status.FAILED, "oops");
 
-        var second = dao.register(1L);
+        var second = dao.register(1L, false);
 
         assertThat(second.getId()).isNotEqualTo(first.getId());
         assertThat(dao.find(first.getId())).get().extracting(LayerArchiveJob::getMessage).isEqualTo("oops");
@@ -71,9 +71,9 @@ public class LayerArchiveJobDaoTest {
 
     @Test
     public void nextInputs_claims_oldest_pending_jobs_up_to_the_parallelism_limit() {
-        var j1 = dao.register(1L);
-        var j2 = dao.register(2L);
-        var j3 = dao.register(3L);
+        var j1 = dao.register(1L, false);
+        var j2 = dao.register(2L, false);
+        var j3 = dao.register(3L, false);
 
         var claimed = dao.nextInputs();
 
@@ -88,7 +88,7 @@ public class LayerArchiveJobDaoTest {
 
     @Test
     public void nextInputs_counts_attempts_and_requeue_does_not() {
-        var job = dao.register(1L);
+        var job = dao.register(1L, false);
 
         assertThat(dao.nextInputs()).singleElement().extracting(LayerArchiveJob::getAttempts).isEqualTo(1);
         dao.requeue(job.getId(), "moratorium");
@@ -101,15 +101,15 @@ public class LayerArchiveJobDaoTest {
 
     @Test
     public void resetInterruptedJobs_makes_running_jobs_pending_again() {
-        dao.register(1L);
-        dao.register(2L);
+        dao.register(1L, false);
+        dao.register(2L, false);
         dao.nextInputs();
-        var done = dao.register(3L);
+        var done = dao.register(3L, false);
         dao.finish(done.getId(), Status.SUCCESS, null);
 
-        var pending = dao.resetInterruptedJobs();
+        dao.resetInterruptedJobs();
 
-        assertThat(pending).extracting(LayerArchiveJob::getLayerId).containsExactly(1L, 2L);
+        assertThat(dao.findByStatus(Status.PENDING)).extracting(LayerArchiveJob::getLayerId).containsExactly(1L, 2L);
         assertThat(dao.findByStatus(Status.RUNNING)).isEmpty();
     }
 

@@ -69,6 +69,12 @@ public class LayerArchiveJob {
     @Column
     private int attempts;
 
+    /**
+     * Whether an existing archive of the layer must be overwritten, because a rearchive was requested.
+     */
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private boolean overwrite;
+
     @Column
     @Lob
     private String message;

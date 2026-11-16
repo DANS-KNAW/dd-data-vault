@@ -41,18 +41,26 @@ public class LayerArchiveJobDao extends AbstractDAO<LayerArchiveJob> implements 
     }
 
     /**
-     * Registers a job for the layer, unless there is already an unfinished one.
+     * Registers a job for the layer, unless there is already an unfinished one. If there is one, it will overwrite an existing archive when either request asked for that.
      *
-     * @param layerId the layer to archive
+     * @param layerId   the layer to archive
+     * @param overwrite whether an existing archive must be overwritten
      * @return the new or already existing unfinished job
      */
     @UnitOfWork
-    public synchronized LayerArchiveJob register(long layerId) {
-        return findActive(layerId).orElseGet(() -> persist(LayerArchiveJob.builder()
+    public synchronized LayerArchiveJob register(long layerId, boolean overwrite) {
+        var active = findActive(layerId);
+        if (active.isPresent()) {
+            var job = active.get();
+            job.setOverwrite(job.isOverwrite() || overwrite);
+            return job;
+        }
+        return persist(LayerArchiveJob.builder()
             .layerId(layerId)
+            .overwrite(overwrite)
             .created(OffsetDateTime.now())
             .status(Status.PENDING)
-            .build()));
+            .build());
     }
 
     @UnitOfWork
@@ -62,12 +70,12 @@ public class LayerArchiveJobDao extends AbstractDAO<LayerArchiveJob> implements 
 
     @UnitOfWork
     public List<LayerArchiveJob> findByStatus(Status status) {
-        return jobQuery("from layer_archive_job where status = :status order by created").setParameter("status", status).getResultList();
+        return jobsByStatus(status).getResultList();
     }
 
     @UnitOfWork
     public List<LayerArchiveJob> list() {
-        return jobQuery("from layer_archive_job order by created").getResultList();
+        return jobsByStatus(null).getResultList();
     }
 
     @Override
@@ -86,17 +94,16 @@ public class LayerArchiveJobDao extends AbstractDAO<LayerArchiveJob> implements 
      * Marks the oldest pending jobs as RUNNING, so that at most maxParallelJobs jobs are running (or waiting for a worker thread) at any time.
      */
     private List<LayerArchiveJob> claim(int limit) {
-        var running = currentSession().createQuery("select count(j) from layer_archive_job j where j.status = :status", Long.class)
-            .setParameter("status", Status.RUNNING)
-            .getSingleResult();
+        var criteria = currentSession().getCriteriaBuilder();
+        var countQuery = criteria.createQuery(Long.class);
+        var countRoot = countQuery.from(LayerArchiveJob.class);
+        countQuery.select(criteria.count(countRoot)).where(criteria.equal(countRoot.get("status"), Status.RUNNING));
+        var running = currentSession().createQuery(countQuery).getSingleResult();
         var free = (int) Math.min(limit, Math.max(0, maxParallelJobs - running));
         if (free == 0) {
             return List.of();
         }
-        var jobs = jobQuery("from layer_archive_job where status = :status order by created")
-            .setParameter("status", Status.PENDING)
-            .setMaxResults(free)
-            .getResultList();
+        var jobs = jobsByStatus(Status.PENDING).setMaxResults(free).getResultList();
         for (var job : jobs) {
             job.setStatus(Status.RUNNING);
             job.setStarted(OffsetDateTime.now());
@@ -126,34 +133,36 @@ public class LayerArchiveJobDao extends AbstractDAO<LayerArchiveJob> implements 
     }
 
     /**
-     * Resets jobs that were RUNNING when the service stopped to PENDING.
-     *
-     * @return all pending jobs, oldest first
+     * Resets jobs that were RUNNING when the service stopped to PENDING, so that the polling task executor picks them up again. Must be called at startup, before the executor is started.
      */
     @UnitOfWork
-    public synchronized List<LayerArchiveJob> resetInterruptedJobs() {
-        jobQuery("from layer_archive_job where status = :status")
-            .setParameter("status", Status.RUNNING)
-            .getResultList()
-            .forEach(job -> {
-                job.setStatus(Status.PENDING);
-                job.setStarted(null);
-                job.setMessage("Interrupted by a restart of the service");
-            });
-        return jobQuery("from layer_archive_job where status = :status order by created")
-            .setParameter("status", Status.PENDING)
-            .getResultList();
+    public synchronized void resetInterruptedJobs() {
+        jobsByStatus(Status.RUNNING).getResultList().forEach(job -> {
+            job.setStatus(Status.PENDING);
+            job.setStarted(null);
+            job.setMessage("Interrupted by a restart of the service");
+        });
     }
 
     private Optional<LayerArchiveJob> findActive(long layerId) {
-        return jobQuery("from layer_archive_job where layerId = :layerId and status in (:statuses) order by created")
-            .setParameter("layerId", layerId)
-            .setParameterList("statuses", List.of(Status.PENDING, Status.RUNNING))
-            .setMaxResults(1)
-            .uniqueResultOptional();
+        var criteria = currentSession().getCriteriaBuilder();
+        var query = criteria.createQuery(LayerArchiveJob.class);
+        var root = query.from(LayerArchiveJob.class);
+        query.where(
+            criteria.equal(root.get("layerId"), layerId),
+            root.get("status").in(Status.PENDING, Status.RUNNING));
+        query.orderBy(criteria.asc(root.get("created")));
+        return currentSession().createQuery(query).setMaxResults(1).uniqueResultOptional();
     }
 
-    private Query<LayerArchiveJob> jobQuery(String hql) {
-        return currentSession().createQuery(hql, LayerArchiveJob.class);
+    private Query<LayerArchiveJob> jobsByStatus(Status status) {
+        var criteria = currentSession().getCriteriaBuilder();
+        var query = criteria.createQuery(LayerArchiveJob.class);
+        var root = query.from(LayerArchiveJob.class);
+        if (status != null) {
+            query.where(criteria.equal(root.get("status"), status));
+        }
+        query.orderBy(criteria.asc(root.get("created")));
+        return currentSession().createQuery(query);
     }
 }

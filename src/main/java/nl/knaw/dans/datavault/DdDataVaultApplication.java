@@ -30,6 +30,7 @@ import nl.knaw.dans.datavault.config.DdDataVaultConfig;
 import nl.knaw.dans.datavault.core.ConsistencyCheckTaskFactory;
 import nl.knaw.dans.datavault.core.DbBackedLayerArchiver;
 import nl.knaw.dans.datavault.core.ImportJobTaskFactory;
+import nl.knaw.dans.datavault.core.LayerArchiveJobTaskFactory;
 import nl.knaw.dans.datavault.core.LayerThresholdHandler;
 import nl.knaw.dans.datavault.core.OcflRepositoryProvider;
 import nl.knaw.dans.datavault.core.PausableTaskSource;
@@ -60,7 +61,6 @@ import nl.knaw.dans.lib.util.pollingtaskexec.PollingTaskExecutor;
 import org.hibernate.SessionFactory;
 
 import java.io.IOException;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
 
 @Slf4j
@@ -93,7 +93,6 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
         var archiveProvider = layerStoreConfig.getArchiveProvider().build();
         var archiveJobDao = uowFactory.create(LayerArchiveJobDao.class, new Class<?>[] { SessionFactory.class, int.class },
             new Object[] { hibernateBundle.getSessionFactory(), layerStoreConfig.getLayerArchiver().getMaxParallelArchiveJobs() });
-        var layerArchiverHolder = new AtomicReference<DbBackedLayerArchiver>();
         LayeredItemStore layeredItemStore;
         try {
             layeredItemStore = new LayeredItemStore.Builder()
@@ -101,11 +100,7 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
                 .stagingRoot(configuration.getDataVault().getLayerStore().getStagingRoot())
                 .archiveProvider(archiveProvider)
                 .layerConsistencyCheckerProxy(checker -> createUnitOfWorkAwareProxy(uowFactory, checker))
-                .layerArchiver(proxiedChecker -> {
-                    var archiver = new DbBackedLayerArchiver(archiveJobDao, proxiedChecker);
-                    layerArchiverHolder.set(archiver);
-                    return archiver;
-                })
+                .layerArchiver(new DbBackedLayerArchiver(archiveJobDao))
                 .databaseBackedContentManager(new StoreInventoryDbBackedContentManager())
                 .validateArchiveRoot(configuration.getDataVault().getLayerStore().getInitChecks().isArchiveRoot())
                 .build();
@@ -115,8 +110,7 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
             throw new RuntimeException(e);
         }
         layeredItemStore.setAllowReadingContentFromArchives(false);
-        var layerArchiver = layerArchiverHolder.get();
-        layerArchiver.resumeUnfinishedJobs(layeredItemStore);
+        archiveJobDao.resetInterruptedJobs();
         var maxParallelArchiveJobs = layerStoreConfig.getLayerArchiver().getMaxParallelArchiveJobs();
         var archiveJobSource = new PausableTaskSource<>(archiveJobDao,
             () -> archiveProvider instanceof RsyncedDmfTarArchiveProvider provider && provider.isUnderMoratorium());
@@ -125,7 +119,7 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
             environment.lifecycle().scheduledExecutorService("layer-archiver").build(),
             layerStoreConfig.getLayerArchiver().getPollingInterval().toJavaDuration(),
             archiveJobSource,
-            layerArchiver.taskFactory(),
+            new LayerArchiveJobTaskFactory(archiveJobDao, layeredItemStore, layeredItemStore.getLayerConsistencyChecker()),
             new ExecutorServiceTaskScheduler(environment.lifecycle().executorService("archiver-worker")
                 .minThreads(maxParallelArchiveJobs).maxThreads(maxParallelArchiveJobs).build())));
         var layerConsistencyChecker = layeredItemStore.getLayerConsistencyChecker();
