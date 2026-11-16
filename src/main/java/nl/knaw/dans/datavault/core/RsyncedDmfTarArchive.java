@@ -27,8 +27,11 @@ import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermission;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Semaphore;
 
 /**
@@ -53,6 +56,7 @@ import java.util.concurrent.Semaphore;
 public class RsyncedDmfTarArchive implements Archive {
     public static final String PARTIAL_SUFFIX = ".partial";
     private static final String COMPLETE_MARKER_SUFFIX = ".complete";
+    private static final Set<PosixFilePermission> DELETE_PERMISSIONS = PosixFilePermissions.fromString("rwxr-xr-x");
 
     private final Archive remoteArchive;
     private final MoratoriumManager moratoriumManager;
@@ -191,6 +195,19 @@ public class RsyncedDmfTarArchive implements Archive {
 
     private void deleteLocalDmfTar() throws IOException {
         Files.deleteIfExists(completeMarker);
+        if (Files.exists(localDmfTar)) {
+            // dmftar makes everything readonly, even the directories, so we need to set write-permissions to be able to delete the files in them.
+            try (var stream = Files.walk(localDmfTar)) {
+                stream.filter(Files::isDirectory).forEach(path -> {
+                    try {
+                        Files.setPosixFilePermissions(path, DELETE_PERMISSIONS);
+                    }
+                    catch (IOException | UnsupportedOperationException e) {
+                        log.warn("Failed to set delete permissions for {}: {}", path, e.getMessage());
+                    }
+                });
+            }
+        }
         FileUtils.deleteDirectory(localDmfTar.toFile());
     }
 
