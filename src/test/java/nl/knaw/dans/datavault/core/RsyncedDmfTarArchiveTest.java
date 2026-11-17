@@ -124,8 +124,8 @@ public class RsyncedDmfTarArchiveTest {
         return file;
     }
 
-    private RsyncedDmfTarArchive createArchive(boolean exists) {
-        return new RsyncedDmfTarArchive(LAYER_ID, mock(Archive.class), exists, config, new ExternalCommandRunner(moratoriumManager, config.getRetry()),
+    private RsyncedDmfTarArchive createArchive() {
+        return new RsyncedDmfTarArchive(LAYER_ID, mock(Archive.class), config, new ExternalCommandRunner(moratoriumManager, config.getRetry()),
             new LocalDmfTarRunner(config.getDmfTarExecutable()), moratoriumManager, unarchiveSlots);
     }
 
@@ -136,11 +136,10 @@ public class RsyncedDmfTarArchiveTest {
 
     @Test
     public void archiveFrom_puts_verified_dmftar_in_remote_root_and_cleans_up_locally() throws Exception {
-        var archive = createArchive(false);
+        var archive = createArchive();
 
         archive.archiveFrom(stagingDir);
 
-        assertThat(archive.isArchived()).isTrue();
         assertThat(remoteRoot.resolve(NAME).resolve("0000-volume")).exists();
         assertThat(remoteRoot.resolve(NAME + ".partial")).doesNotExist();
         assertThat(localTransferRoot.resolve(NAME)).doesNotExist();
@@ -151,11 +150,10 @@ public class RsyncedDmfTarArchiveTest {
     @Test
     public void archiveFrom_retries_failed_uploads() throws Exception {
         Files.writeString(binDir.resolve("rsync.fail"), "2");
-        var archive = createArchive(false);
+        var archive = createArchive();
 
         archive.archiveFrom(stagingDir);
 
-        assertThat(archive.isArchived()).isTrue();
         assertThat(remoteRoot.resolve(NAME).resolve("0000-volume")).exists();
         assertThat(Files.readString(binDir.resolve("rsync.fail")).trim()).isEqualTo("0");
     }
@@ -163,11 +161,10 @@ public class RsyncedDmfTarArchiveTest {
     @Test
     public void archiveFrom_gives_up_after_max_attempts_and_keeps_local_dmftar_for_next_attempt() throws Exception {
         Files.writeString(binDir.resolve("rsync.fail"), "10");
-        var archive = createArchive(false);
+        var archive = createArchive();
 
         assertThatThrownBy(() -> archive.archiveFrom(stagingDir)).isInstanceOf(CommandFailedException.class);
 
-        assertThat(archive.isArchived()).isFalse();
         assertThat(remoteRoot.resolve(NAME)).doesNotExist();
         assertThat(localTransferRoot.resolve(NAME)).exists();
         assertThat(localTransferRoot.resolve(NAME + ".complete")).exists();
@@ -177,7 +174,7 @@ public class RsyncedDmfTarArchiveTest {
     public void archiveFrom_starts_moratorium_and_resumes_with_existing_local_dmftar_after_it() throws Exception {
         Files.writeString(binDir.resolve("rsync.fail"), "1");
         Files.writeString(binDir.resolve("rsync.msg"), "ssh: connect to host localhost port 22: Connection refused");
-        var archive = createArchive(false);
+        var archive = createArchive();
 
         assertThatThrownBy(() -> archive.archiveFrom(stagingDir)).isInstanceOf(MoratoriumException.class);
         assertThat(moratoriumManager.isUnderMoratorium()).isTrue();
@@ -186,7 +183,6 @@ public class RsyncedDmfTarArchiveTest {
         Thread.sleep(400);
         archive.archiveFrom(stagingDir);
 
-        assertThat(archive.isArchived()).isTrue();
         assertThat(remoteRoot.resolve(NAME).resolve("0000-volume")).exists();
         assertThat(dmftarCalls()).isEqualTo(1);
     }
@@ -194,13 +190,12 @@ public class RsyncedDmfTarArchiveTest {
     @Test
     public void archiveFrom_removes_invalid_upload_and_local_dmftar() throws Exception {
         Files.createFile(binDir.resolve("verify.invalid"));
-        var archive = createArchive(false);
+        var archive = createArchive();
 
         assertThatThrownBy(() -> archive.archiveFrom(stagingDir))
             .isInstanceOf(IllegalStateException.class)
             .hasMessageContaining("checksum failure");
 
-        assertThat(archive.isArchived()).isFalse();
         assertThat(remoteRoot.resolve(NAME)).doesNotExist();
         assertThat(remoteRoot.resolve(NAME + ".partial")).doesNotExist();
         assertThat(localTransferRoot.resolve(NAME)).doesNotExist();
@@ -211,7 +206,7 @@ public class RsyncedDmfTarArchiveTest {
     public void archiveFrom_replaces_existing_remote_archive() throws Exception {
         Files.createDirectories(remoteRoot.resolve(NAME));
         Files.writeString(remoteRoot.resolve(NAME).resolve("old-volume"), "old");
-        var archive = createArchive(true);
+        var archive = createArchive();
 
         archive.archiveFrom(stagingDir);
 
@@ -226,7 +221,7 @@ public class RsyncedDmfTarArchiveTest {
         Files.writeString(localTransferRoot.resolve(NAME).resolve("junk"), "partial");
         Files.createDirectories(remoteRoot.resolve(NAME + ".partial").resolve(NAME));
         Files.writeString(remoteRoot.resolve(NAME + ".partial").resolve(NAME).resolve("stale-volume"), "stale");
-        var archive = createArchive(false);
+        var archive = createArchive();
 
         archive.archiveFrom(stagingDir);
 
@@ -238,7 +233,7 @@ public class RsyncedDmfTarArchiveTest {
     @Test
     public void archiveFrom_removes_leftover_dmftar_cache_directories_from_staging_dir() throws Exception {
         Files.createDirectories(stagingDir.resolve("dmftar-cache.123"));
-        var archive = createArchive(false);
+        var archive = createArchive();
 
         archive.archiveFrom(stagingDir);
 
@@ -255,7 +250,7 @@ public class RsyncedDmfTarArchiveTest {
     public void unarchiveTo_downloads_unpacks_and_cleans_up_locally() throws Exception {
         putRemoteArchive();
 
-        createArchive(true).unarchiveTo(restoreDir);
+        createArchive().unarchiveTo(restoreDir);
 
         assertThat(restoreDir.resolve("0000-volume")).exists();
         assertThat(restoreDir.resolve("dmftar-cache.1")).doesNotExist();
@@ -269,7 +264,7 @@ public class RsyncedDmfTarArchiveTest {
         putRemoteArchive();
         Files.writeString(binDir.resolve("rsync.fail"), "2");
 
-        createArchive(true).unarchiveTo(restoreDir);
+        createArchive().unarchiveTo(restoreDir);
 
         assertThat(restoreDir.resolve("0000-volume")).exists();
         assertThat(Files.readString(binDir.resolve("rsync.fail")).trim()).isEqualTo("0");
@@ -281,7 +276,7 @@ public class RsyncedDmfTarArchiveTest {
         Files.writeString(binDir.resolve("rsync.fail"), "1");
         Files.writeString(binDir.resolve("rsync.msg"), "ssh: connect to host localhost port 22: Connection refused");
 
-        assertThatThrownBy(() -> createArchive(true).unarchiveTo(restoreDir)).isInstanceOf(MoratoriumException.class);
+        assertThatThrownBy(() -> createArchive().unarchiveTo(restoreDir)).isInstanceOf(MoratoriumException.class);
 
         assertThat(moratoriumManager.isUnderMoratorium()).isTrue();
         assertThat(unarchiveSlots.availablePermits()).isEqualTo(1);
@@ -294,7 +289,7 @@ public class RsyncedDmfTarArchiveTest {
         Files.writeString(localTransferRoot.resolve(NAME).resolve("junk"), "from an earlier archiving attempt");
         Files.createFile(localTransferRoot.resolve(NAME + ".complete"));
 
-        createArchive(true).unarchiveTo(restoreDir);
+        createArchive().unarchiveTo(restoreDir);
 
         assertThat(restoreDir.resolve("0000-volume")).exists();
         assertThat(restoreDir.resolve("junk")).doesNotExist();
@@ -307,7 +302,7 @@ public class RsyncedDmfTarArchiveTest {
         config.setVerifyDownloadedCopy(true);
         Files.createFile(binDir.resolve("local-verify.invalid"));
 
-        assertThatThrownBy(() -> createArchive(true).unarchiveTo(restoreDir))
+        assertThatThrownBy(() -> createArchive().unarchiveTo(restoreDir))
             .isInstanceOf(IllegalStateException.class)
             .hasMessageContaining("Verification");
 
@@ -320,7 +315,7 @@ public class RsyncedDmfTarArchiveTest {
         putRemoteArchive();
         config.setVerifyDownloadedCopy(true);
 
-        createArchive(true).unarchiveTo(restoreDir);
+        createArchive().unarchiveTo(restoreDir);
 
         assertThat(restoreDir.resolve("0000-volume")).exists();
     }
@@ -331,7 +326,7 @@ public class RsyncedDmfTarArchiveTest {
         unarchiveSlots.acquire();
         var done = new AtomicBoolean();
         var thread = new Thread(() -> {
-            createArchive(true).unarchiveTo(restoreDir);
+            createArchive().unarchiveTo(restoreDir);
             done.set(true);
         });
         thread.start();

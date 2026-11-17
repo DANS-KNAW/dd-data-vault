@@ -15,7 +15,6 @@
  */
 package nl.knaw.dans.datavault.core;
 
-import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import nl.knaw.dans.datavault.config.DmfTarArchiveProviderFactory;
 import nl.knaw.dans.layerstore.Archive;
@@ -71,13 +70,9 @@ public class RsyncedDmfTarArchive implements Archive {
     private final Path completeMarker;
     private final Map<String, String> placeholders;
 
-    @Getter
-    private boolean archived;
-
-    public RsyncedDmfTarArchive(long layerId, Archive remoteArchive, boolean archived, DmfTarArchiveProviderFactory config, ExternalCommandRunner commandRunner,
+    public RsyncedDmfTarArchive(long layerId, Archive remoteArchive, DmfTarArchiveProviderFactory config, ExternalCommandRunner commandRunner,
         LocalDmfTarRunner localDmfTarRunner, MoratoriumManager moratoriumManager, Semaphore unarchiveSlots) {
         this.remoteArchive = remoteArchive;
-        this.archived = archived;
         this.config = config;
         this.commandRunner = commandRunner;
         this.localDmfTarRunner = localDmfTarRunner;
@@ -149,7 +144,6 @@ public class RsyncedDmfTarArchive implements Archive {
             verifyRemoteCopy();
             moveRemoteCopyIntoPlace();
             deleteLocalDmfTar();
-            archived = true;
         }
         catch (IOException e) {
             throw new UncheckedIOException("Could not archive " + stagingDir + " as " + name, e);

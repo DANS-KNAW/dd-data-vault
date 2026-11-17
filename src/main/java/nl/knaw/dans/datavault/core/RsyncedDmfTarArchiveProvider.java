@@ -55,8 +55,8 @@ public class RsyncedDmfTarArchiveProvider implements ArchiveProvider {
     }
 
     @Override
-    public Archive createArchive(long layerId, boolean exists) {
-        return new RsyncedDmfTarArchive(layerId, remoteProvider.createArchive(layerId, exists), exists, config, commandRunner, localDmfTarRunner, moratoriumManager, unarchiveSlots);
+    public Archive createArchive(long layerId) {
+        return new RsyncedDmfTarArchive(layerId, remoteProvider.createArchive(layerId), config, commandRunner, localDmfTarRunner, moratoriumManager, unarchiveSlots);
     }
 
     @Override
