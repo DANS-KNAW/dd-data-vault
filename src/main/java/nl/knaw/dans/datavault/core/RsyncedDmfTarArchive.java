@@ -163,7 +163,7 @@ public class RsyncedDmfTarArchive implements Archive {
         }
         deleteLocalDmfTar();
         // A copy from an earlier attempt may be based on different content, which rsync does not clean up
-        runRemote("rm -rf " + quote(remoteTransferDir), "Removing stale upload of " + name);
+        runRemote("if [ -e %1$s ]; then chmod -R u+w %1$s 2>/dev/null || true; rm -rf %1$s; fi".formatted(quote(remoteTransferDir)), "Removing stale upload of " + name);
         Files.createDirectories(localDmfTar.getParent());
         log.info("Creating local dmftar {}", localDmfTar);
         localDmfTarRunner.tarDirectory(stagingDir, localDmfTar);
@@ -222,8 +222,13 @@ public class RsyncedDmfTarArchive implements Archive {
         var result = commandRunner.runWithRetry(verify.getCommand(), placeholders, "Verifying " + name, verify.getInvalidOn());
         if (!result.succeeded() || (!verify.getInvalidOn().isEmpty() && result.output().contains(verify.getInvalidOn()))) {
             // Start from scratch on the next attempt
-            runRemote("rm -rf " + quote(remoteTransferDir), "Removing invalid upload of " + name);
-            deleteLocalDmfTar();
+            try {
+                deleteLocalDmfTar();
+            }
+            finally {
+                runRemote("if [ -e %1$s ]; then chmod -R u+w %1$s 2>/dev/null || true; rm -rf %1$s; fi".formatted(quote(remoteTransferDir)),
+                    "Removing invalid upload of " + name);
+            }
             throw new IllegalStateException("Verification of uploaded " + name + " failed: " + result.output());
         }
     }
@@ -236,7 +241,9 @@ public class RsyncedDmfTarArchive implements Archive {
         var uploaded = quote(remoteTransferDir.resolve(name));
         var existing = quote(remoteDir.resolve(name));
         var backup = quote(remoteTransferDir.resolve(name + ".bak"));
-        runRemote("if [ -e %1$s ]; then { if [ -e %2$s ]; then rm -rf %3$s && mv %2$s %3$s; fi; } && mv %1$s %2$s; fi && rm -rf %4$s".formatted(uploaded, existing, backup, quote(remoteTransferDir)),
+        var transferDir = quote(remoteTransferDir);
+        runRemote("if [ -e %1$s ]; then { if [ -e %2$s ]; then if [ -e %3$s ]; then chmod -R u+w %3$s 2>/dev/null || true; rm -rf %3$s; fi && mv %2$s %3$s; fi; } && mv %1$s %2$s; fi && if [ -e %4$s ]; then chmod -R u+w %4$s 2>/dev/null || true; rm -rf %4$s; fi"
+            .formatted(uploaded, existing, backup, transferDir),
             "Moving " + name + " into place");
     }
 

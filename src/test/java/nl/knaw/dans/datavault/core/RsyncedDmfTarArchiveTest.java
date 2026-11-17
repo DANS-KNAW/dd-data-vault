@@ -27,6 +27,7 @@ import org.junit.jupiter.api.TestInfo;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.util.List;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -262,6 +263,66 @@ public class RsyncedDmfTarArchiveTest {
         assertThat(remoteRoot.resolve(NAME).resolve("0000-volume")).exists();
         assertThat(remoteRoot.resolve(NAME).resolve("old-volume")).doesNotExist();
         assertThat(remoteRoot.resolve(NAME + ".partial")).doesNotExist();
+    }
+
+    @Test
+    public void archiveFrom_cleans_up_stale_remote_upload_with_read_only_directories() throws Exception {
+        var partialDir = Files.createDirectories(remoteRoot.resolve(NAME + ".partial").resolve(NAME).resolve("sub"));
+        Files.writeString(partialDir.resolve("file.txt"), "stale");
+        Files.setPosixFilePermissions(partialDir, PosixFilePermissions.fromString("r-xr-xr-x"));
+        var archive = createArchive();
+
+        archive.archiveFrom(stagingDir);
+
+        assertThat(remoteRoot.resolve(NAME).resolve("0000-volume")).exists();
+        assertThat(remoteRoot.resolve(NAME + ".partial")).doesNotExist();
+    }
+
+    @Test
+    public void archiveFrom_replaces_existing_remote_archive_with_read_only_directories() throws Exception {
+        var existingSubDir = Files.createDirectories(remoteRoot.resolve(NAME).resolve("sub"));
+        Files.writeString(existingSubDir.resolve("old-file.txt"), "old");
+        Files.setPosixFilePermissions(existingSubDir, PosixFilePermissions.fromString("r-xr-xr-x"));
+        var archive = createArchive();
+
+        archive.archiveFrom(stagingDir);
+
+        assertThat(remoteRoot.resolve(NAME).resolve("0000-volume")).exists();
+        assertThat(remoteRoot.resolve(NAME).resolve("sub")).doesNotExist();
+        assertThat(remoteRoot.resolve(NAME + ".partial")).doesNotExist();
+    }
+
+    @Test
+    public void archiveFrom_cleans_up_stale_backup_with_read_only_directories() throws Exception {
+        putRemoteArchive();
+        var backupSubDir = Files.createDirectories(remoteRoot.resolve(NAME + ".partial").resolve(NAME + ".bak").resolve("sub"));
+        Files.writeString(backupSubDir.resolve("bak-file.txt"), "bak");
+        Files.setPosixFilePermissions(backupSubDir, PosixFilePermissions.fromString("r-xr-xr-x"));
+        var archive = createArchive();
+
+        archive.archiveFrom(stagingDir);
+
+        assertThat(remoteRoot.resolve(NAME).resolve("0000-volume")).exists();
+        assertThat(remoteRoot.resolve(NAME + ".partial")).doesNotExist();
+    }
+
+    @Test
+    public void archiveFrom_invalidates_local_cache_when_verification_fails_even_if_remote_cleanup_fails() throws Exception {
+        Files.createFile(binDir.resolve("verify.invalid"));
+        var archive = createArchive();
+
+        assertThatThrownBy(() -> archive.archiveFrom(stagingDir))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessageContaining("checksum failure");
+
+        assertThat(localTransferRoot.resolve(NAME + ".complete")).doesNotExist();
+        assertThat(localTransferRoot.resolve(NAME)).doesNotExist();
+
+        Files.deleteIfExists(binDir.resolve("verify.invalid"));
+        archive.archiveFrom(stagingDir);
+
+        assertThat(remoteRoot.resolve(NAME).resolve("0000-volume")).exists();
+        assertThat(dmftarCalls()).isEqualTo(2);
     }
 
     @Test
