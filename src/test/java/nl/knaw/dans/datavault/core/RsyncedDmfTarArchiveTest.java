@@ -91,6 +91,7 @@ public class RsyncedDmfTarArchiveTest {
             """);
         var verify = script("verify", """
             if [ -f "$(dirname "$0")/verify.invalid" ]; then echo "checksum failure"; exit 1; fi
+            if [ -f "$(dirname "$0")/verify.invalid-exit0" ]; then echo "checksum failure"; exit 0; fi
             for a in "$@"; do last=$a; done
             [ -d "$last" ]
             """);
@@ -223,6 +224,21 @@ public class RsyncedDmfTarArchiveTest {
     @Test
     public void archiveFrom_removes_invalid_upload_and_local_dmftar() throws Exception {
         Files.createFile(binDir.resolve("verify.invalid"));
+        var archive = createArchive();
+
+        assertThatThrownBy(() -> archive.archiveFrom(stagingDir))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessageContaining("checksum failure");
+
+        assertThat(remoteRoot.resolve(NAME)).doesNotExist();
+        assertThat(remoteRoot.resolve(NAME + ".partial")).doesNotExist();
+        assertThat(localTransferRoot.resolve(NAME)).doesNotExist();
+        assertThat(localTransferRoot.resolve(NAME + ".complete")).doesNotExist();
+    }
+
+    @Test
+    public void archiveFrom_removes_invalid_upload_and_local_dmftar_when_verify_exits_with_0() throws Exception {
+        Files.createFile(binDir.resolve("verify.invalid-exit0"));
         var archive = createArchive();
 
         assertThatThrownBy(() -> archive.archiveFrom(stagingDir))
