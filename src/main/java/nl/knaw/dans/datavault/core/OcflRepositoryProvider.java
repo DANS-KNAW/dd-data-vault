@@ -53,6 +53,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
@@ -248,13 +249,13 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
             var objectRoot = ocflStorage.objectRootPath(objectId);
             var fullPath = Path.of(objectRoot).resolve("extensions").resolve(path).toString();
 
-            if (!layeredItemStore.existsPathLike(fullPath)) {
-                throw new NoSuchElementException("Extension file not found: " + path + " in object " + objectId);
-            }
             return layeredItemStore.readFile(fullPath);
         }
+        catch (NoSuchFileException e) {
+            throw new NoSuchElementException("Extension file not found: " + path + " in object " + objectId, e);
+        }
         catch (IOException e) {
-            throw new RuntimeException("Failed to read extension file '" + path + "' for object " + objectId, e);
+            throw new RuntimeException("Error reading extension file: " + path + " in object " + objectId, e);
         }
     }
 
