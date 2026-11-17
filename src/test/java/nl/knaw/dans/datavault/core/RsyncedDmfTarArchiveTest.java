@@ -188,6 +188,39 @@ public class RsyncedDmfTarArchiveTest {
     }
 
     @Test
+    public void archiveFrom_rebuilds_local_dmftar_if_staging_content_has_changed() throws Exception {
+        Files.writeString(binDir.resolve("rsync.fail"), "10");
+        var archive = createArchive();
+
+        assertThatThrownBy(() -> archive.archiveFrom(stagingDir)).isInstanceOf(CommandFailedException.class);
+        assertThat(localTransferRoot.resolve(NAME)).exists();
+        assertThat(localTransferRoot.resolve(NAME + ".complete")).exists();
+        assertThat(dmftarCalls()).isEqualTo(1);
+
+        // Modify staging dir after failed attempt
+        Files.writeString(stagingDir.resolve("data.txt"), "repaired content");
+        Files.deleteIfExists(binDir.resolve("rsync.fail"));
+
+        archive.archiveFrom(stagingDir);
+
+        assertThat(remoteRoot.resolve(NAME).resolve("0000-volume")).exists();
+        assertThat(dmftarCalls()).isEqualTo(2);
+    }
+
+    @Test
+    public void archiveFrom_rebuilds_local_dmftar_if_complete_marker_is_empty_or_invalid() throws Exception {
+        Files.createDirectories(localTransferRoot.resolve(NAME));
+        Files.writeString(localTransferRoot.resolve(NAME).resolve("volume"), "stale");
+        Files.createFile(localTransferRoot.resolve(NAME + ".complete"));
+        var archive = createArchive();
+
+        archive.archiveFrom(stagingDir);
+
+        assertThat(remoteRoot.resolve(NAME).resolve("0000-volume")).exists();
+        assertThat(dmftarCalls()).isEqualTo(1);
+    }
+
+    @Test
     public void archiveFrom_removes_invalid_upload_and_local_dmftar() throws Exception {
         Files.createFile(binDir.resolve("verify.invalid"));
         var archive = createArchive();

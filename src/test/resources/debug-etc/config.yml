@@ -27,17 +27,6 @@ database:
     hibernate.dialect: 'org.hibernate.dialect.PostgreSQL95Dialect'
     hibernate.hbm2ddl.auto: update
 
-#database:
-#  driverClass: org.hsqldb.jdbcDriver
-#  url: jdbc:hsqldb:hsql://localhost:9004/dd-data-vault
-#  logValidationErrors: true
-#  # See: https://stackoverflow.com/questions/10684244/dbcp-validationquery-for-different-databases
-#  validationQuery: SELECT * FROM INFORMATION_SCHEMA.SYSTEM_TABLES
-#  properties:
-#    hibernate.dialect: 'org.hibernate.dialect.HSQLDialect'
-#    hibernate.hbm2ddl.auto: update
-
-
 executorService:
   nameFormat: "create-or-update-object-worker-%d"
   maxQueueSize: 5000

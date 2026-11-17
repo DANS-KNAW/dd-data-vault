@@ -19,23 +19,29 @@ import lombok.extern.slf4j.Slf4j;
 import nl.knaw.dans.datavault.config.DmfTarArchiveProviderFactory;
 import nl.knaw.dans.layerstore.Archive;
 import nl.knaw.dans.layerstore.Item;
+import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.io.FileUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Semaphore;
 
 /**
- * An {@link Archive} that is a dmftar directory on a remote host, which is not written to the remote host directly by dmftar, but created locally first and then transferred with rsync,
- * so that interrupted connections can be resumed.
+ * An {@link Archive} that is a dmftar directory on a remote host, which is not written to the remote host directly by dmftar, but created locally first and then transferred with rsync, so that
+ * interrupted connections can be resumed.
  * <p>
  * Archiving a layer takes these steps, each of which can be repeated after a failure or a restart of the service:
  * <ol>
@@ -100,8 +106,8 @@ public class RsyncedDmfTarArchive implements Archive {
     }
 
     /**
-     * Downloads the dmftar directory with rsync (retrying and resuming as needed), optionally verifies it, unpacks it into the staging directory and removes the local copy. At most
-     * the configured number of layers is unarchived at the same time.
+     * Downloads the dmftar directory with rsync (retrying and resuming as needed), optionally verifies it, unpacks it into the staging directory and removes the local copy. At most the configured
+     * number of layers is unarchived at the same time.
      */
     @Override
     public void unarchiveTo(Path stagingDir) {
@@ -151,7 +157,7 @@ public class RsyncedDmfTarArchive implements Archive {
     }
 
     private void prepareLocalDmfTar(Path stagingDir) throws IOException {
-        if (Files.exists(completeMarker) && Files.isDirectory(localDmfTar)) {
+        if (isCachedTarValid(stagingDir)) {
             log.info("Reusing complete local dmftar {} from an earlier attempt", localDmfTar);
             return;
         }
@@ -161,13 +167,60 @@ public class RsyncedDmfTarArchive implements Archive {
         Files.createDirectories(localDmfTar.getParent());
         log.info("Creating local dmftar {}", localDmfTar);
         localDmfTarRunner.tarDirectory(stagingDir, localDmfTar);
-        Files.createFile(completeMarker);
+        Files.writeString(completeMarker, computeFingerprint(stagingDir));
+    }
+
+    private boolean isCachedTarValid(Path stagingDir) {
+        if (!Files.exists(completeMarker) || !Files.isDirectory(localDmfTar)) {
+            return false;
+        }
+        try {
+            var expectedFingerprint = Files.readString(completeMarker).trim();
+            if (expectedFingerprint.isEmpty()) {
+                return false;
+            }
+            return expectedFingerprint.equals(computeFingerprint(stagingDir));
+        }
+        catch (IOException e) {
+            log.warn("Could not verify cached dmftar for {}: {}", name, e.getMessage());
+            return false;
+        }
+    }
+
+    private String computeFingerprint(Path stagingDir) throws IOException {
+        try {
+            var digest = MessageDigest.getInstance("SHA-256");
+            try (var stream = Files.walk(stagingDir)) {
+                var sortedPaths = stream.sorted().toList();
+                for (var path : sortedPaths) {
+                    var relative = stagingDir.relativize(path).toString();
+                    digest.update(relative.getBytes(StandardCharsets.UTF_8));
+                    if (Files.isDirectory(path)) {
+                        digest.update((byte) 1);
+                    }
+                    else {
+                        digest.update((byte) 0);
+                        var attrs = Files.readAttributes(path, BasicFileAttributes.class);
+                        var buffer = ByteBuffer.allocate(Long.BYTES * 2 + Integer.BYTES);
+                        var mtime = attrs.lastModifiedTime().toInstant();
+                        buffer.putLong(attrs.size());
+                        buffer.putLong(mtime.getEpochSecond());
+                        buffer.putInt(mtime.getNano());
+                        digest.update(buffer.array());
+                    }
+                }
+            }
+            return Hex.encodeHexString(digest.digest());
+        }
+        catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 not available", e);
+        }
     }
 
     private void verifyRemoteCopy() throws IOException {
         var verify = config.getVerify();
         var result = commandRunner.runWithRetry(verify.getCommand(), placeholders, "Verifying " + name, verify.getInvalidOn());
-        if (!result.succeeded()) {
+        if (!result.succeeded() || (!verify.getInvalidOn().isEmpty() && result.output().contains(verify.getInvalidOn()))) {
             // Start from scratch on the next attempt
             runRemote("rm -rf " + quote(remoteTransferDir), "Removing invalid upload of " + name);
             deleteLocalDmfTar();
