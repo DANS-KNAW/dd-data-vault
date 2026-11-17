@@ -1,0 +1,524 @@
+/*
+ * Copyright (C) 2024 DANS - Data Archiving and Networked Services (info@dans.knaw.nl)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package nl.knaw.dans.datavault.core;
+
+import io.dropwizard.util.Duration;
+import nl.knaw.dans.datavault.config.DmfTarArchiveProviderFactory;
+import nl.knaw.dans.datavault.config.ExternalCommandConfig;
+import nl.knaw.dans.layerstore.Archive;
+import nl.knaw.dans.layerstore.Item;
+import org.apache.commons.io.FileUtils;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermissions;
+import java.util.Iterator;
+import java.util.List;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+public class RsyncedDmfTarArchiveTest {
+    private static final long LAYER_ID = 1700000000000L;
+    private static final String NAME = LAYER_ID + ".dmftar";
+
+    private Path testDir;
+    private Path binDir;
+    private Path stagingDir;
+    private Path localTransferRoot;
+    private Path remoteRoot;
+    private DmfTarArchiveProviderFactory config;
+    private MoratoriumManager moratoriumManager;
+    private Semaphore unarchiveSlots;
+    private Path restoreDir;
+
+    @BeforeEach
+    public void setUp(TestInfo testInfo) throws IOException {
+        testDir = Path.of("target/test/RsyncedDmfTarArchiveTest").resolve(testInfo.getTestMethod().orElseThrow().getName()).toAbsolutePath();
+        FileUtils.deleteDirectory(testDir.toFile());
+        binDir = Files.createDirectories(testDir.resolve("bin"));
+        stagingDir = Files.createDirectories(testDir.resolve("staging").resolve(Long.toString(LAYER_ID)));
+        Files.writeString(stagingDir.resolve("data.txt"), "content");
+        localTransferRoot = testDir.resolve("local-transfer");
+        remoteRoot = Files.createDirectories(testDir.resolve("remote"));
+
+        // Fake commands that act on the local file system. Failures are injected by putting a number in bin/rsync.fail, or a file bin/verify.invalid
+        var dmftar = script("dmftar", """
+            case "$1" in
+              -cf)
+                echo run >> "$(dirname "$0")/dmftar.calls"
+                mkdir -p "$2" && echo volume > "$2/0000-volume"
+                ;;
+              -xf)
+                target=${3#--options=--directory=}
+                mkdir -p "$target/dmftar-cache.1"
+                cp -r "$2"/. "$target"/
+                ;;
+              --verify)
+                [ ! -f "$(dirname "$0")/local-verify.invalid" ]
+                ;;
+            esac
+            """);
+        var rsync = script("rsync", """
+            d=$(dirname "$0")
+            n=$(cat "$d/rsync.fail" 2>/dev/null || echo 0)
+            if [ "$n" -gt 0 ]; then
+              echo $((n-1)) > "$d/rsync.fail"
+              cat "$d/rsync.msg" 2>/dev/null || echo "connection reset"
+              exit 12
+            fi
+            for a in "$@"; do case "$a" in -*) ;; *) if [ -z "$src" ]; then src=$a; else dst=$a; fi;; esac; done
+            src=${src#*:}
+            dst=${dst#*:}
+            mkdir -p "$dst" && cp -r "$src" "$dst/"
+            """);
+        var verify = script("verify", """
+            if [ -f "$(dirname "$0")/verify.invalid" ]; then echo "checksum failure"; exit 1; fi
+            if [ -f "$(dirname "$0")/verify.invalid-exit0" ]; then echo "checksum failure"; exit 0; fi
+            for a in "$@"; do last=$a; done
+            [ -d "$last" ]
+            """);
+        var ssh = script("ssh", """
+            for a in "$@"; do last=$a; done
+            exec sh -c "$last"
+            """);
+
+        config = new DmfTarArchiveProviderFactory();
+        config.setDmfTarExecutable(dmftar);
+        config.setSshExecutable(ssh);
+        config.setUser("vault");
+        config.setHost("localhost");
+        config.setArchiveRoot(remoteRoot);
+        config.setLocalTransferRoot(localTransferRoot);
+        config.getRsyncUpload().setExecutable(rsync.toString());
+        config.getVerify().setCommand(new ExternalCommandConfig(verify.toString(), List.of("${remoteTransferDir}/${name}")));
+        config.getRetry().setMaxAttempts(3);
+        config.getRetry().setBackoff(Duration.milliseconds(1));
+        config.getMoratorium().setDuration(Duration.milliseconds(300));
+        moratoriumManager = new MoratoriumManager(config.getMoratorium());
+        unarchiveSlots = new Semaphore(1);
+        restoreDir = Files.createDirectories(testDir.resolve("restore"));
+        config.getRsyncDownload().setExecutable(rsync.toString());
+    }
+
+    private Path script(String name, String body) throws IOException {
+        var file = binDir.resolve(name);
+        Files.writeString(file, "#!/bin/sh\n" + body);
+        assertThat(file.toFile().setExecutable(true)).isTrue();
+        return file;
+    }
+
+    private RsyncedDmfTarArchive createArchive() {
+        return createArchive(mock(Archive.class));
+    }
+
+    private RsyncedDmfTarArchive createArchive(Archive remoteArchive) {
+        return new RsyncedDmfTarArchive(LAYER_ID, remoteArchive, config, new ExternalCommandRunner(moratoriumManager, config.getRetry()),
+            new LocalDmfTarRunner(config.getDmfTarExecutable()), moratoriumManager, unarchiveSlots);
+    }
+
+    private long dmftarCalls() throws IOException {
+        var calls = binDir.resolve("dmftar.calls");
+        return Files.exists(calls) ? Files.readAllLines(calls).size() : 0;
+    }
+
+    @Test
+    public void archiveFrom_puts_verified_dmftar_in_remote_root_and_cleans_up_locally() throws Exception {
+        var archive = createArchive();
+
+        archive.archiveFrom(stagingDir);
+
+        assertThat(remoteRoot.resolve(NAME).resolve("0000-volume")).exists();
+        assertThat(remoteRoot.resolve(NAME + ".partial")).doesNotExist();
+        assertThat(localTransferRoot.resolve(NAME)).doesNotExist();
+        assertThat(localTransferRoot.resolve(NAME + ".complete")).doesNotExist();
+        assertThat(stagingDir.resolve("data.txt")).exists();
+    }
+
+    @Test
+    public void archiveFrom_retries_failed_uploads() throws Exception {
+        Files.writeString(binDir.resolve("rsync.fail"), "2");
+        var archive = createArchive();
+
+        archive.archiveFrom(stagingDir);
+
+        assertThat(remoteRoot.resolve(NAME).resolve("0000-volume")).exists();
+        assertThat(Files.readString(binDir.resolve("rsync.fail")).trim()).isEqualTo("0");
+    }
+
+    @Test
+    public void archiveFrom_gives_up_after_max_attempts_and_keeps_local_dmftar_for_next_attempt() throws Exception {
+        Files.writeString(binDir.resolve("rsync.fail"), "10");
+        var archive = createArchive();
+
+        assertThatThrownBy(() -> archive.archiveFrom(stagingDir)).isInstanceOf(CommandFailedException.class);
+
+        assertThat(remoteRoot.resolve(NAME)).doesNotExist();
+        assertThat(localTransferRoot.resolve(NAME)).exists();
+        assertThat(localTransferRoot.resolve(NAME + ".complete")).exists();
+    }
+
+    @Test
+    public void archiveFrom_starts_moratorium_and_resumes_with_existing_local_dmftar_after_it() throws Exception {
+        Files.writeString(binDir.resolve("rsync.fail"), "1");
+        Files.writeString(binDir.resolve("rsync.msg"), "ssh: connect to host localhost port 22: Connection refused");
+        var archive = createArchive();
+
+        assertThatThrownBy(() -> archive.archiveFrom(stagingDir)).isInstanceOf(MoratoriumException.class);
+        assertThat(moratoriumManager.isUnderMoratorium()).isTrue();
+        assertThatThrownBy(() -> archive.archiveFrom(stagingDir)).isInstanceOf(MoratoriumException.class);
+
+        Thread.sleep(400);
+        archive.archiveFrom(stagingDir);
+
+        assertThat(remoteRoot.resolve(NAME).resolve("0000-volume")).exists();
+        assertThat(dmftarCalls()).isEqualTo(1);
+    }
+
+    @Test
+    public void archiveFrom_rebuilds_local_dmftar_if_staging_content_has_changed() throws Exception {
+        Files.writeString(binDir.resolve("rsync.fail"), "10");
+        var archive = createArchive();
+
+        assertThatThrownBy(() -> archive.archiveFrom(stagingDir)).isInstanceOf(CommandFailedException.class);
+        assertThat(localTransferRoot.resolve(NAME)).exists();
+        assertThat(localTransferRoot.resolve(NAME + ".complete")).exists();
+        assertThat(dmftarCalls()).isEqualTo(1);
+
+        // Modify staging dir after failed attempt
+        Files.writeString(stagingDir.resolve("data.txt"), "repaired content");
+        Files.deleteIfExists(binDir.resolve("rsync.fail"));
+
+        archive.archiveFrom(stagingDir);
+
+        assertThat(remoteRoot.resolve(NAME).resolve("0000-volume")).exists();
+        assertThat(dmftarCalls()).isEqualTo(2);
+    }
+
+    @Test
+    public void archiveFrom_rebuilds_local_dmftar_if_complete_marker_is_empty_or_invalid() throws Exception {
+        Files.createDirectories(localTransferRoot.resolve(NAME));
+        Files.writeString(localTransferRoot.resolve(NAME).resolve("volume"), "stale");
+        Files.createFile(localTransferRoot.resolve(NAME + ".complete"));
+        var archive = createArchive();
+
+        archive.archiveFrom(stagingDir);
+
+        assertThat(remoteRoot.resolve(NAME).resolve("0000-volume")).exists();
+        assertThat(dmftarCalls()).isEqualTo(1);
+    }
+
+    @Test
+    public void archiveFrom_removes_invalid_upload_and_local_dmftar() throws Exception {
+        Files.createFile(binDir.resolve("verify.invalid"));
+        var archive = createArchive();
+
+        assertThatThrownBy(() -> archive.archiveFrom(stagingDir))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessageContaining("checksum failure");
+
+        assertThat(remoteRoot.resolve(NAME)).doesNotExist();
+        assertThat(remoteRoot.resolve(NAME + ".partial")).doesNotExist();
+        assertThat(localTransferRoot.resolve(NAME)).doesNotExist();
+        assertThat(localTransferRoot.resolve(NAME + ".complete")).doesNotExist();
+    }
+
+    @Test
+    public void archiveFrom_removes_invalid_upload_and_local_dmftar_when_verify_exits_with_0() throws Exception {
+        Files.createFile(binDir.resolve("verify.invalid-exit0"));
+        var archive = createArchive();
+
+        assertThatThrownBy(() -> archive.archiveFrom(stagingDir))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessageContaining("checksum failure");
+
+        assertThat(remoteRoot.resolve(NAME)).doesNotExist();
+        assertThat(remoteRoot.resolve(NAME + ".partial")).doesNotExist();
+        assertThat(localTransferRoot.resolve(NAME)).doesNotExist();
+        assertThat(localTransferRoot.resolve(NAME + ".complete")).doesNotExist();
+    }
+
+    @Test
+    public void archiveFrom_replaces_existing_remote_archive() throws Exception {
+        Files.createDirectories(remoteRoot.resolve(NAME));
+        Files.writeString(remoteRoot.resolve(NAME).resolve("old-volume"), "old");
+        var archive = createArchive();
+
+        archive.archiveFrom(stagingDir);
+
+        assertThat(remoteRoot.resolve(NAME).resolve("0000-volume")).exists();
+        assertThat(remoteRoot.resolve(NAME).resolve("old-volume")).doesNotExist();
+        assertThat(remoteRoot.resolve(NAME + ".partial")).doesNotExist();
+    }
+
+    @Test
+    public void archiveFrom_cleans_up_stale_remote_upload_with_read_only_directories() throws Exception {
+        var partialDir = Files.createDirectories(remoteRoot.resolve(NAME + ".partial").resolve(NAME).resolve("sub"));
+        Files.writeString(partialDir.resolve("file.txt"), "stale");
+        Files.setPosixFilePermissions(partialDir, PosixFilePermissions.fromString("r-xr-xr-x"));
+        var archive = createArchive();
+
+        archive.archiveFrom(stagingDir);
+
+        assertThat(remoteRoot.resolve(NAME).resolve("0000-volume")).exists();
+        assertThat(remoteRoot.resolve(NAME + ".partial")).doesNotExist();
+    }
+
+    @Test
+    public void archiveFrom_replaces_existing_remote_archive_with_read_only_directories() throws Exception {
+        var existingSubDir = Files.createDirectories(remoteRoot.resolve(NAME).resolve("sub"));
+        Files.writeString(existingSubDir.resolve("old-file.txt"), "old");
+        Files.setPosixFilePermissions(existingSubDir, PosixFilePermissions.fromString("r-xr-xr-x"));
+        var archive = createArchive();
+
+        archive.archiveFrom(stagingDir);
+
+        assertThat(remoteRoot.resolve(NAME).resolve("0000-volume")).exists();
+        assertThat(remoteRoot.resolve(NAME).resolve("sub")).doesNotExist();
+        assertThat(remoteRoot.resolve(NAME + ".partial")).doesNotExist();
+    }
+
+    @Test
+    public void archiveFrom_cleans_up_stale_backup_with_read_only_directories() throws Exception {
+        putRemoteArchive();
+        var backupSubDir = Files.createDirectories(remoteRoot.resolve(NAME + ".partial").resolve(NAME + ".bak").resolve("sub"));
+        Files.writeString(backupSubDir.resolve("bak-file.txt"), "bak");
+        Files.setPosixFilePermissions(backupSubDir, PosixFilePermissions.fromString("r-xr-xr-x"));
+        var archive = createArchive();
+
+        archive.archiveFrom(stagingDir);
+
+        assertThat(remoteRoot.resolve(NAME).resolve("0000-volume")).exists();
+        assertThat(remoteRoot.resolve(NAME + ".partial")).doesNotExist();
+    }
+
+    @Test
+    public void archiveFrom_invalidates_local_cache_when_verification_fails_even_if_remote_cleanup_fails() throws Exception {
+        Files.createFile(binDir.resolve("verify.invalid"));
+        var archive = createArchive();
+
+        assertThatThrownBy(() -> archive.archiveFrom(stagingDir))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessageContaining("checksum failure");
+
+        assertThat(localTransferRoot.resolve(NAME + ".complete")).doesNotExist();
+        assertThat(localTransferRoot.resolve(NAME)).doesNotExist();
+
+        Files.deleteIfExists(binDir.resolve("verify.invalid"));
+        archive.archiveFrom(stagingDir);
+
+        assertThat(remoteRoot.resolve(NAME).resolve("0000-volume")).exists();
+        assertThat(dmftarCalls()).isEqualTo(2);
+    }
+
+    @Test
+    public void archiveFrom_rebuilds_incomplete_local_dmftar_and_removes_stale_remote_upload() throws Exception {
+        Files.createDirectories(localTransferRoot.resolve(NAME));
+        Files.writeString(localTransferRoot.resolve(NAME).resolve("junk"), "partial");
+        Files.createDirectories(remoteRoot.resolve(NAME + ".partial").resolve(NAME));
+        Files.writeString(remoteRoot.resolve(NAME + ".partial").resolve(NAME).resolve("stale-volume"), "stale");
+        var archive = createArchive();
+
+        archive.archiveFrom(stagingDir);
+
+        assertThat(remoteRoot.resolve(NAME).resolve("0000-volume")).exists();
+        assertThat(remoteRoot.resolve(NAME).resolve("junk")).doesNotExist();
+        assertThat(remoteRoot.resolve(NAME).resolve("stale-volume")).doesNotExist();
+    }
+
+    @Test
+    public void archiveFrom_removes_leftover_dmftar_cache_directories_from_staging_dir() throws Exception {
+        Files.createDirectories(stagingDir.resolve("dmftar-cache.123"));
+        var archive = createArchive();
+
+        archive.archiveFrom(stagingDir);
+
+        assertThat(stagingDir.resolve("dmftar-cache.123")).doesNotExist();
+        assertThat(stagingDir.resolve("data.txt")).exists();
+    }
+
+    private void putRemoteArchive() throws IOException {
+        Files.createDirectories(remoteRoot.resolve(NAME));
+        Files.writeString(remoteRoot.resolve(NAME).resolve("0000-volume"), "volume");
+    }
+
+    @Test
+    public void unarchiveTo_downloads_unpacks_and_cleans_up_locally() throws Exception {
+        putRemoteArchive();
+
+        createArchive().unarchiveTo(restoreDir);
+
+        assertThat(restoreDir.resolve("0000-volume")).exists();
+        assertThat(restoreDir.resolve("dmftar-cache.1")).doesNotExist();
+        assertThat(localTransferRoot.resolve(NAME)).doesNotExist();
+        assertThat(remoteRoot.resolve(NAME).resolve("0000-volume")).exists();
+        assertThat(unarchiveSlots.availablePermits()).isEqualTo(1);
+    }
+
+    @Test
+    public void unarchiveTo_retries_failed_downloads() throws Exception {
+        putRemoteArchive();
+        Files.writeString(binDir.resolve("rsync.fail"), "2");
+
+        createArchive().unarchiveTo(restoreDir);
+
+        assertThat(restoreDir.resolve("0000-volume")).exists();
+        assertThat(Files.readString(binDir.resolve("rsync.fail")).trim()).isEqualTo("0");
+    }
+
+    @Test
+    public void unarchiveTo_starts_moratorium_on_connection_refused_and_releases_slot() throws Exception {
+        putRemoteArchive();
+        Files.writeString(binDir.resolve("rsync.fail"), "1");
+        Files.writeString(binDir.resolve("rsync.msg"), "ssh: connect to host localhost port 22: Connection refused");
+
+        assertThatThrownBy(() -> createArchive().unarchiveTo(restoreDir)).isInstanceOf(MoratoriumException.class);
+
+        assertThat(moratoriumManager.isUnderMoratorium()).isTrue();
+        assertThat(unarchiveSlots.availablePermits()).isEqualTo(1);
+    }
+
+    @Test
+    public void unarchiveTo_does_not_use_leftover_local_dmftar_from_archiving() throws Exception {
+        putRemoteArchive();
+        Files.createDirectories(localTransferRoot.resolve(NAME));
+        Files.writeString(localTransferRoot.resolve(NAME).resolve("junk"), "from an earlier archiving attempt");
+        Files.createFile(localTransferRoot.resolve(NAME + ".complete"));
+
+        createArchive().unarchiveTo(restoreDir);
+
+        assertThat(restoreDir.resolve("0000-volume")).exists();
+        assertThat(restoreDir.resolve("junk")).doesNotExist();
+        assertThat(localTransferRoot.resolve(NAME + ".complete")).doesNotExist();
+    }
+
+    @Test
+    public void unarchiveTo_removes_invalid_download_when_verification_is_enabled() throws Exception {
+        putRemoteArchive();
+        config.setVerifyDownloadedCopy(true);
+        Files.createFile(binDir.resolve("local-verify.invalid"));
+
+        assertThatThrownBy(() -> createArchive().unarchiveTo(restoreDir))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessageContaining("Verification");
+
+        assertThat(localTransferRoot.resolve(NAME)).doesNotExist();
+        assertThat(restoreDir.resolve("0000-volume")).doesNotExist();
+    }
+
+    @Test
+    public void unarchiveTo_unpacks_valid_download_when_verification_is_enabled() throws Exception {
+        putRemoteArchive();
+        config.setVerifyDownloadedCopy(true);
+
+        createArchive().unarchiveTo(restoreDir);
+
+        assertThat(restoreDir.resolve("0000-volume")).exists();
+    }
+
+    @Test
+    public void unarchiveTo_waits_for_a_free_unarchive_slot() throws Exception {
+        putRemoteArchive();
+        unarchiveSlots.acquire();
+        var done = new AtomicBoolean();
+        var thread = new Thread(() -> {
+            createArchive().unarchiveTo(restoreDir);
+            done.set(true);
+        });
+        thread.start();
+
+        Thread.sleep(300);
+        assertThat(done).isFalse();
+
+        unarchiveSlots.release();
+        thread.join(5000);
+        assertThat(done).isTrue();
+        assertThat(restoreDir.resolve("0000-volume")).exists();
+    }
+
+    @Test
+    public void readFile_triggers_moratorium_on_connection_refusal_during_open() throws Exception {
+        var remote = mock(Archive.class);
+        when(remote.readFile("file.txt"))
+            .thenThrow(new IOException("Process execution failed (exit=255), stderr: ssh: connect to host localhost port 22: Connection refused"));
+
+        var archive = createArchive(remote);
+        assertThatThrownBy(() -> archive.readFile("file.txt"))
+            .isInstanceOf(MoratoriumException.class);
+        assertThat(moratoriumManager.isUnderMoratorium()).isTrue();
+
+        assertThatThrownBy(() -> archive.readFile("file.txt"))
+            .isInstanceOf(MoratoriumException.class);
+    }
+
+    @Test
+    public void readFile_triggers_moratorium_on_connection_refusal_during_read() throws Exception {
+        var remote = mock(Archive.class);
+        var in = mock(InputStream.class);
+        when(in.read()).thenThrow(new IOException("Process execution failed (exit=255), stderr: ssh: connect to host localhost port 22: Connection refused"));
+        when(remote.readFile("file.txt")).thenReturn(in);
+
+        var archive = createArchive(remote);
+        var stream = archive.readFile("file.txt");
+        assertThatThrownBy(stream::read)
+            .isInstanceOf(MoratoriumException.class);
+        assertThat(moratoriumManager.isUnderMoratorium()).isTrue();
+
+        assertThatThrownBy(() -> archive.readFile("file.txt"))
+            .isInstanceOf(MoratoriumException.class);
+    }
+
+    @Test
+    public void fileExists_triggers_moratorium_on_connection_refusal() {
+        var remote = mock(Archive.class);
+        when(remote.fileExists("file.txt"))
+            .thenThrow(new RuntimeException("Failed to list files in archive: ssh: connect to host localhost port 22: Connection refused"));
+
+        var archive = createArchive(remote);
+        assertThatThrownBy(() -> archive.fileExists("file.txt"))
+            .isInstanceOf(MoratoriumException.class);
+        assertThat(moratoriumManager.isUnderMoratorium()).isTrue();
+
+        assertThatThrownBy(() -> archive.fileExists("file.txt"))
+            .isInstanceOf(MoratoriumException.class);
+    }
+
+    @Test
+    public void listAllItems_triggers_moratorium_on_connection_refusal() throws Exception {
+        var remote = mock(Archive.class);
+        var it = mock(Iterator.class);
+        when(it.hasNext()).thenThrow(new IllegalStateException("ssh: connect to host localhost port 22: Connection refused"));
+        when(remote.listAllItems()).thenReturn(it);
+
+        var archive = createArchive(remote);
+        var items = archive.listAllItems();
+        assertThatThrownBy(items::hasNext)
+            .isInstanceOf(MoratoriumException.class);
+        assertThat(moratoriumManager.isUnderMoratorium()).isTrue();
+
+        assertThatThrownBy(archive::listAllItems)
+            .isInstanceOf(MoratoriumException.class);
+    }
+}

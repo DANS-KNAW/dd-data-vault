@@ -20,12 +20,13 @@ import io.dropwizard.hibernate.HibernateBundle;
 import nl.knaw.dans.datavault.config.DdDataVaultConfig;
 import nl.knaw.dans.datavault.core.ConsistencyCheck;
 import nl.knaw.dans.datavault.core.ImportJob;
+import nl.knaw.dans.datavault.core.LayerArchiveJob;
 import nl.knaw.dans.layerstore.ItemRecord;
 
 public class DdDataVautHibernateBundle extends HibernateBundle<DdDataVaultConfig> {
 
     public DdDataVautHibernateBundle() {
-        super(ItemRecord.class, ImportJob.class, ConsistencyCheck.class);
+        super(ItemRecord.class, ImportJob.class, LayerArchiveJob.class, ConsistencyCheck.class);
     }
 
     @Override
