@@ -57,6 +57,7 @@ public class LayerArchiveJobDao extends AbstractDAO<LayerArchiveJob> implements 
         }
         return persist(LayerArchiveJob.builder()
             .layerId(layerId)
+            .activeLayerId(layerId)
             .overwrite(overwrite)
             .created(OffsetDateTime.now())
             .status(Status.PENDING)
@@ -116,6 +117,7 @@ public class LayerArchiveJobDao extends AbstractDAO<LayerArchiveJob> implements 
     public void finish(UUID id, Status status, String message) {
         var job = get(id);
         job.setStatus(status);
+        job.setActiveLayerId(null);
         job.setFinished(OffsetDateTime.now());
         job.setMessage(message);
     }
@@ -148,11 +150,8 @@ public class LayerArchiveJobDao extends AbstractDAO<LayerArchiveJob> implements 
         var criteria = currentSession().getCriteriaBuilder();
         var query = criteria.createQuery(LayerArchiveJob.class);
         var root = query.from(LayerArchiveJob.class);
-        query.where(
-            criteria.equal(root.get("layerId"), layerId),
-            root.get("status").in(Status.PENDING, Status.RUNNING));
-        query.orderBy(criteria.asc(root.get("created")));
-        return currentSession().createQuery(query).setMaxResults(1).uniqueResultOptional();
+        query.where(criteria.equal(root.get("activeLayerId"), layerId));
+        return currentSession().createQuery(query).uniqueResultOptional();
     }
 
     private Query<LayerArchiveJob> jobsByStatus(Status status) {

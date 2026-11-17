@@ -24,7 +24,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
+import javax.persistence.PersistenceException;
+import java.time.OffsetDateTime;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @ExtendWith(DropwizardExtensionsSupport.class)
 public class LayerArchiveJobDaoTest {
@@ -46,7 +50,11 @@ public class LayerArchiveJobDaoTest {
         var job = dao.register(1L, false);
 
         assertThat(job.getStatus()).isEqualTo(Status.PENDING);
-        assertThat(dao.find(job.getId())).get().extracting(LayerArchiveJob::getLayerId).isEqualTo(1L);
+        assertThat(job.getActiveLayerId()).isEqualTo(1L);
+        assertThat(dao.find(job.getId())).get().satisfies(found -> {
+            assertThat(found.getLayerId()).isEqualTo(1L);
+            assertThat(found.getActiveLayerId()).isEqualTo(1L);
+        });
     }
 
     @Test
@@ -67,6 +75,24 @@ public class LayerArchiveJobDaoTest {
 
         assertThat(second.getId()).isNotEqualTo(first.getId());
         assertThat(dao.find(first.getId())).get().extracting(LayerArchiveJob::getMessage).isEqualTo("oops");
+    }
+
+    @Test
+    public void finish_clears_active_layer_id_for_success_and_failed() {
+        var first = dao.register(1L, false);
+        dao.finish(first.getId(), Status.SUCCESS, "done");
+
+        var finishedSuccess = dao.find(first.getId()).orElseThrow();
+        assertThat(finishedSuccess.getStatus()).isEqualTo(Status.SUCCESS);
+        assertThat(finishedSuccess.getActiveLayerId()).isNull();
+
+        var second = dao.register(1L, false);
+        assertThat(second.getActiveLayerId()).isEqualTo(1L);
+        dao.finish(second.getId(), Status.FAILED, "error");
+
+        var finishedFailed = dao.find(second.getId()).orElseThrow();
+        assertThat(finishedFailed.getStatus()).isEqualTo(Status.FAILED);
+        assertThat(finishedFailed.getActiveLayerId()).isNull();
     }
 
     @Test
@@ -95,8 +121,25 @@ public class LayerArchiveJobDaoTest {
 
         var requeued = dao.find(job.getId()).orElseThrow();
         assertThat(requeued.getStatus()).isEqualTo(Status.PENDING);
+        assertThat(requeued.getActiveLayerId()).isEqualTo(1L);
         assertThat(requeued.getAttempts()).isZero();
         assertThat(requeued.getMessage()).isEqualTo("moratorium");
+    }
+
+    @Test
+    public void requeue_maintains_active_layer_id() {
+        var job = dao.register(1L, false);
+        dao.nextInputs();
+
+        var running = dao.find(job.getId()).orElseThrow();
+        assertThat(running.getStatus()).isEqualTo(Status.RUNNING);
+        assertThat(running.getActiveLayerId()).isEqualTo(1L);
+
+        dao.requeue(job.getId(), "moratorium");
+
+        var requeued = dao.find(job.getId()).orElseThrow();
+        assertThat(requeued.getStatus()).isEqualTo(Status.PENDING);
+        assertThat(requeued.getActiveLayerId()).isEqualTo(1L);
     }
 
     @Test
@@ -110,7 +153,57 @@ public class LayerArchiveJobDaoTest {
         dao.resetInterruptedJobs();
 
         assertThat(dao.findByStatus(Status.PENDING)).extracting(LayerArchiveJob::getLayerId).containsExactly(1L, 2L);
+        assertThat(dao.findByStatus(Status.PENDING)).extracting(LayerArchiveJob::getActiveLayerId).containsExactly(1L, 2L);
         assertThat(dao.findByStatus(Status.RUNNING)).isEmpty();
+    }
+
+    @Test
+    public void persisting_duplicate_active_jobs_for_same_layer_fails_unique_constraint() {
+        var session = daoTestRule.getSessionFactory().getCurrentSession();
+
+        var job1 = LayerArchiveJob.builder()
+            .layerId(10L)
+            .activeLayerId(10L)
+            .created(OffsetDateTime.now())
+            .status(Status.PENDING)
+            .build();
+        session.save(job1);
+        session.flush();
+
+        var job2 = LayerArchiveJob.builder()
+            .layerId(10L)
+            .activeLayerId(10L)
+            .created(OffsetDateTime.now())
+            .status(Status.PENDING)
+            .build();
+        session.save(job2);
+
+        assertThatThrownBy(session::flush)
+            .isInstanceOf(PersistenceException.class);
+    }
+
+    @Test
+    public void multiple_finished_jobs_for_same_layer_can_coexist_with_null_active_layer_id() {
+        var j1 = dao.register(1L, false);
+        dao.finish(j1.getId(), Status.SUCCESS, "archived");
+
+        var j2 = dao.register(1L, false);
+        dao.finish(j2.getId(), Status.FAILED, "failed");
+
+        var j3 = dao.register(1L, false);
+
+        var session = daoTestRule.getSessionFactory().getCurrentSession();
+        session.flush();
+
+        var allJobs = dao.list();
+        assertThat(allJobs).hasSize(3);
+        assertThat(dao.find(j1.getId())).get().extracting(LayerArchiveJob::getActiveLayerId).isNull();
+        assertThat(dao.find(j2.getId())).get().extracting(LayerArchiveJob::getActiveLayerId).isNull();
+        assertThat(dao.find(j3.getId())).get().extracting(LayerArchiveJob::getActiveLayerId).isEqualTo(1L);
+
+        var registeredAgain = dao.register(1L, true);
+        assertThat(registeredAgain.getId()).isEqualTo(j3.getId());
+        assertThat(registeredAgain.isOverwrite()).isTrue();
     }
 
     @AfterEach

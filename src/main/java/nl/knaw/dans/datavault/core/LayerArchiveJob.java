@@ -54,6 +54,9 @@ public class LayerArchiveJob {
     @Column(nullable = false)
     private long layerId;
 
+    @Column(name = "active_layer_id", unique = true)
+    private Long activeLayerId;
+
     @Column(nullable = false)
     private OffsetDateTime created;
 
