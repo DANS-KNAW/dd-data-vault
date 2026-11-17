@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Semaphore;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -31,6 +32,7 @@ import java.util.regex.Pattern;
 public class RsyncedDmfTarArchiveProvider implements ArchiveProvider {
     // ls -F appends a / to directories
     private static final Pattern VALID_ENTRY = Pattern.compile("^\\d{13,}\\.dmftar(\\" + RsyncedDmfTarArchive.PARTIAL_SUFFIX + ")?/$");
+    private static final Pattern LAYER_ARCHIVE_ENTRY = Pattern.compile("^(\\d+)\\.dmftar$");
 
     private final ArchiveProvider remoteProvider;
     private final DmfTarArchiveProviderFactory config;
@@ -61,14 +63,30 @@ public class RsyncedDmfTarArchiveProvider implements ArchiveProvider {
 
     @Override
     public boolean exists(long layerId) {
+        var remotePath = config.getArchiveRoot().resolve(layerId + ".dmftar");
+        var result = commandRunner.run(config.sshCommand("test -e " + RsyncedDmfTarArchive.quote(remotePath)),
+            Map.of("user", config.getUser(), "host", config.getHost()));
         moratoriumManager.failIfUnderMoratorium();
-        return remoteProvider.exists(layerId);
+        if (result.exitCode() == 0) {
+            return true;
+        }
+        if (result.exitCode() == 1) {
+            return false;
+        }
+        throw new CommandFailedException("Checking existence of " + layerId + ".dmftar", result.exitCode(), result.output());
     }
 
     @Override
     public List<Long> listLayerIds() throws IOException {
-        moratoriumManager.failIfUnderMoratorium();
-        return remoteProvider.listLayerIds();
+        var remoteDir = config.getArchiveRoot();
+        var result = commandRunner.runWithRetry(config.sshCommand("ls -1 " + RsyncedDmfTarArchive.quote(remoteDir)),
+            Map.of("user", config.getUser(), "host", config.getHost()), "Listing " + remoteDir, null);
+        return result.output().lines()
+            .map(String::strip)
+            .map(LAYER_ARCHIVE_ENTRY::matcher)
+            .filter(Matcher::matches)
+            .map(m -> Long.valueOf(m.group(1)))
+            .toList();
     }
 
     /**

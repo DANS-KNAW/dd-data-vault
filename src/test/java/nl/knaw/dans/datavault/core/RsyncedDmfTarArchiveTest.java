@@ -19,15 +19,18 @@ import io.dropwizard.util.Duration;
 import nl.knaw.dans.datavault.config.DmfTarArchiveProviderFactory;
 import nl.knaw.dans.datavault.config.ExternalCommandConfig;
 import nl.knaw.dans.layerstore.Archive;
+import nl.knaw.dans.layerstore.Item;
 import org.apache.commons.io.FileUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermissions;
+import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -35,6 +38,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class RsyncedDmfTarArchiveTest {
     private static final long LAYER_ID = 1700000000000L;
@@ -127,7 +131,11 @@ public class RsyncedDmfTarArchiveTest {
     }
 
     private RsyncedDmfTarArchive createArchive() {
-        return new RsyncedDmfTarArchive(LAYER_ID, mock(Archive.class), config, new ExternalCommandRunner(moratoriumManager, config.getRetry()),
+        return createArchive(mock(Archive.class));
+    }
+
+    private RsyncedDmfTarArchive createArchive(Archive remoteArchive) {
+        return new RsyncedDmfTarArchive(LAYER_ID, remoteArchive, config, new ExternalCommandRunner(moratoriumManager, config.getRetry()),
             new LocalDmfTarRunner(config.getDmfTarExecutable()), moratoriumManager, unarchiveSlots);
     }
 
@@ -448,5 +456,69 @@ public class RsyncedDmfTarArchiveTest {
         thread.join(5000);
         assertThat(done).isTrue();
         assertThat(restoreDir.resolve("0000-volume")).exists();
+    }
+
+    @Test
+    public void readFile_triggers_moratorium_on_connection_refusal_during_open() throws Exception {
+        var remote = mock(Archive.class);
+        when(remote.readFile("file.txt"))
+            .thenThrow(new IOException("Process execution failed (exit=255), stderr: ssh: connect to host localhost port 22: Connection refused"));
+
+        var archive = createArchive(remote);
+        assertThatThrownBy(() -> archive.readFile("file.txt"))
+            .isInstanceOf(MoratoriumException.class);
+        assertThat(moratoriumManager.isUnderMoratorium()).isTrue();
+
+        assertThatThrownBy(() -> archive.readFile("file.txt"))
+            .isInstanceOf(MoratoriumException.class);
+    }
+
+    @Test
+    public void readFile_triggers_moratorium_on_connection_refusal_during_read() throws Exception {
+        var remote = mock(Archive.class);
+        var in = mock(InputStream.class);
+        when(in.read()).thenThrow(new IOException("Process execution failed (exit=255), stderr: ssh: connect to host localhost port 22: Connection refused"));
+        when(remote.readFile("file.txt")).thenReturn(in);
+
+        var archive = createArchive(remote);
+        var stream = archive.readFile("file.txt");
+        assertThatThrownBy(stream::read)
+            .isInstanceOf(MoratoriumException.class);
+        assertThat(moratoriumManager.isUnderMoratorium()).isTrue();
+
+        assertThatThrownBy(() -> archive.readFile("file.txt"))
+            .isInstanceOf(MoratoriumException.class);
+    }
+
+    @Test
+    public void fileExists_triggers_moratorium_on_connection_refusal() {
+        var remote = mock(Archive.class);
+        when(remote.fileExists("file.txt"))
+            .thenThrow(new RuntimeException("Failed to list files in archive: ssh: connect to host localhost port 22: Connection refused"));
+
+        var archive = createArchive(remote);
+        assertThatThrownBy(() -> archive.fileExists("file.txt"))
+            .isInstanceOf(MoratoriumException.class);
+        assertThat(moratoriumManager.isUnderMoratorium()).isTrue();
+
+        assertThatThrownBy(() -> archive.fileExists("file.txt"))
+            .isInstanceOf(MoratoriumException.class);
+    }
+
+    @Test
+    public void listAllItems_triggers_moratorium_on_connection_refusal() throws Exception {
+        var remote = mock(Archive.class);
+        var it = mock(Iterator.class);
+        when(it.hasNext()).thenThrow(new IllegalStateException("ssh: connect to host localhost port 22: Connection refused"));
+        when(remote.listAllItems()).thenReturn(it);
+
+        var archive = createArchive(remote);
+        var items = archive.listAllItems();
+        assertThatThrownBy(items::hasNext)
+            .isInstanceOf(MoratoriumException.class);
+        assertThat(moratoriumManager.isUnderMoratorium()).isTrue();
+
+        assertThatThrownBy(archive::listAllItems)
+            .isInstanceOf(MoratoriumException.class);
     }
 }

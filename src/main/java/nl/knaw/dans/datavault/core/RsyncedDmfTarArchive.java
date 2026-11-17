@@ -22,6 +22,7 @@ import nl.knaw.dans.layerstore.Item;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.io.FileUtils;
 
+import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
@@ -102,7 +103,79 @@ public class RsyncedDmfTarArchive implements Archive {
     @Override
     public InputStream readFile(String filePath) throws IOException {
         moratoriumManager.failIfUnderMoratorium();
-        return remoteArchive.readFile(filePath);
+        try {
+            var in = remoteArchive.readFile(filePath);
+            return new FilterInputStream(in) {
+                @Override
+                public int read() throws IOException {
+                    moratoriumManager.failIfUnderMoratorium();
+                    try {
+                        return super.read();
+                    }
+                    catch (Exception e) {
+                        checkMoratorium(e);
+                        moratoriumManager.failIfUnderMoratorium();
+                        throw e;
+                    }
+                }
+
+                @Override
+                public int read(byte[] b, int off, int len) throws IOException {
+                    moratoriumManager.failIfUnderMoratorium();
+                    try {
+                        return super.read(b, off, len);
+                    }
+                    catch (Exception e) {
+                        checkMoratorium(e);
+                        moratoriumManager.failIfUnderMoratorium();
+                        throw e;
+                    }
+                }
+
+                @Override
+                public int available() throws IOException {
+                    moratoriumManager.failIfUnderMoratorium();
+                    try {
+                        return super.available();
+                    }
+                    catch (Exception e) {
+                        checkMoratorium(e);
+                        moratoriumManager.failIfUnderMoratorium();
+                        throw e;
+                    }
+                }
+
+                @Override
+                public long skip(long n) throws IOException {
+                    moratoriumManager.failIfUnderMoratorium();
+                    try {
+                        return super.skip(n);
+                    }
+                    catch (Exception e) {
+                        checkMoratorium(e);
+                        moratoriumManager.failIfUnderMoratorium();
+                        throw e;
+                    }
+                }
+
+                @Override
+                public void close() throws IOException {
+                    try {
+                        super.close();
+                    }
+                    catch (Exception e) {
+                        checkMoratorium(e);
+                        moratoriumManager.failIfUnderMoratorium();
+                        throw e;
+                    }
+                }
+            };
+        }
+        catch (Exception e) {
+            checkMoratorium(e);
+            moratoriumManager.failIfUnderMoratorium();
+            throw e;
+        }
     }
 
     /**
@@ -276,12 +349,61 @@ public class RsyncedDmfTarArchive implements Archive {
     @Override
     public boolean fileExists(String filePath) {
         moratoriumManager.failIfUnderMoratorium();
-        return remoteArchive.fileExists(filePath);
+        try {
+            return remoteArchive.fileExists(filePath);
+        }
+        catch (Exception e) {
+            checkMoratorium(e);
+            moratoriumManager.failIfUnderMoratorium();
+            throw e;
+        }
     }
 
     @Override
     public Iterator<Item> listAllItems() throws IOException {
         moratoriumManager.failIfUnderMoratorium();
-        return remoteArchive.listAllItems();
+        try {
+            var it = remoteArchive.listAllItems();
+            return new Iterator<>() {
+                @Override
+                public boolean hasNext() {
+                    moratoriumManager.failIfUnderMoratorium();
+                    try {
+                        return it.hasNext();
+                    }
+                    catch (Exception e) {
+                        checkMoratorium(e);
+                        moratoriumManager.failIfUnderMoratorium();
+                        throw e;
+                    }
+                }
+
+                @Override
+                public Item next() {
+                    moratoriumManager.failIfUnderMoratorium();
+                    try {
+                        return it.next();
+                    }
+                    catch (Exception e) {
+                        checkMoratorium(e);
+                        moratoriumManager.failIfUnderMoratorium();
+                        throw e;
+                    }
+                }
+            };
+        }
+        catch (Exception e) {
+            checkMoratorium(e);
+            moratoriumManager.failIfUnderMoratorium();
+            throw e;
+        }
+    }
+
+    private void checkMoratorium(Throwable t) {
+        for (var current = t; current != null; current = current.getCause()) {
+            if (moratoriumManager.checkOutput(current.getMessage())) {
+                break;
+            }
+        }
     }
 }

@@ -88,4 +88,64 @@ public class RsyncedDmfTarArchiveProviderTest {
             .hasMessageContaining("1700000000002.dmftar.bak")
             .hasMessageNotContaining("1700000000000.dmftar/");
     }
+
+    @Test
+    public void exists_returns_true_when_archive_exists() throws Exception {
+        Files.createDirectories(remoteRoot.resolve("1700000000000.dmftar"));
+        assertThat(provider.exists(1700000000000L)).isTrue();
+        assertThat(provider.isUnderMoratorium()).isFalse();
+    }
+
+    @Test
+    public void exists_returns_false_when_archive_missing() {
+        assertThat(provider.exists(1700000000000L)).isFalse();
+        assertThat(provider.isUnderMoratorium()).isFalse();
+    }
+
+    @Test
+    public void exists_triggers_moratorium_on_connection_refusal() throws Exception {
+        var ssh = testDir.resolve("ssh");
+        Files.writeString(ssh, """
+            #!/bin/sh
+            echo "ssh: connect to host localhost port 22: Connection refused" >&2
+            exit 255
+            """);
+
+        assertThatThrownBy(() -> provider.exists(1700000000000L))
+            .isInstanceOf(MoratoriumException.class);
+        assertThat(provider.isUnderMoratorium()).isTrue();
+
+        // Subsequent call fails fast under moratorium
+        assertThatThrownBy(() -> provider.exists(1700000000000L))
+            .isInstanceOf(MoratoriumException.class);
+    }
+
+    @Test
+    public void listLayerIds_returns_parsed_layer_ids() throws Exception {
+        Files.createDirectories(remoteRoot.resolve("1700000000000.dmftar"));
+        Files.createDirectories(remoteRoot.resolve("1700000000001.dmftar"));
+        Files.createDirectories(remoteRoot.resolve("1700000000002.dmftar.partial"));
+        Files.createFile(remoteRoot.resolve("other.dmftar.bak"));
+
+        assertThat(provider.listLayerIds()).containsExactlyInAnyOrder(1700000000000L, 1700000000001L);
+        assertThat(provider.isUnderMoratorium()).isFalse();
+    }
+
+    @Test
+    public void listLayerIds_triggers_moratorium_on_connection_refusal() throws Exception {
+        var ssh = testDir.resolve("ssh");
+        Files.writeString(ssh, """
+            #!/bin/sh
+            echo "ssh: connect to host localhost port 22: Connection refused" >&2
+            exit 255
+            """);
+
+        assertThatThrownBy(() -> provider.listLayerIds())
+            .isInstanceOf(MoratoriumException.class);
+        assertThat(provider.isUnderMoratorium()).isTrue();
+
+        // Subsequent call fails fast under moratorium
+        assertThatThrownBy(() -> provider.listLayerIds())
+            .isInstanceOf(MoratoriumException.class);
+    }
 }
