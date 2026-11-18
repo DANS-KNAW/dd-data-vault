@@ -22,4 +22,5 @@ public class InitChecksConfig {
     private boolean layerIds = true;
     private boolean topLayerListingRecords = true;
     private boolean archiveRoot = true;
+    private boolean objectIdIndex = true;
 }

@@ -40,6 +40,7 @@ import nl.knaw.dans.datavault.core.UnitOfWorkDeclaringRepositoryProviderAdapter;
 import nl.knaw.dans.datavault.db.ConsistencyCheckDao;
 import nl.knaw.dans.datavault.db.ImportJobDao;
 import nl.knaw.dans.datavault.db.LayerArchiveJobDao;
+import nl.knaw.dans.datavault.db.VaultObjectDao;
 import nl.knaw.dans.datavault.resources.ConsistencyChecksApiResource;
 import nl.knaw.dans.datavault.resources.DefaultApiResource;
 import nl.knaw.dans.datavault.resources.ImportsApiResource;
@@ -121,6 +122,7 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
             new ExecutorServiceTaskScheduler(environment.lifecycle().executorService("archiver-worker")
                 .minThreads(maxParallelArchiveJobs).maxThreads(maxParallelArchiveJobs).build())));
         var layerConsistencyChecker = layeredItemStore.getLayerConsistencyChecker();
+        var vaultObjectDao = new VaultObjectDao(hibernateBundle.getSessionFactory());
         RepositoryProvider ocflRepositoryProvider = createUnitOfWorkAwareProxy(uowFactory, OcflRepositoryProvider.create(
             layeredItemStore,
             configuration.getDataVault().getOcflRepository().getWorkDir(),
@@ -129,7 +131,8 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
             configuration.getDataVault().getOcflRepository().getRootDocsSourcePath(),
             configuration.getDataVault().getOcflRepository().getRootExtensionsInit(),
             configuration.getDataVault().getLayerStore().getInitChecks(),
-            configuration.getDataVault().getOcflRepository().getRootExtensionsInitChecks()
+            configuration.getDataVault().getOcflRepository().getRootExtensionsInitChecks(),
+            vaultObjectDao
         ));
         environment.lifecycle().manage(ocflRepositoryProvider);
         var importBatchDao = new ImportJobDao(hibernateBundle.getSessionFactory());
