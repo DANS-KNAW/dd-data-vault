@@ -41,6 +41,7 @@ import nl.knaw.dans.datavault.api.OcflVersionDetailsDto;
 import nl.knaw.dans.datavault.config.InitChecksConfig;
 import nl.knaw.dans.datavault.config.RootExtensionsInitChecksConfig;
 import nl.knaw.dans.datavault.config.RootExtensionsInitEdit;
+import nl.knaw.dans.datavault.db.VaultObjectDao;
 import nl.knaw.dans.layerstore.Item;
 import nl.knaw.dans.layerstore.ItemsMismatchException;
 import nl.knaw.dans.layerstore.LayerConsistencyChecker;
@@ -53,10 +54,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.PosixFilePermission;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -93,6 +96,8 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
     private final List<RootExtensionsInitEdit> rootExtensionsInitEdits;
     private final InitChecksConfig initChecks;
     private final RootExtensionsInitChecksConfig rootExtensionsInitChecks;
+    @NonNull
+    private final VaultObjectDao vaultObjectDao;
 
     private OcflRepository ocflRepository;
     private OcflStorage ocflStorage;
@@ -102,9 +107,9 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
     @Builder
     public static OcflRepositoryProvider create(LayeredItemStore itemStore, Path workDir, LayerConsistencyChecker layerConsistencyChecker,
         Path rootExtensionsSourcePath, Path rootDocsSourcePath, List<RootExtensionsInitEdit> rootExtensionsInitEdits, InitChecksConfig initChecks,
-        RootExtensionsInitChecksConfig rootExtensionsInitChecks) {
+        RootExtensionsInitChecksConfig rootExtensionsInitChecks, @NonNull VaultObjectDao vaultObjectDao) {
         return new OcflRepositoryProvider(itemStore, workDir, layerConsistencyChecker, rootExtensionsSourcePath, rootDocsSourcePath, rootExtensionsInitEdits, initChecks,
-            rootExtensionsInitChecks);
+            rootExtensionsInitChecks, vaultObjectDao);
     }
 
     @Override
@@ -132,6 +137,21 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
         // putObject wants the version number of HEAD, so we need to subtract 1 from the version number
         ocflRepository.putObject(ObjectVersionId.version(objectId, version - 1), objectVersionDirectory, reader.getVersionInfo());
         ovp.save();
+
+        var existing = vaultObjectDao.findByObjectId(objectId);
+        var now = Instant.now();
+        if (existing.isPresent()) {
+            var obj = existing.get();
+            obj.setUpdatedAt(now);
+            vaultObjectDao.save(obj);
+        }
+        else {
+            vaultObjectDao.save(VaultObject.builder()
+                .objectId(objectId)
+                .createdAt(now)
+                .updatedAt(now)
+                .build());
+        }
     }
 
     @Override
@@ -147,8 +167,8 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
     }
 
     @Override
-    public List<String> listObjectIds() {
-        return ocflRepository.listObjectIds().toList();
+    public List<String> listObjectIds(Integer limit, Integer offset) {
+        return vaultObjectDao.findObjectIds(limit, offset);
     }
 
     @Override
@@ -248,13 +268,13 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
             var objectRoot = ocflStorage.objectRootPath(objectId);
             var fullPath = Path.of(objectRoot).resolve("extensions").resolve(path).toString();
 
-            if (!layeredItemStore.existsPathLike(fullPath)) {
-                throw new NoSuchElementException("Extension file not found: " + path + " in object " + objectId);
-            }
             return layeredItemStore.readFile(fullPath);
         }
+        catch (NoSuchFileException e) {
+            throw new NoSuchElementException("Extension file not found: " + path + " in object " + objectId, e);
+        }
         catch (IOException e) {
-            throw new RuntimeException("Failed to read extension file '" + path + "' for object " + objectId, e);
+            throw new RuntimeException("Error reading extension file: " + path + " in object " + objectId, e);
         }
     }
 
@@ -313,6 +333,7 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
             else {
                 log.warn("Validation of the root extension 'packaging-format-registry' has been disabled.");
             }
+
             log.info("OCFL repository provider started");
         }
         catch (Exception e) {
@@ -525,6 +546,7 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
     private List<RootExtensionsInitEdit> getRootExtensionsInitEdits() {
         return rootExtensionsInitEdits != null ? rootExtensionsInitEdits : List.of();
     }
+
     private RootExtensionsInitChecksConfig getRootExtensionsInitChecks() {
         if (rootExtensionsInitChecks == null) {
             var defaults = new RootExtensionsInitChecksConfig();

@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import javax.ws.rs.core.Response;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.eq;
@@ -35,6 +36,30 @@ public class OcflApiResourceTest {
     public void setUp() {
         repositoryProvider = Mockito.mock(RepositoryProvider.class);
         resource = new OcflApiResource(repositoryProvider);
+    }
+
+    @Test
+    public void ocflObjectsGet_should_pass_limit_and_offset_to_repository_provider() {
+        var expected = List.of("id1", "id2");
+        Mockito.when(repositoryProvider.listObjectIds(10, 20)).thenReturn(expected);
+
+        var response = resource.ocflObjectsGet(10, 20);
+
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        assertEquals(expected, response.getEntity());
+        verify(repositoryProvider).listObjectIds(eq(10), eq(20));
+    }
+
+    @Test
+    public void ocflObjectsGet_should_pass_null_parameters_to_repository_provider() {
+        var expected = List.of("id1");
+        Mockito.when(repositoryProvider.listObjectIds(null, null)).thenReturn(expected);
+
+        var response = resource.ocflObjectsGet(null, null);
+
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        assertEquals(expected, response.getEntity());
+        verify(repositoryProvider).listObjectIds(isNull(), isNull());
     }
 
     @Test

@@ -20,6 +20,7 @@ import io.dropwizard.testing.junit5.DAOTestExtension;
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
 import nl.knaw.dans.datavault.config.RootExtensionsInitChecksConfig;
 import nl.knaw.dans.datavault.config.RootExtensionsInitEdit;
+import nl.knaw.dans.datavault.db.VaultObjectDao;
 import nl.knaw.dans.layerstore.ItemRecord;
 import nl.knaw.dans.layerstore.LayerDatabase;
 import nl.knaw.dans.layerstore.LayerDatabaseImpl;
@@ -50,8 +51,10 @@ public class OcflRepositoryProviderWithEditsTest extends AbstractTestFixture {
 
     private final DAOTestExtension db = DAOTestExtension.newBuilder()
         .addEntityClass(ItemRecord.class)
+        .addEntityClass(VaultObject.class)
         .build();
     private final LayerDatabase dao = new LayerDatabaseImpl(new PersistenceProviderImpl<>(db.getSessionFactory(), ItemRecord.class));
+    private final VaultObjectDao vaultObjectDao = new VaultObjectDao(db.getSessionFactory());
 
     private OcflRepositoryProvider newProviderWithEdits(List<RootExtensionsInitEdit> edits) throws Exception {
         var rootDocsPath = testDir.resolve("root-docs");
@@ -74,14 +77,19 @@ public class OcflRepositoryProviderWithEditsTest extends AbstractTestFixture {
             .rootExtensionsInitEdits(edits)
             .initChecks(new nl.knaw.dans.datavault.config.InitChecksConfig())
             .rootExtensionsInitChecks(new RootExtensionsInitChecksConfig())
+            .vaultObjectDao(vaultObjectDao)
             .build();
     }
 
     @Test
     public void start_should_apply_root_extensions_init_edit() throws Exception {
         // Given an isolated store and an edit to set dataset-version.required to true
-        var localDb = DAOTestExtension.newBuilder().addEntityClass(ItemRecord.class).build();
+        var localDb = DAOTestExtension.newBuilder()
+            .addEntityClass(ItemRecord.class)
+            .addEntityClass(VaultObject.class)
+            .build();
         var localDao = new LayerDatabaseImpl(new PersistenceProviderImpl<>(localDb.getSessionFactory(), ItemRecord.class));
+        var localVaultObjectDao = new VaultObjectDao(localDb.getSessionFactory());
         var rootDocsPath = testDir.resolve("root-docs");
         FileUtils.copyDirectory(Path.of("target/dans-ocfl-extensions/extension-docs/").toFile(), rootDocsPath.toFile());
         FileUtils.copyDirectory(Path.of("target/dans-ocfl-extensions/schemas/").toFile(), rootDocsPath.toFile());
@@ -106,6 +114,7 @@ public class OcflRepositoryProviderWithEditsTest extends AbstractTestFixture {
             .rootExtensionsInitEdits(List.of(edit))
             .initChecks(new nl.knaw.dans.datavault.config.InitChecksConfig())
             .rootExtensionsInitChecks(new RootExtensionsInitChecksConfig())
+            .vaultObjectDao(localVaultObjectDao)
             .build();
 
         // When

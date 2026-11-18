@@ -53,11 +53,13 @@ public interface RepositoryProvider extends Managed {
     Optional<OcflObjectVersionDto> getOcflObjectVersion(String objectId, int version);
 
     /**
-     * Lists all object IDs in the vault.
+     * Lists object IDs in the vault with pagination.
      *
+     * @param limit  the maximum number of object IDs to return (or null for no limit)
+     * @param offset the number of object IDs to skip (or null / 0 for no offset)
      * @return a list of object IDs
      */
-    List<String> listObjectIds();
+    List<String> listObjectIds(Integer limit, Integer offset);
 
     /**
      * Gets a detailed overview of an object.

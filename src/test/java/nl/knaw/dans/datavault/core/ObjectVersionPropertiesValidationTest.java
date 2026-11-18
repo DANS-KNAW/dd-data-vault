@@ -18,6 +18,7 @@ package nl.knaw.dans.datavault.core;
 import io.dropwizard.testing.junit5.DAOTestExtension;
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
 import nl.knaw.dans.datavault.config.InitChecksConfig;
+import nl.knaw.dans.datavault.db.VaultObjectDao;
 import nl.knaw.dans.layerstore.ItemRecord;
 import nl.knaw.dans.layerstore.LayerDatabase;
 import nl.knaw.dans.layerstore.LayerDatabaseImpl;
@@ -46,8 +47,10 @@ public class ObjectVersionPropertiesValidationTest extends AbstractTestFixture {
 
     private final DAOTestExtension db = DAOTestExtension.newBuilder()
         .addEntityClass(ItemRecord.class)
+        .addEntityClass(VaultObject.class)
         .build();
     private final LayerDatabase dao = new LayerDatabaseImpl(new PersistenceProviderImpl<>(db.getSessionFactory(), ItemRecord.class));
+    private final VaultObjectDao vaultObjectDao = new VaultObjectDao(db.getSessionFactory());
 
     private OcflRepositoryProvider provider;
 
@@ -72,6 +75,7 @@ public class ObjectVersionPropertiesValidationTest extends AbstractTestFixture {
             .rootDocsSourcePath(rootDocsPath)
             .workDir(testDir.resolve(WORK_DIR))
             .initChecks(new InitChecksConfig())
+            .vaultObjectDao(vaultObjectDao)
             .build();
         provider.start();
     }

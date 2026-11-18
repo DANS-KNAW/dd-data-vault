@@ -20,6 +20,7 @@ import io.dropwizard.testing.junit5.DAOTestExtension;
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
 import nl.knaw.dans.datavault.config.InitChecksConfig;
 import nl.knaw.dans.datavault.config.RootExtensionsInitChecksConfig;
+import nl.knaw.dans.datavault.db.VaultObjectDao;
 import nl.knaw.dans.layerstore.ItemRecord;
 import nl.knaw.dans.layerstore.LayerDatabase;
 import nl.knaw.dans.layerstore.LayerDatabaseImpl;
@@ -68,8 +69,10 @@ public class OcflRepositoryProviderTest extends AbstractTestFixture {
 
     private final DAOTestExtension db = DAOTestExtension.newBuilder()
         .addEntityClass(ItemRecord.class)
+        .addEntityClass(VaultObject.class)
         .build();
     private final LayerDatabase dao = new LayerDatabaseImpl(new PersistenceProviderImpl<>(db.getSessionFactory(), ItemRecord.class));
+    private final VaultObjectDao vaultObjectDao = new VaultObjectDao(db.getSessionFactory());
     private OcflRepositoryProvider ocflRepositoryProvider;
     private LayeredItemStore itemStore;
 
@@ -96,6 +99,7 @@ public class OcflRepositoryProviderTest extends AbstractTestFixture {
             .workDir(testDir.resolve(WORK_DIR))
             .initChecks(new InitChecksConfig())
             .rootExtensionsInitChecks(new RootExtensionsInitChecksConfig())
+            .vaultObjectDao(vaultObjectDao)
             .build();
 
         ocflRepositoryProvider.start();
@@ -120,7 +124,7 @@ public class OcflRepositoryProviderTest extends AbstractTestFixture {
         Files.writeString(testDir.resolve(TEST_INPUT + "/v1.json"), json);
 
         // When
-        ocflRepositoryProvider.addVersion("urn:nbn:o1", 1, testDir.resolve(TEST_INPUT + "/v1"));
+        db.inTransaction(() -> ocflRepositoryProvider.addVersion("urn:nbn:o1", 1, testDir.resolve(TEST_INPUT + "/v1")));
 
         // Then
         long layerId = itemStore.getTopLayerId();
@@ -169,7 +173,7 @@ public class OcflRepositoryProviderTest extends AbstractTestFixture {
             }
             """;
         Files.writeString(testDir.resolve(TEST_INPUT + "/v1.json"), jsonV1);
-        ocflRepositoryProvider.addVersion("urn:nbn:o1", 1, testDir.resolve(TEST_INPUT + "/v1"));
+        db.inTransaction(() -> ocflRepositoryProvider.addVersion("urn:nbn:o1", 1, testDir.resolve(TEST_INPUT + "/v1")));
         copyToTestDir("simple-object/v2", TEST_INPUT);
         var jsonV2 = """
             {
@@ -185,7 +189,7 @@ public class OcflRepositoryProviderTest extends AbstractTestFixture {
         Files.writeString(testDir.resolve(TEST_INPUT + "/v2.json"), jsonV2);
 
         // When
-        ocflRepositoryProvider.addVersion("urn:nbn:o1", 2, testDir.resolve(TEST_INPUT + "/v2"));
+        db.inTransaction(() -> ocflRepositoryProvider.addVersion("urn:nbn:o1", 2, testDir.resolve(TEST_INPUT + "/v2")));
 
         // Then
         long layerId = itemStore.getTopLayerId();
@@ -237,7 +241,7 @@ public class OcflRepositoryProviderTest extends AbstractTestFixture {
             }
             """;
         Files.writeString(testDir.resolve(TEST_INPUT + "/v1.json"), json);
-        ocflRepositoryProvider.addVersion("urn:nbn:o1", 1, testDir.resolve(TEST_INPUT + "/v1"));
+        db.inTransaction(() -> ocflRepositoryProvider.addVersion("urn:nbn:o1", 1, testDir.resolve(TEST_INPUT + "/v1")));
 
         // When
         var files = ocflRepositoryProvider.listExtensionFiles("urn:nbn:o1");
@@ -269,7 +273,7 @@ public class OcflRepositoryProviderTest extends AbstractTestFixture {
             }
             """;
         Files.writeString(testDir.resolve(TEST_INPUT + "/v1.json"), json);
-        ocflRepositoryProvider.addVersion("urn:nbn:o1", 1, testDir.resolve(TEST_INPUT + "/v1"));
+        db.inTransaction(() -> ocflRepositoryProvider.addVersion("urn:nbn:o1", 1, testDir.resolve(TEST_INPUT + "/v1")));
 
         // When
         try (InputStream is = ocflRepositoryProvider.getExtensionFile("urn:nbn:o1", "object-version-properties/object_version_properties.json")) {
@@ -302,10 +306,102 @@ public class OcflRepositoryProviderTest extends AbstractTestFixture {
             }
             """;
         Files.writeString(testDir.resolve(TEST_INPUT + "/v1.json"), json);
-        ocflRepositoryProvider.addVersion("urn:nbn:o1", 1, testDir.resolve(TEST_INPUT + "/v1"));
+        db.inTransaction(() -> ocflRepositoryProvider.addVersion("urn:nbn:o1", 1, testDir.resolve(TEST_INPUT + "/v1")));
 
         // When/Then
         assertThatThrownBy(() -> ocflRepositoryProvider.getExtensionFile("urn:nbn:o1", "non-existent-file"))
             .isInstanceOf(NoSuchElementException.class);
+    }
+
+    @Test
+    public void listObjectIds_should_support_limit_and_offset() throws Exception {
+        // Given
+        copyToTestDir("simple-object/v1", TEST_INPUT);
+        var json = """
+            {
+              "version-info": {
+                "user": {"name": "Test User", "email": "test.user@mail.com"},
+                "message": "Initial version"
+              },
+              "object-version-properties": {
+                "packaging-format": "DANS RDA BagPack Profile/0.1.0"
+              }
+            }
+            """;
+        Files.writeString(testDir.resolve(TEST_INPUT + "/v1.json"), json);
+        db.inTransaction(() -> {
+            ocflRepositoryProvider.addVersion("urn:nbn:o1", 1, testDir.resolve(TEST_INPUT + "/v1"));
+            ocflRepositoryProvider.addVersion("urn:nbn:o2", 1, testDir.resolve(TEST_INPUT + "/v1"));
+            ocflRepositoryProvider.addVersion("urn:nbn:o3", 1, testDir.resolve(TEST_INPUT + "/v1"));
+            ocflRepositoryProvider.addVersion("urn:nbn:o4", 1, testDir.resolve(TEST_INPUT + "/v1"));
+            ocflRepositoryProvider.addVersion("urn:nbn:o5", 1, testDir.resolve(TEST_INPUT + "/v1"));
+        });
+
+        // When/Then
+        var all = db.inTransaction(() -> ocflRepositoryProvider.listObjectIds(null, null));
+        assertThat(all).containsExactly("urn:nbn:o1", "urn:nbn:o2", "urn:nbn:o3", "urn:nbn:o4", "urn:nbn:o5");
+
+        var limit2 = db.inTransaction(() -> ocflRepositoryProvider.listObjectIds(2, null));
+        assertThat(limit2).containsExactlyElementsOf(all.subList(0, 2));
+
+        var offset2 = db.inTransaction(() -> ocflRepositoryProvider.listObjectIds(null, 2));
+        assertThat(offset2).containsExactlyElementsOf(all.subList(2, 5));
+
+        var limit2Offset2 = db.inTransaction(() -> ocflRepositoryProvider.listObjectIds(2, 2));
+        assertThat(limit2Offset2).containsExactlyElementsOf(all.subList(2, 4));
+
+        var limitExcess = db.inTransaction(() -> ocflRepositoryProvider.listObjectIds(10, 0));
+        assertThat(limitExcess).containsExactlyElementsOf(all);
+
+        var offsetBeyond = db.inTransaction(() -> ocflRepositoryProvider.listObjectIds(2, 10));
+        assertThat(offsetBeyond).isEmpty();
+    }
+
+    @Test
+    public void addVersion_should_persist_and_update_vault_object_records() throws Exception {
+        copyToTestDir("simple-object/v1", TEST_INPUT);
+        var jsonV1 = """
+            {
+              "version-info": {
+                "user": {"name": "Test User", "email": "test.user@mail.com"},
+                "message": "Initial version"
+              },
+              "object-version-properties": {
+                "packaging-format": "DANS RDA BagPack Profile/0.1.0"
+              }
+            }
+            """;
+        Files.writeString(testDir.resolve(TEST_INPUT + "/v1.json"), jsonV1);
+
+        db.inTransaction(() -> ocflRepositoryProvider.addVersion("urn:nbn:test-dao-1", 1, testDir.resolve(TEST_INPUT + "/v1")));
+
+        var objOpt = db.inTransaction(() -> vaultObjectDao.findByObjectId("urn:nbn:test-dao-1"));
+        assertThat(objOpt).isPresent();
+        var initialCreatedAt = objOpt.get().getCreatedAt();
+        var initialUpdatedAt = objOpt.get().getUpdatedAt();
+
+        copyToTestDir("simple-object/v2", TEST_INPUT);
+        var jsonV2 = """
+            {
+              "version-info": {
+                "user": {"name": "Test User", "email": "test.user@mail.com"},
+                "message": "Version 2"
+              },
+              "object-version-properties": {
+                "packaging-format": "DANS RDA BagPack Profile/0.1.0"
+              }
+            }
+            """;
+        Files.writeString(testDir.resolve(TEST_INPUT + "/v2.json"), jsonV2);
+
+        db.inTransaction(() -> ocflRepositoryProvider.addVersion("urn:nbn:test-dao-1", 2, testDir.resolve(TEST_INPUT + "/v2")));
+
+        var updatedObjOpt = db.inTransaction(() -> vaultObjectDao.findByObjectId("urn:nbn:test-dao-1"));
+        assertThat(updatedObjOpt).isPresent();
+        assertThat(updatedObjOpt.get().getCreatedAt()).isEqualTo(initialCreatedAt);
+        assertThat(updatedObjOpt.get().getUpdatedAt()).isNotNull();
+
+        var listFromDao = db.inTransaction(() -> ocflRepositoryProvider.listObjectIds(10, 0));
+        assertThat(listFromDao).contains("urn:nbn:test-dao-1");
     }
 }

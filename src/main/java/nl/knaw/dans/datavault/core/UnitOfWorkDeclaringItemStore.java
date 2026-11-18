@@ -49,6 +49,12 @@ public class UnitOfWorkDeclaringItemStore implements ItemStore {
 
     @Override
     @UnitOfWork
+    public boolean existsPath(String path) {
+        return delegate.existsPath(path);
+    }
+
+    @Override
+    @UnitOfWork
     public boolean existsPathLike(String path) {
         return delegate.existsPathLike(path);
     }
