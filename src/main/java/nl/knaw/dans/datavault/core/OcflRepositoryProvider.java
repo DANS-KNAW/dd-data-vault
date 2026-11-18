@@ -148,8 +148,17 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
     }
 
     @Override
-    public List<String> listObjectIds() {
-        return ocflRepository.listObjectIds().toList();
+    public List<String> listObjectIds(Integer limit, Integer offset) {
+        try (var stream = ocflRepository.listObjectIds()) {
+            var s = stream;
+            if (offset != null && offset > 0) {
+                s = s.skip(offset);
+            }
+            if (limit != null && limit >= 0) {
+                s = s.limit(limit);
+            }
+            return s.toList();
+        }
     }
 
     @Override

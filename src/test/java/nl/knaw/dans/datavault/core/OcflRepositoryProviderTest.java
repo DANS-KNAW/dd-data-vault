@@ -308,4 +308,46 @@ public class OcflRepositoryProviderTest extends AbstractTestFixture {
         assertThatThrownBy(() -> ocflRepositoryProvider.getExtensionFile("urn:nbn:o1", "non-existent-file"))
             .isInstanceOf(NoSuchElementException.class);
     }
+
+    @Test
+    public void listObjectIds_should_support_limit_and_offset() throws Exception {
+        // Given
+        copyToTestDir("simple-object/v1", TEST_INPUT);
+        var json = """
+            {
+              "version-info": {
+                "user": {"name": "Test User", "email": "test.user@mail.com"},
+                "message": "Initial version"
+              },
+              "object-version-properties": {
+                "packaging-format": "DANS RDA BagPack Profile/0.1.0"
+              }
+            }
+            """;
+        Files.writeString(testDir.resolve(TEST_INPUT + "/v1.json"), json);
+        ocflRepositoryProvider.addVersion("urn:nbn:o1", 1, testDir.resolve(TEST_INPUT + "/v1"));
+        ocflRepositoryProvider.addVersion("urn:nbn:o2", 1, testDir.resolve(TEST_INPUT + "/v1"));
+        ocflRepositoryProvider.addVersion("urn:nbn:o3", 1, testDir.resolve(TEST_INPUT + "/v1"));
+        ocflRepositoryProvider.addVersion("urn:nbn:o4", 1, testDir.resolve(TEST_INPUT + "/v1"));
+        ocflRepositoryProvider.addVersion("urn:nbn:o5", 1, testDir.resolve(TEST_INPUT + "/v1"));
+
+        // When/Then
+        var all = ocflRepositoryProvider.listObjectIds(null, null);
+        assertThat(all).containsExactlyInAnyOrder("urn:nbn:o1", "urn:nbn:o2", "urn:nbn:o3", "urn:nbn:o4", "urn:nbn:o5");
+
+        var limit2 = ocflRepositoryProvider.listObjectIds(2, null);
+        assertThat(limit2).containsExactlyElementsOf(all.subList(0, 2));
+
+        var offset2 = ocflRepositoryProvider.listObjectIds(null, 2);
+        assertThat(offset2).containsExactlyElementsOf(all.subList(2, 5));
+
+        var limit2Offset2 = ocflRepositoryProvider.listObjectIds(2, 2);
+        assertThat(limit2Offset2).containsExactlyElementsOf(all.subList(2, 4));
+
+        var limitExcess = ocflRepositoryProvider.listObjectIds(10, 0);
+        assertThat(limitExcess).containsExactlyElementsOf(all);
+
+        var offsetBeyond = ocflRepositoryProvider.listObjectIds(2, 10);
+        assertThat(offsetBeyond).isEmpty();
+    }
 }

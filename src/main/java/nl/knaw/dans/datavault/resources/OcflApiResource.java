@@ -26,7 +26,6 @@ import javax.ws.rs.core.Response;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 @AllArgsConstructor
 public class OcflApiResource implements OcflApi {
@@ -39,11 +38,7 @@ public class OcflApiResource implements OcflApi {
     @UnitOfWork
     @Override
     public Response ocflObjectsGet(Integer limit, Integer offset) {
-        var ids = ocflRepositoryProvider.listObjectIds();
-        var result = ids.stream()
-            .skip(offset)
-            .limit(limit)
-            .collect(Collectors.toList());
+        var result = ocflRepositoryProvider.listObjectIds(limit, offset);
 
         return Response.ok(result).build();
     }
