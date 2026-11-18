@@ -196,8 +196,6 @@ dataVault:
       layerIds: true
       # Check that the listing records for the top layer found in the database correspond one-to-one with entries in that layer.
       topLayerListingRecords: true
-      # Synchronize and index any pre-existing vault objects from OCFL storage into the database.
-      objectIdIndex: true
 
 
 #

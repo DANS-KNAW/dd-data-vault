@@ -96,6 +96,7 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
     private final List<RootExtensionsInitEdit> rootExtensionsInitEdits;
     private final InitChecksConfig initChecks;
     private final RootExtensionsInitChecksConfig rootExtensionsInitChecks;
+    @NonNull
     private final VaultObjectDao vaultObjectDao;
 
     private OcflRepository ocflRepository;
@@ -106,7 +107,7 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
     @Builder
     public static OcflRepositoryProvider create(LayeredItemStore itemStore, Path workDir, LayerConsistencyChecker layerConsistencyChecker,
         Path rootExtensionsSourcePath, Path rootDocsSourcePath, List<RootExtensionsInitEdit> rootExtensionsInitEdits, InitChecksConfig initChecks,
-        RootExtensionsInitChecksConfig rootExtensionsInitChecks, VaultObjectDao vaultObjectDao) {
+        RootExtensionsInitChecksConfig rootExtensionsInitChecks, @NonNull VaultObjectDao vaultObjectDao) {
         return new OcflRepositoryProvider(itemStore, workDir, layerConsistencyChecker, rootExtensionsSourcePath, rootDocsSourcePath, rootExtensionsInitEdits, initChecks,
             rootExtensionsInitChecks, vaultObjectDao);
     }
@@ -137,21 +138,19 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
         ocflRepository.putObject(ObjectVersionId.version(objectId, version - 1), objectVersionDirectory, reader.getVersionInfo());
         ovp.save();
 
-        if (vaultObjectDao != null) {
-            var existing = vaultObjectDao.findByObjectId(objectId);
-            var now = Instant.now();
-            if (existing.isPresent()) {
-                var obj = existing.get();
-                obj.setUpdatedAt(now);
-                vaultObjectDao.save(obj);
-            }
-            else {
-                vaultObjectDao.save(VaultObject.builder()
-                    .objectId(objectId)
-                    .createdAt(now)
-                    .updatedAt(now)
-                    .build());
-            }
+        var existing = vaultObjectDao.findByObjectId(objectId);
+        var now = Instant.now();
+        if (existing.isPresent()) {
+            var obj = existing.get();
+            obj.setUpdatedAt(now);
+            vaultObjectDao.save(obj);
+        }
+        else {
+            vaultObjectDao.save(VaultObject.builder()
+                .objectId(objectId)
+                .createdAt(now)
+                .updatedAt(now)
+                .build());
         }
     }
 
@@ -169,19 +168,7 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
 
     @Override
     public List<String> listObjectIds(Integer limit, Integer offset) {
-        if (vaultObjectDao != null) {
-            return vaultObjectDao.findObjectIds(limit, offset);
-        }
-        try (var stream = ocflRepository.listObjectIds()) {
-            var s = stream;
-            if (offset != null && offset > 0) {
-                s = s.skip(offset);
-            }
-            if (limit != null && limit >= 0) {
-                s = s.limit(limit);
-            }
-            return s.toList();
-        }
+        return vaultObjectDao.findObjectIds(limit, offset);
     }
 
     @Override
@@ -347,37 +334,11 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
                 log.warn("Validation of the root extension 'packaging-format-registry' has been disabled.");
             }
 
-            if (initChecks.isObjectIdIndex() && vaultObjectDao != null) {
-                synchronizeObjectIdIndex();
-            }
-
             log.info("OCFL repository provider started");
         }
         catch (Exception e) {
             throw new RuntimeException("Failed to create OCFL repository", e);
         }
-    }
-
-    private void synchronizeObjectIdIndex() {
-        log.info("Synchronizing object ID index with OCFL storage...");
-        try (var stream = ocflRepository.listObjectIds()) {
-            var now = Instant.now();
-            stream.forEach(objectId -> {
-                if (!vaultObjectDao.existsByObjectId(objectId)) {
-                    log.info("Indexing untracked object ID: {}", objectId);
-                    vaultObjectDao.save(VaultObject.builder()
-                        .objectId(objectId)
-                        .createdAt(now)
-                        .updatedAt(now)
-                        .build());
-                }
-            });
-        }
-        catch (Exception e) {
-            log.error("Failed to synchronize object ID index", e);
-            throw new RuntimeException("Failed to synchronize object ID index", e);
-        }
-        log.info("Object ID index synchronization completed.");
     }
 
     private LayeredItemStore initTopLayer(LayeredItemStore layeredItemStore) {

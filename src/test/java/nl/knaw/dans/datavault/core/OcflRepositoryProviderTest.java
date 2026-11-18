@@ -99,6 +99,7 @@ public class OcflRepositoryProviderTest extends AbstractTestFixture {
             .workDir(testDir.resolve(WORK_DIR))
             .initChecks(new InitChecksConfig())
             .rootExtensionsInitChecks(new RootExtensionsInitChecksConfig())
+            .vaultObjectDao(vaultObjectDao)
             .build();
 
         ocflRepositoryProvider.start();
@@ -123,7 +124,7 @@ public class OcflRepositoryProviderTest extends AbstractTestFixture {
         Files.writeString(testDir.resolve(TEST_INPUT + "/v1.json"), json);
 
         // When
-        ocflRepositoryProvider.addVersion("urn:nbn:o1", 1, testDir.resolve(TEST_INPUT + "/v1"));
+        db.inTransaction(() -> ocflRepositoryProvider.addVersion("urn:nbn:o1", 1, testDir.resolve(TEST_INPUT + "/v1")));
 
         // Then
         long layerId = itemStore.getTopLayerId();
@@ -172,7 +173,7 @@ public class OcflRepositoryProviderTest extends AbstractTestFixture {
             }
             """;
         Files.writeString(testDir.resolve(TEST_INPUT + "/v1.json"), jsonV1);
-        ocflRepositoryProvider.addVersion("urn:nbn:o1", 1, testDir.resolve(TEST_INPUT + "/v1"));
+        db.inTransaction(() -> ocflRepositoryProvider.addVersion("urn:nbn:o1", 1, testDir.resolve(TEST_INPUT + "/v1")));
         copyToTestDir("simple-object/v2", TEST_INPUT);
         var jsonV2 = """
             {
@@ -188,7 +189,7 @@ public class OcflRepositoryProviderTest extends AbstractTestFixture {
         Files.writeString(testDir.resolve(TEST_INPUT + "/v2.json"), jsonV2);
 
         // When
-        ocflRepositoryProvider.addVersion("urn:nbn:o1", 2, testDir.resolve(TEST_INPUT + "/v2"));
+        db.inTransaction(() -> ocflRepositoryProvider.addVersion("urn:nbn:o1", 2, testDir.resolve(TEST_INPUT + "/v2")));
 
         // Then
         long layerId = itemStore.getTopLayerId();
@@ -240,7 +241,7 @@ public class OcflRepositoryProviderTest extends AbstractTestFixture {
             }
             """;
         Files.writeString(testDir.resolve(TEST_INPUT + "/v1.json"), json);
-        ocflRepositoryProvider.addVersion("urn:nbn:o1", 1, testDir.resolve(TEST_INPUT + "/v1"));
+        db.inTransaction(() -> ocflRepositoryProvider.addVersion("urn:nbn:o1", 1, testDir.resolve(TEST_INPUT + "/v1")));
 
         // When
         var files = ocflRepositoryProvider.listExtensionFiles("urn:nbn:o1");
@@ -272,7 +273,7 @@ public class OcflRepositoryProviderTest extends AbstractTestFixture {
             }
             """;
         Files.writeString(testDir.resolve(TEST_INPUT + "/v1.json"), json);
-        ocflRepositoryProvider.addVersion("urn:nbn:o1", 1, testDir.resolve(TEST_INPUT + "/v1"));
+        db.inTransaction(() -> ocflRepositoryProvider.addVersion("urn:nbn:o1", 1, testDir.resolve(TEST_INPUT + "/v1")));
 
         // When
         try (InputStream is = ocflRepositoryProvider.getExtensionFile("urn:nbn:o1", "object-version-properties/object_version_properties.json")) {
@@ -305,7 +306,7 @@ public class OcflRepositoryProviderTest extends AbstractTestFixture {
             }
             """;
         Files.writeString(testDir.resolve(TEST_INPUT + "/v1.json"), json);
-        ocflRepositoryProvider.addVersion("urn:nbn:o1", 1, testDir.resolve(TEST_INPUT + "/v1"));
+        db.inTransaction(() -> ocflRepositoryProvider.addVersion("urn:nbn:o1", 1, testDir.resolve(TEST_INPUT + "/v1")));
 
         // When/Then
         assertThatThrownBy(() -> ocflRepositoryProvider.getExtensionFile("urn:nbn:o1", "non-existent-file"))
@@ -328,47 +329,36 @@ public class OcflRepositoryProviderTest extends AbstractTestFixture {
             }
             """;
         Files.writeString(testDir.resolve(TEST_INPUT + "/v1.json"), json);
-        ocflRepositoryProvider.addVersion("urn:nbn:o1", 1, testDir.resolve(TEST_INPUT + "/v1"));
-        ocflRepositoryProvider.addVersion("urn:nbn:o2", 1, testDir.resolve(TEST_INPUT + "/v1"));
-        ocflRepositoryProvider.addVersion("urn:nbn:o3", 1, testDir.resolve(TEST_INPUT + "/v1"));
-        ocflRepositoryProvider.addVersion("urn:nbn:o4", 1, testDir.resolve(TEST_INPUT + "/v1"));
-        ocflRepositoryProvider.addVersion("urn:nbn:o5", 1, testDir.resolve(TEST_INPUT + "/v1"));
+        db.inTransaction(() -> {
+            ocflRepositoryProvider.addVersion("urn:nbn:o1", 1, testDir.resolve(TEST_INPUT + "/v1"));
+            ocflRepositoryProvider.addVersion("urn:nbn:o2", 1, testDir.resolve(TEST_INPUT + "/v1"));
+            ocflRepositoryProvider.addVersion("urn:nbn:o3", 1, testDir.resolve(TEST_INPUT + "/v1"));
+            ocflRepositoryProvider.addVersion("urn:nbn:o4", 1, testDir.resolve(TEST_INPUT + "/v1"));
+            ocflRepositoryProvider.addVersion("urn:nbn:o5", 1, testDir.resolve(TEST_INPUT + "/v1"));
+        });
 
         // When/Then
-        var all = ocflRepositoryProvider.listObjectIds(null, null);
-        assertThat(all).containsExactlyInAnyOrder("urn:nbn:o1", "urn:nbn:o2", "urn:nbn:o3", "urn:nbn:o4", "urn:nbn:o5");
+        var all = db.inTransaction(() -> ocflRepositoryProvider.listObjectIds(null, null));
+        assertThat(all).containsExactly("urn:nbn:o1", "urn:nbn:o2", "urn:nbn:o3", "urn:nbn:o4", "urn:nbn:o5");
 
-        var limit2 = ocflRepositoryProvider.listObjectIds(2, null);
+        var limit2 = db.inTransaction(() -> ocflRepositoryProvider.listObjectIds(2, null));
         assertThat(limit2).containsExactlyElementsOf(all.subList(0, 2));
 
-        var offset2 = ocflRepositoryProvider.listObjectIds(null, 2);
+        var offset2 = db.inTransaction(() -> ocflRepositoryProvider.listObjectIds(null, 2));
         assertThat(offset2).containsExactlyElementsOf(all.subList(2, 5));
 
-        var limit2Offset2 = ocflRepositoryProvider.listObjectIds(2, 2);
+        var limit2Offset2 = db.inTransaction(() -> ocflRepositoryProvider.listObjectIds(2, 2));
         assertThat(limit2Offset2).containsExactlyElementsOf(all.subList(2, 4));
 
-        var limitExcess = ocflRepositoryProvider.listObjectIds(10, 0);
+        var limitExcess = db.inTransaction(() -> ocflRepositoryProvider.listObjectIds(10, 0));
         assertThat(limitExcess).containsExactlyElementsOf(all);
 
-        var offsetBeyond = ocflRepositoryProvider.listObjectIds(2, 10);
+        var offsetBeyond = db.inTransaction(() -> ocflRepositoryProvider.listObjectIds(2, 10));
         assertThat(offsetBeyond).isEmpty();
     }
 
     @Test
-    public void addVersion_with_vaultObjectDao_should_persist_and_update_records() throws Exception {
-        var rootDocsPath = testDir.resolve("root-docs");
-        var provider = OcflRepositoryProvider.builder()
-            .itemStore(itemStore)
-            .layerConsistencyChecker(itemStore.getLayerConsistencyChecker())
-            .rootExtensionsSourcePath(Path.of("src/main/assembly/dist/cfg/ocfl-root-extensions"))
-            .rootDocsSourcePath(rootDocsPath)
-            .workDir(testDir.resolve("work-dir-dao"))
-            .initChecks(new InitChecksConfig())
-            .rootExtensionsInitChecks(new RootExtensionsInitChecksConfig())
-            .vaultObjectDao(vaultObjectDao)
-            .build();
-        provider.start();
-
+    public void addVersion_should_persist_and_update_vault_object_records() throws Exception {
         copyToTestDir("simple-object/v1", TEST_INPUT);
         var jsonV1 = """
             {
@@ -383,7 +373,7 @@ public class OcflRepositoryProviderTest extends AbstractTestFixture {
             """;
         Files.writeString(testDir.resolve(TEST_INPUT + "/v1.json"), jsonV1);
 
-        db.inTransaction(() -> provider.addVersion("urn:nbn:test-dao-1", 1, testDir.resolve(TEST_INPUT + "/v1")));
+        db.inTransaction(() -> ocflRepositoryProvider.addVersion("urn:nbn:test-dao-1", 1, testDir.resolve(TEST_INPUT + "/v1")));
 
         var objOpt = db.inTransaction(() -> vaultObjectDao.findByObjectId("urn:nbn:test-dao-1"));
         assertThat(objOpt).isPresent();
@@ -404,118 +394,14 @@ public class OcflRepositoryProviderTest extends AbstractTestFixture {
             """;
         Files.writeString(testDir.resolve(TEST_INPUT + "/v2.json"), jsonV2);
 
-        db.inTransaction(() -> provider.addVersion("urn:nbn:test-dao-1", 2, testDir.resolve(TEST_INPUT + "/v2")));
+        db.inTransaction(() -> ocflRepositoryProvider.addVersion("urn:nbn:test-dao-1", 2, testDir.resolve(TEST_INPUT + "/v2")));
 
         var updatedObjOpt = db.inTransaction(() -> vaultObjectDao.findByObjectId("urn:nbn:test-dao-1"));
         assertThat(updatedObjOpt).isPresent();
         assertThat(updatedObjOpt.get().getCreatedAt()).isEqualTo(initialCreatedAt);
         assertThat(updatedObjOpt.get().getUpdatedAt()).isNotNull();
 
-        var listFromDao = db.inTransaction(() -> provider.listObjectIds(10, 0));
+        var listFromDao = db.inTransaction(() -> ocflRepositoryProvider.listObjectIds(10, 0));
         assertThat(listFromDao).contains("urn:nbn:test-dao-1");
-    }
-
-    @Test
-    public void start_should_synchronize_untracked_objects_from_storage_into_vaultObjectDao() throws Exception {
-        // First ingest objects using a provider without DAO
-        copyToTestDir("simple-object/v1", TEST_INPUT);
-        var jsonV1 = """
-            {
-              "version-info": {
-                "user": {"name": "Test User", "email": "test.user@mail.com"},
-                "message": "Initial version"
-              },
-              "object-version-properties": {
-                "packaging-format": "DANS RDA BagPack Profile/0.1.0"
-              }
-            }
-            """;
-        Files.writeString(testDir.resolve(TEST_INPUT + "/v1.json"), jsonV1);
-
-        ocflRepositoryProvider.addVersion("urn:nbn:sync-1", 1, testDir.resolve(TEST_INPUT + "/v1"));
-        ocflRepositoryProvider.addVersion("urn:nbn:sync-2", 1, testDir.resolve(TEST_INPUT + "/v1"));
-
-        // Verify DAO currently has no records for them
-        var beforeSync1 = db.inTransaction(() -> vaultObjectDao.findByObjectId("urn:nbn:sync-1"));
-        var beforeSync2 = db.inTransaction(() -> vaultObjectDao.findByObjectId("urn:nbn:sync-2"));
-        assertThat(beforeSync1).isEmpty();
-        assertThat(beforeSync2).isEmpty();
-
-        // Create new provider with DAO and default initChecks (objectIdIndex=true)
-        var rootDocsPath = testDir.resolve("root-docs");
-        var provider = OcflRepositoryProvider.builder()
-            .itemStore(itemStore)
-            .layerConsistencyChecker(itemStore.getLayerConsistencyChecker())
-            .rootExtensionsSourcePath(Path.of("src/main/assembly/dist/cfg/ocfl-root-extensions"))
-            .rootDocsSourcePath(rootDocsPath)
-            .workDir(testDir.resolve("work-dir-sync"))
-            .initChecks(new InitChecksConfig())
-            .rootExtensionsInitChecks(new RootExtensionsInitChecksConfig())
-            .vaultObjectDao(vaultObjectDao)
-            .build();
-
-        db.inTransaction(() -> {
-            try {
-                provider.start();
-            }
-            catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-        });
-
-        // After startup, DAO should contain records for the pre-existing objects
-        var afterSync1 = db.inTransaction(() -> vaultObjectDao.findByObjectId("urn:nbn:sync-1"));
-        var afterSync2 = db.inTransaction(() -> vaultObjectDao.findByObjectId("urn:nbn:sync-2"));
-        assertThat(afterSync1).isPresent();
-        assertThat(afterSync2).isPresent();
-
-        var listObjectIds = db.inTransaction(() -> provider.listObjectIds(10, 0));
-        assertThat(listObjectIds).contains("urn:nbn:sync-1", "urn:nbn:sync-2");
-    }
-
-    @Test
-    public void start_should_skip_synchronization_when_objectIdIndex_is_disabled() throws Exception {
-        copyToTestDir("simple-object/v1", TEST_INPUT);
-        var jsonV1 = """
-            {
-              "version-info": {
-                "user": {"name": "Test User", "email": "test.user@mail.com"},
-                "message": "Initial version"
-              },
-              "object-version-properties": {
-                "packaging-format": "DANS RDA BagPack Profile/0.1.0"
-              }
-            }
-            """;
-        Files.writeString(testDir.resolve(TEST_INPUT + "/v1.json"), jsonV1);
-
-        ocflRepositoryProvider.addVersion("urn:nbn:nosync-1", 1, testDir.resolve(TEST_INPUT + "/v1"));
-
-        var initChecksNoSync = new InitChecksConfig();
-        initChecksNoSync.setObjectIdIndex(false);
-
-        var rootDocsPath = testDir.resolve("root-docs");
-        var provider = OcflRepositoryProvider.builder()
-            .itemStore(itemStore)
-            .layerConsistencyChecker(itemStore.getLayerConsistencyChecker())
-            .rootExtensionsSourcePath(Path.of("src/main/assembly/dist/cfg/ocfl-root-extensions"))
-            .rootDocsSourcePath(rootDocsPath)
-            .workDir(testDir.resolve("work-dir-nosync"))
-            .initChecks(initChecksNoSync)
-            .rootExtensionsInitChecks(new RootExtensionsInitChecksConfig())
-            .vaultObjectDao(vaultObjectDao)
-            .build();
-
-        db.inTransaction(() -> {
-            try {
-                provider.start();
-            }
-            catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-        });
-
-        var afterStart = db.inTransaction(() -> vaultObjectDao.findByObjectId("urn:nbn:nosync-1"));
-        assertThat(afterStart).isEmpty();
     }
 }
