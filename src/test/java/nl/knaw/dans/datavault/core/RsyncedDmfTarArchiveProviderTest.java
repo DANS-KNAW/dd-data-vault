@@ -25,6 +25,7 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.concurrent.Semaphore;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -58,6 +59,7 @@ public class RsyncedDmfTarArchiveProviderTest {
         config.setLocalTransferRoot(testDir.resolve("local"));
         config.getRetry().setMaxAttempts(1);
         config.getRetry().setBackoff(Duration.milliseconds(1));
+        config.getMoratorium().setTriggerOn(List.of("Connection refused", "Connection timed? out"));
         var moratoriumManager = new MoratoriumManager(config.getMoratorium());
         provider = new RsyncedDmfTarArchiveProvider(mock(ArchiveProvider.class), config, new Semaphore(1), new ExternalCommandRunner(moratoriumManager, config.getRetry()),
             new LocalDmfTarRunner(config.getDmfTarExecutable()), moratoriumManager);
@@ -118,6 +120,30 @@ public class RsyncedDmfTarArchiveProviderTest {
         // Subsequent call fails fast under moratorium
         assertThatThrownBy(() -> provider.exists(1700000000000L))
             .isInstanceOf(MoratoriumException.class);
+    }
+
+    @Test
+    public void exists_triggers_moratorium_on_configured_timeout_and_fails_fast() throws Exception {
+        var ssh = testDir.resolve("ssh");
+        Files.writeString(ssh, "#!/bin/sh\necho 'ssh: Connection timed out' >&2\nexit 255\n");
+        assertThatThrownBy(() -> provider.exists(1700000000000L)).isInstanceOf(MoratoriumException.class);
+        assertThat(provider.isUnderMoratorium()).isTrue();
+        Files.writeString(ssh, "#!/bin/sh\nexit 0\n");
+        assertThatThrownBy(() -> provider.exists(1700000000000L)).isInstanceOf(MoratoriumException.class);
+    }
+
+    @Test
+    public void exists_does_not_trigger_on_unrelated_ssh_failure() throws Exception {
+        Files.writeString(testDir.resolve("ssh"), "#!/bin/sh\necho 'Permission denied' >&2\nexit 255\n");
+        assertThatThrownBy(() -> provider.exists(1700000000000L)).isInstanceOf(CommandFailedException.class);
+        assertThat(provider.isUnderMoratorium()).isFalse();
+    }
+
+    @Test
+    public void exists_does_not_trigger_on_successful_ssh_output() throws Exception {
+        Files.writeString(testDir.resolve("ssh"), "#!/bin/sh\necho 'Connection timed out'\nexit 0\n");
+        assertThat(provider.exists(1700000000000L)).isTrue();
+        assertThat(provider.isUnderMoratorium()).isFalse();
     }
 
     @Test

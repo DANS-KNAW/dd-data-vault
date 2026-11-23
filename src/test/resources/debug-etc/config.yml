@@ -161,10 +161,14 @@ dataVault:
     #   retry:
     #     maxAttempts: 10
     #     backoff: 1 minute
-    #   # Temporarily suspend all network actions towards the DMF host when this text is in the output of a command, to prevent hammer protection from
-    #   # locking us out indefinitely.
+    #   # Suspend network actions when any Java regex matches anywhere in failed command output (case-sensitive unless flags say otherwise).
+    #   # Convert existing scalar triggerOn overrides to a list; escape regex metacharacters when matching literal text.
+    #   # The defaults are Connection refused and Connection timed out. An explicitly configured list replaces these defaults;
+    #   # an empty list disables output-triggered moratoriums.
     #   moratorium:
-    #     triggerOn: "Connection refused"
+    #     triggerOn:
+    #       - 'Connection refused'
+    #       - 'Connection timed out'
     #     duration: 15 minutes
 
     #

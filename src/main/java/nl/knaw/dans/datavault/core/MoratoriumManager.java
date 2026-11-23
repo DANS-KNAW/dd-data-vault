@@ -21,6 +21,9 @@ import nl.knaw.dans.datavault.config.MoratoriumConfig;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 /**
  * Makes the service refrain from network actions towards the remote archive for a while, to avoid triggering the hammer protection of the remote storage. One instance is shared by all
@@ -29,7 +32,7 @@ import java.time.Instant;
 @Slf4j
 public class MoratoriumManager {
     private final Clock clock;
-    private final String triggerOn;
+    private final List<Pattern> triggerOn;
     private final Duration duration;
     private Instant moratoriumUntil = Instant.MIN;
 
@@ -37,10 +40,19 @@ public class MoratoriumManager {
         this(config.getTriggerOn(), Duration.ofMillis(config.getDuration().toMilliseconds()), Clock.systemUTC());
     }
 
-    MoratoriumManager(String triggerOn, Duration duration, Clock clock) {
-        this.triggerOn = triggerOn;
+    MoratoriumManager(List<String> triggerOn, Duration duration, Clock clock) {
+        this.triggerOn = List.copyOf(triggerOn).stream().filter(pattern -> !pattern.isEmpty()).map(MoratoriumManager::compilePattern).toList();
         this.duration = duration;
         this.clock = clock;
+    }
+
+    private static Pattern compilePattern(String pattern) {
+        try {
+            return Pattern.compile(pattern);
+        }
+        catch (PatternSyntaxException e) {
+            throw new IllegalArgumentException("Invalid moratorium.triggerOn pattern: " + pattern, e);
+        }
     }
 
     /**
@@ -55,13 +67,13 @@ public class MoratoriumManager {
     }
 
     /**
-     * Starts a moratorium if the output of a command contains the configured trigger text.
+     * Starts a moratorium if the output of a command matches a configured trigger pattern.
      *
      * @param output the (error) output of a command; may be null
      * @return whether a moratorium was started
      */
     public boolean checkOutput(String output) {
-        if (output != null && !triggerOn.isEmpty() && output.contains(triggerOn)) {
+        if (output != null && triggerOn.stream().anyMatch(pattern -> pattern.matcher(output).find())) {
             setMoratorium();
             return true;
         }
