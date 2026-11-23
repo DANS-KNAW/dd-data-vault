@@ -51,4 +51,10 @@ public class VaultObject {
 
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
+
+    @Column(name = "blocked")
+    private boolean blocked;
+
+    @Column(name = "ingested")
+    private boolean ingested;
 }

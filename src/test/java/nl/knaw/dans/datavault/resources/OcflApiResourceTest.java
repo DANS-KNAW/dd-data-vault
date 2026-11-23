@@ -22,6 +22,7 @@ import org.mockito.Mockito;
 
 import javax.ws.rs.core.Response;
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.eq;
@@ -41,25 +42,61 @@ public class OcflApiResourceTest {
     @Test
     public void ocflObjectsGet_should_pass_limit_and_offset_to_repository_provider() {
         var expected = List.of("id1", "id2");
-        Mockito.when(repositoryProvider.listObjectIds(10, 20)).thenReturn(expected);
+        Mockito.when(repositoryProvider.listObjectIds(10, 20, true, false)).thenReturn(expected);
 
-        var response = resource.ocflObjectsGet(10, 20);
+        var response = resource.ocflObjectsGet(10, 20, true, false);
 
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
         assertEquals(expected, response.getEntity());
-        verify(repositoryProvider).listObjectIds(eq(10), eq(20));
+        verify(repositoryProvider).listObjectIds(eq(10), eq(20), eq(true), eq(false));
     }
 
     @Test
     public void ocflObjectsGet_should_pass_null_parameters_to_repository_provider() {
         var expected = List.of("id1");
-        Mockito.when(repositoryProvider.listObjectIds(null, null)).thenReturn(expected);
+        Mockito.when(repositoryProvider.listObjectIds(null, null, null, null)).thenReturn(expected);
 
-        var response = resource.ocflObjectsGet(null, null);
+        var response = resource.ocflObjectsGet(null, null, null, null);
 
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
         assertEquals(expected, response.getEntity());
-        verify(repositoryProvider).listObjectIds(isNull(), isNull());
+        verify(repositoryProvider).listObjectIds(isNull(), isNull(), isNull(), isNull());
+    }
+
+    @Test
+    public void ocfl_objects_get_should_pass_include_uningested_without_blocked_filter() {
+        resource.ocflObjectsGet(null, null, null, true);
+        verify(repositoryProvider).listObjectIds(null, null, null, true);
+    }
+
+    @Test
+    public void ocfl_objects_id_blocked_get_should_return_blocked_status_or_not_found() {
+        Mockito.when(repositoryProvider.isObjectBlocked("blocked")).thenReturn(Optional.of(true));
+        Mockito.when(repositoryProvider.isObjectBlocked("unblocked")).thenReturn(Optional.of(false));
+        Mockito.when(repositoryProvider.isObjectBlocked("missing")).thenReturn(Optional.empty());
+
+        var blocked = resource.ocflObjectsIdBlockedGet("blocked");
+        var unblocked = resource.ocflObjectsIdBlockedGet("unblocked");
+        var missing = resource.ocflObjectsIdBlockedGet("missing");
+        assertEquals(200, blocked.getStatus());
+        assertEquals(true, blocked.getEntity());
+        assertEquals(200, unblocked.getStatus());
+        assertEquals(false, unblocked.getEntity());
+        assertEquals(404, missing.getStatus());
+    }
+
+    @Test
+    public void ocfl_objects_id_blocked_delete_should_return_result_or_not_found() {
+        Mockito.when(repositoryProvider.clearObjectBlock("existing")).thenReturn(Optional.of(false));
+        Mockito.when(repositoryProvider.clearObjectBlock("missing")).thenReturn(Optional.empty());
+
+        var existing = resource.ocflObjectsIdBlockedDelete("existing");
+        var missing = resource.ocflObjectsIdBlockedDelete("missing");
+        assertEquals(200, existing.getStatus());
+        assertEquals(false, existing.getEntity());
+        assertEquals(404, missing.getStatus());
+        verify(repositoryProvider).clearObjectBlock("existing");
+        verify(repositoryProvider).clearObjectBlock("missing");
     }
 
     @Test

@@ -49,7 +49,11 @@ public class ObjectCreateOrUpdateTask implements Runnable {
         status = Status.RUNNING;
         try {
             log.debug("Processing object directory {}", objectDirectory);
-            addVersionsToRepository(getVersionDirectoriesInOrder());
+            var failure = repositoryProvider.importObject(objectDirectory.getFileName().toString(), provider ->
+                addVersionsToRepository(provider, getVersionDirectoriesInOrder()));
+            if (failure.isPresent()) {
+                throw failure.get();
+            }
             moveDirectoryToOutbox("processed", null);
             status = Status.SUCCESS;
             log.debug("Object directory {} processed successfully", objectDirectory);
@@ -75,13 +79,13 @@ public class ObjectCreateOrUpdateTask implements Runnable {
         }
     }
 
-    private void addVersionsToRepository(List<Path> versions) {
+    private void addVersionsToRepository(RepositoryProvider provider, List<Path> versions) {
         for (var version : versions) {
             var versionName = version.getFileName().toString();
             var objectId = objectDirectory.getFileName().toString();
             var versionNumber = parseVersionNumber(versionName);
             log.debug("Adding version {} to repository for object directory {}", versionName, objectDirectory);
-            repositoryProvider.addVersion(objectId, versionNumber, version);
+            provider.addVersion(objectId, versionNumber, version);
         }
     }
 
@@ -92,14 +96,11 @@ public class ObjectCreateOrUpdateTask implements Runnable {
     private void moveDirectoryToOutbox(String subdir, Exception exception) throws IOException {
         var outboxSubdir = batchOutbox.resolve(subdir);
         Files.createDirectories(outboxSubdir);
-        try {
-            Files.move(objectDirectory, outboxSubdir.resolve(objectDirectory.getFileName()));
-            if (exception != null) {
-                exception.printStackTrace(new PrintStream(outboxSubdir.resolve(objectDirectory.getFileName() + "-error.txt").toFile()));
+        Files.move(objectDirectory, outboxSubdir.resolve(objectDirectory.getFileName()));
+        if (exception != null) {
+            try (var stream = new PrintStream(outboxSubdir.resolve(objectDirectory.getFileName() + "-error.txt").toFile())) {
+                exception.printStackTrace(stream);
             }
-        }
-        catch (IOException e) {
-            log.error("Failed to move object directory {} to outbox {}", objectDirectory, outboxSubdir, e);
         }
     }
 

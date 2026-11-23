@@ -37,10 +37,28 @@ public class OcflApiResource implements OcflApi {
 
     @UnitOfWork
     @Override
-    public Response ocflObjectsGet(Integer limit, Integer offset) {
-        var result = ocflRepositoryProvider.listObjectIds(limit, offset);
+    public Response ocflObjectsGet(Integer limit, Integer offset, Boolean blocked, Boolean includeUningested) {
+        var result = ocflRepositoryProvider.listObjectIds(limit, offset, blocked, includeUningested);
 
         return Response.ok(result).build();
+    }
+
+    @UnitOfWork
+    @Override
+    public Response ocflObjectsIdBlockedGet(String id) {
+        return ocflRepositoryProvider.isObjectBlocked(id)
+            .map(Response::ok)
+            .orElseGet(() -> Response.status(Response.Status.NOT_FOUND))
+            .build();
+    }
+
+    @UnitOfWork
+    @Override
+    public Response ocflObjectsIdBlockedDelete(String id) {
+        return ocflRepositoryProvider.clearObjectBlock(id)
+            .map(Response::ok)
+            .orElseGet(() -> Response.status(Response.Status.NOT_FOUND))
+            .build();
     }
 
     @UnitOfWork

@@ -16,11 +16,13 @@
 package nl.knaw.dans.datavault.core;
 
 import nl.knaw.dans.datavault.db.ImportJobDao;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -35,6 +37,20 @@ public class ImportJobTaskTest extends AbstractTestFixture {
     private final RepositoryProvider repositoryProvider = Mockito.mock(RepositoryProvider.class);
     private final LayerThresholdHandler layerThresholdHandler = Mockito.mock(LayerThresholdHandler.class, invocation -> null);
     private final ExecutorService executorService = Executors.newFixedThreadPool(4);
+
+    @BeforeEach
+    void configure_object_import() {
+        Mockito.when(repositoryProvider.importObject(Mockito.anyString(), Mockito.any())).thenAnswer(invocation -> {
+            try {
+                RepositoryProvider.ImportOperation operation = invocation.getArgument(1);
+                operation.run(repositoryProvider);
+                return Optional.empty();
+            }
+            catch (Exception e) {
+                return Optional.of(e);
+            }
+        });
+    }
 
     @Test
     public void run_should_process_batch_with_one_simple_object() throws Exception {

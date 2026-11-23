@@ -139,12 +139,13 @@ public class ImportJobTask implements Runnable {
 
     private void processSingleObjectImport() throws IOException {
         checkBatchLayout(batchOrObjectImportDir.getParent());
-        var future = executorService.submit(new ObjectCreateOrUpdateTask(batchOrObjectImportDir, batchOutbox, repositoryProvider));
-        handleObjectImportResult(future);
+        var task = new ObjectCreateOrUpdateTask(batchOrObjectImportDir, batchOutbox, repositoryProvider);
+        var future = executorService.submit(task);
+        handleObjectImportResult(future, task);
     }
 
-    private void handleObjectImportResult(Future<?> future) {
-        if (checkFuture(future)) {
+    private void handleObjectImportResult(Future<?> future, ObjectCreateOrUpdateTask task) {
+        if (checkFuture(future) && task.getStatus() == ObjectCreateOrUpdateTask.Status.SUCCESS) {
             success();
             if (autoclean) {
                 batchCleaner.cleanProcessedObject(batchOrObjectImportDir);

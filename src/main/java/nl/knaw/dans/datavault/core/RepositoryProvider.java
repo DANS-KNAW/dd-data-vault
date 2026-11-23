@@ -43,6 +43,19 @@ public interface RepositoryProvider extends Managed {
      */
     void addVersion(String objectId, int version, Path objectVersionDirectory);
 
+    @FunctionalInterface
+    interface ImportOperation {
+        void run(RepositoryProvider provider) throws Exception;
+    }
+
+    Optional<Exception> importObject(String objectId, ImportOperation operation);
+
+    Optional<Boolean> isObjectBlocked(String objectId);
+
+    Optional<Boolean> clearObjectBlock(String objectId);
+
+    List<String> listObjectIds(Integer limit, Integer offset, Boolean blocked, Boolean includeUningested);
+
     /**
      * Retrieves the version information for the object identified by the given object id and version number.
      *

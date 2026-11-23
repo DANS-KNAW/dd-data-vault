@@ -41,6 +41,7 @@ import nl.knaw.dans.datavault.db.ConsistencyCheckDao;
 import nl.knaw.dans.datavault.db.ImportJobDao;
 import nl.knaw.dans.datavault.db.LayerArchiveJobDao;
 import nl.knaw.dans.datavault.db.VaultObjectDao;
+import nl.knaw.dans.datavault.db.VaultObjectSchemaMigration;
 import nl.knaw.dans.datavault.resources.ConsistencyChecksApiResource;
 import nl.knaw.dans.datavault.resources.DefaultApiResource;
 import nl.knaw.dans.datavault.resources.ImportsApiResource;
@@ -83,6 +84,7 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
 
     @Override
     public void run(final DdDataVaultConfig configuration, final Environment environment) {
+        VaultObjectSchemaMigration.migrate(hibernateBundle.getSessionFactory());
         environment.getObjectMapper().registerModule(new JavaTimeModule());
         environment.getObjectMapper().disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
         var uowFactory = new UnitOfWorkAwareProxyFactory(hibernateBundle);

@@ -43,6 +43,30 @@ public class UnitOfWorkDeclaringRepositoryProviderAdapter implements RepositoryP
 
     @Override
     @UnitOfWork
+    public Optional<Exception> importObject(String objectId, ImportOperation operation) {
+        return delegate.importObject(objectId, operation);
+    }
+
+    @Override
+    @UnitOfWork
+    public Optional<Boolean> isObjectBlocked(String objectId) {
+        return delegate.isObjectBlocked(objectId);
+    }
+
+    @Override
+    @UnitOfWork
+    public Optional<Boolean> clearObjectBlock(String objectId) {
+        return delegate.clearObjectBlock(objectId);
+    }
+
+    @Override
+    @UnitOfWork
+    public List<String> listObjectIds(Integer limit, Integer offset, Boolean blocked, Boolean includeUningested) {
+        return delegate.listObjectIds(limit, offset, blocked, includeUningested);
+    }
+
+    @Override
+    @UnitOfWork
     public Optional<OcflObjectVersionDto> getOcflObjectVersion(String objectId, int version) {
         return delegate.getOcflObjectVersion(objectId, version);
     }

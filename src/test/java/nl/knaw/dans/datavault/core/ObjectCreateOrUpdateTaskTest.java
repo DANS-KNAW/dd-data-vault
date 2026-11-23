@@ -20,6 +20,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import java.nio.file.Files;
+import java.util.Optional;
 import java.util.stream.Stream;
 
 import static nl.knaw.dans.lib.util.TestUtils.assertDirectoriesEqual;
@@ -34,6 +35,16 @@ public class ObjectCreateOrUpdateTaskTest extends AbstractTestFixture {
         Files.createDirectories(testDir.resolve("out"));
         Files.createDirectories(testDir.resolve("out/processed"));
         Files.createDirectories(testDir.resolve("out/failed"));
+        Mockito.when(repositoryProvider.importObject(Mockito.anyString(), Mockito.any())).thenAnswer(invocation -> {
+            try {
+                RepositoryProvider.ImportOperation operation = invocation.getArgument(1);
+                operation.run(repositoryProvider);
+                return Optional.empty();
+            }
+            catch (Exception e) {
+                return Optional.of(e);
+            }
+        });
     }
 
     @Test

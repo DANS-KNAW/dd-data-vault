@@ -81,11 +81,11 @@ public class VaultObjectDaoTest {
     public void findObjectIds_should_return_ids_in_alphabetical_order_with_pagination() {
         var now = Instant.now();
         var objects = List.of(
-            VaultObject.builder().objectId("urn:uuid:c").createdAt(now).updatedAt(now).build(),
-            VaultObject.builder().objectId("urn:uuid:a").createdAt(now).updatedAt(now).build(),
-            VaultObject.builder().objectId("urn:uuid:e").createdAt(now).updatedAt(now).build(),
-            VaultObject.builder().objectId("urn:uuid:b").createdAt(now).updatedAt(now).build(),
-            VaultObject.builder().objectId("urn:uuid:d").createdAt(now).updatedAt(now).build()
+            VaultObject.builder().objectId("urn:uuid:c").createdAt(now).updatedAt(now).ingested(true).build(),
+            VaultObject.builder().objectId("urn:uuid:a").createdAt(now).updatedAt(now).ingested(true).build(),
+            VaultObject.builder().objectId("urn:uuid:e").createdAt(now).updatedAt(now).ingested(true).build(),
+            VaultObject.builder().objectId("urn:uuid:b").createdAt(now).updatedAt(now).ingested(true).build(),
+            VaultObject.builder().objectId("urn:uuid:d").createdAt(now).updatedAt(now).ingested(true).build()
         );
 
         daoTestRule.inTransaction(() -> dao.saveAll(objects));
@@ -116,5 +116,21 @@ public class VaultObjectDaoTest {
         // Limit zero
         var limitZero = daoTestRule.inTransaction(() -> dao.findObjectIds(0, 0));
         assertThat(limitZero).isEmpty();
+    }
+
+    @Test
+    public void listing_filters_ingested_and_blocked_records_before_pagination() {
+        var now = Instant.now();
+        daoTestRule.inTransaction(() -> dao.saveAll(List.of(
+            VaultObject.builder().objectId("a").createdAt(now).updatedAt(now).ingested(true).build(),
+            VaultObject.builder().objectId("b").createdAt(now).updatedAt(now).ingested(true).blocked(true).build(),
+            VaultObject.builder().objectId("c").createdAt(now).updatedAt(now).blocked(true).build(),
+            VaultObject.builder().objectId("d").createdAt(now).updatedAt(now).build()
+        )));
+        assertThat(daoTestRule.inTransaction(() -> dao.findObjectIds(null, null, null, false))).containsExactly("a", "b");
+        assertThat(daoTestRule.inTransaction(() -> dao.findObjectIds(null, null, null, true))).containsExactly("a", "b", "c", "d");
+        assertThat(daoTestRule.inTransaction(() -> dao.findObjectIds(null, null, true, false))).containsExactly("b", "c");
+        assertThat(daoTestRule.inTransaction(() -> dao.findObjectIds(null, null, false, true))).containsExactly("a");
+        assertThat(daoTestRule.inTransaction(() -> dao.findObjectIds(1, 1, true, false))).containsExactly("c");
     }
 }

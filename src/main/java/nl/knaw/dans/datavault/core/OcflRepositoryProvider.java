@@ -155,6 +155,7 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
         if (existing.isPresent()) {
             var obj = existing.get();
             obj.setUpdatedAt(now);
+            obj.setIngested(true);
             vaultObjectDao.save(obj);
         }
         else {
@@ -162,8 +163,47 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
                 .objectId(objectId)
                 .createdAt(now)
                 .updatedAt(now)
+                .ingested(true)
                 .build());
         }
+    }
+
+    @Override
+    public Optional<Exception> importObject(String objectId, ImportOperation operation) {
+        vaultObjectDao.lockObject(objectId);
+        var existing = vaultObjectDao.findByObjectId(objectId);
+        if (existing.isPresent() && existing.get().isBlocked()) {
+            return Optional.of(new IllegalStateException("Object is blocked: " + objectId));
+        }
+        try {
+            operation.run(this);
+            return Optional.empty();
+        }
+        catch (Exception e) {
+            var now = Instant.now();
+            var object = vaultObjectDao.findByObjectId(objectId).orElseGet(() -> VaultObject.builder()
+                .objectId(objectId).createdAt(now).updatedAt(now).build());
+            object.setBlocked(true);
+            object.setUpdatedAt(now);
+            vaultObjectDao.save(object);
+            return Optional.of(e);
+        }
+    }
+
+    @Override
+    public Optional<Boolean> isObjectBlocked(String objectId) {
+        return vaultObjectDao.findByObjectId(objectId).map(VaultObject::isBlocked);
+    }
+
+    @Override
+    public Optional<Boolean> clearObjectBlock(String objectId) {
+        vaultObjectDao.lockObject(objectId);
+        return vaultObjectDao.findByObjectId(objectId).map(object -> {
+            object.setBlocked(false);
+            object.setUpdatedAt(Instant.now());
+            vaultObjectDao.save(object);
+            return false;
+        });
     }
 
     @Override
@@ -181,6 +221,11 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
     @Override
     public List<String> listObjectIds(Integer limit, Integer offset) {
         return vaultObjectDao.findObjectIds(limit, offset);
+    }
+
+    @Override
+    public List<String> listObjectIds(Integer limit, Integer offset, Boolean blocked, Boolean includeUningested) {
+        return vaultObjectDao.findObjectIds(limit, offset, blocked, Boolean.TRUE.equals(includeUningested));
     }
 
     @Override

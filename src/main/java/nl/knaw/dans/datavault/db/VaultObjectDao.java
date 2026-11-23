@@ -19,6 +19,8 @@ import io.dropwizard.hibernate.AbstractDAO;
 import nl.knaw.dans.datavault.core.VaultObject;
 import org.hibernate.SessionFactory;
 
+import javax.persistence.criteria.Predicate;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -48,6 +50,15 @@ public class VaultObjectDao extends AbstractDAO<VaultObject> {
         return currentSession().createQuery(cq).getResultStream().findFirst();
     }
 
+    public void lockObject(String objectId) {
+        currentSession().doWork(connection -> {
+            try (var statement = connection.prepareStatement("select pg_advisory_xact_lock(hashtextextended(?, 0))")) {
+                statement.setString(1, objectId);
+                statement.execute();
+            }
+        });
+    }
+
     public boolean existsByObjectId(String objectId) {
         var cb = currentSession().getCriteriaBuilder();
         var cq = cb.createQuery(Long.class);
@@ -59,10 +70,22 @@ public class VaultObjectDao extends AbstractDAO<VaultObject> {
     }
 
     public List<String> findObjectIds(Integer limit, Integer offset) {
+        return findObjectIds(limit, offset, null, false);
+    }
+
+    public List<String> findObjectIds(Integer limit, Integer offset, Boolean blocked, boolean includeUningested) {
         var cb = currentSession().getCriteriaBuilder();
         var cq = cb.createQuery(String.class);
         var root = cq.from(VaultObject.class);
         cq.select(root.get("objectId"));
+        var predicates = new ArrayList<Predicate>();
+        if (blocked != null) {
+            predicates.add(cb.equal(root.get("blocked"), blocked));
+        }
+        if ((!Boolean.TRUE.equals(blocked) && !includeUningested) || Boolean.FALSE.equals(blocked)) {
+            predicates.add(cb.isTrue(root.get("ingested")));
+        }
+        cq.where(predicates.toArray(new Predicate[0]));
         cq.orderBy(cb.asc(root.get("objectId")));
 
         var query = currentSession().createQuery(cq);
