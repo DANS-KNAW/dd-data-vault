@@ -20,7 +20,7 @@ import java.util.Comparator;
 
 public class VersionDirectoryComparator implements Comparator<Path> {
     public static final VersionDirectoryComparator INSTANCE = new VersionDirectoryComparator();
-    
+
     @Override
     public int compare(Path p1, Path p2) {
         if (!p1.getFileName().toString().startsWith("v") || !p2.getFileName().toString().startsWith("v")) {

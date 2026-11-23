@@ -25,9 +25,9 @@ import nl.knaw.dans.layerstore.ArchiveProvider;
 // discoverability to work, so we are using explicit registration of subtypes.
 @JsonTypeInfo(use = Id.NAME, property = "type")
 @JsonSubTypes({
-        @JsonSubTypes.Type(value = ZipArchiveProviderFactory.class, name = "ZIP"),
-        @JsonSubTypes.Type(value = TarArchiveProviderFactory.class, name = "TAR"),
-        @JsonSubTypes.Type(value = DmfTarArchiveProviderFactory.class, name = "DMFTAR")
+    @JsonSubTypes.Type(value = ZipArchiveProviderFactory.class, name = "ZIP"),
+    @JsonSubTypes.Type(value = TarArchiveProviderFactory.class, name = "TAR"),
+    @JsonSubTypes.Type(value = DmfTarArchiveProviderFactory.class, name = "DMFTAR")
 })
 public interface ArchiveProviderFactory extends Discoverable {
     ArchiveProvider build();

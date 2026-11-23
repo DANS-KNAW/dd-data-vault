@@ -19,7 +19,6 @@ import io.dropwizard.util.Duration;
 import nl.knaw.dans.datavault.config.DmfTarArchiveProviderFactory;
 import nl.knaw.dans.datavault.config.ExternalCommandConfig;
 import nl.knaw.dans.layerstore.Archive;
-import nl.knaw.dans.layerstore.Item;
 import org.apache.commons.io.FileUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

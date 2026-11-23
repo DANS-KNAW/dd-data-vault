@@ -68,6 +68,21 @@ public class VersionInfoJsonReader {
         }
     }
 
+    private static String requireText(JsonNode node, String path) {
+        if (node == null || node.isNull() || node.asText().isBlank()) {
+            throw new IllegalArgumentException("Missing required property: " + path);
+        }
+        if (!node.isValueNode()) {
+            throw new IllegalArgumentException("Property must be a primitive value: " + path);
+        }
+        return node.asText();
+    }
+
+    private static Stream<Entry<String, JsonNode>> iterableToStream(Iterator<Map.Entry<String, JsonNode>> it) {
+        Iterable<Map.Entry<String, JsonNode>> iterable = () -> it;
+        return StreamSupport.stream(iterable.spliterator(), false);
+    }
+
     public Map<String, JsonNode> getObjectVersionProperties() {
         var customNode = root.get("object-version-properties");
         if (customNode == null) {
@@ -128,20 +143,5 @@ public class VersionInfoJsonReader {
         if (!EmailValidator.getInstance().isValid(mailWithoutMailTo)) {
             throw new IllegalArgumentException("Invalid email address: " + email);
         }
-    }
-
-    private static String requireText(JsonNode node, String path) {
-        if (node == null || node.isNull() || node.asText().isBlank()) {
-            throw new IllegalArgumentException("Missing required property: " + path);
-        }
-        if (!node.isValueNode()) {
-            throw new IllegalArgumentException("Property must be a primitive value: " + path);
-        }
-        return node.asText();
-    }
-
-    private static Stream<Entry<String, JsonNode>> iterableToStream(Iterator<Map.Entry<String, JsonNode>> it) {
-        Iterable<Map.Entry<String, JsonNode>> iterable = () -> it;
-        return StreamSupport.stream(iterable.spliterator(), false);
     }
 }

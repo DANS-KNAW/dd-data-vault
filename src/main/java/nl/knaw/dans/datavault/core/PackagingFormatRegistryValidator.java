@@ -31,8 +31,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * Validates the packaging-format-registry extension stored under extensions/packaging-format-registry
- * according to the extension documentation.
+ * Validates the packaging-format-registry extension stored under extensions/packaging-format-registry according to the extension documentation.
  */
 public class PackagingFormatRegistryValidator {
     private static final String EXTENSION_DIR = "extensions/packaging-format-registry";
@@ -50,9 +49,8 @@ public class PackagingFormatRegistryValidator {
     }
 
     /**
-     * Validates config.json, packaging_format_inventory.json and checks the packaging_formats directories
-     * correspond one-to-one with manifest entries and uniqueness of name/version pairs.
-     * Throws IllegalStateException with a descriptive message when validation fails.
+     * Validates config.json, packaging_format_inventory.json and checks the packaging_formats directories correspond one-to-one with manifest entries and uniqueness of name/version pairs. Throws
+     * IllegalStateException with a descriptive message when validation fails.
      */
     public void validate() {
         JsonNode config = readJson(CONFIG_PATH);
@@ -194,5 +192,6 @@ public class PackagingFormatRegistryValidator {
         }
     }
 
-    private record ManifestEntry(String id, String name, String version) {}
+    private record ManifestEntry(String id, String name, String version) {
+    }
 }

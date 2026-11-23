@@ -34,14 +34,6 @@ public class MoratoriumConfig {
     @NotNull
     private Duration duration = Duration.minutes(15);
 
-    @JsonIgnore
-    @AssertTrue(message = "triggerOn must contain valid regular expressions")
-    public boolean isTriggerOnValidRegexes() {
-        return triggerOn == null || triggerOn.stream()
-            .filter(Objects::nonNull)
-            .allMatch(MoratoriumConfig::isValidRegex);
-    }
-
     private static boolean isValidRegex(String regex) {
         try {
             Pattern.compile(regex);
@@ -50,5 +42,13 @@ public class MoratoriumConfig {
         catch (PatternSyntaxException e) {
             return false;
         }
+    }
+
+    @JsonIgnore
+    @AssertTrue(message = "triggerOn must contain valid regular expressions")
+    public boolean isTriggerOnValidRegexes() {
+        return triggerOn == null || triggerOn.stream()
+            .filter(Objects::nonNull)
+            .allMatch(MoratoriumConfig::isValidRegex);
     }
 }

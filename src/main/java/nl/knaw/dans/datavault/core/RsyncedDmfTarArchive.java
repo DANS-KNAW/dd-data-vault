@@ -100,12 +100,17 @@ public class RsyncedDmfTarArchive implements Archive {
             "name", name);
     }
 
+    static String quote(Path path) {
+        return "'" + path.toString().replace("'", "'\\''") + "'";
+    }
+
     @Override
     public InputStream readFile(String filePath) throws IOException {
         moratoriumManager.failIfUnderMoratorium();
         try {
             var in = remoteArchive.readFile(filePath);
             return new FilterInputStream(in) {
+
                 @Override
                 public int read() throws IOException {
                     moratoriumManager.failIfUnderMoratorium();
@@ -315,8 +320,9 @@ public class RsyncedDmfTarArchive implements Archive {
         var existing = quote(remoteDir.resolve(name));
         var backup = quote(remoteTransferDir.resolve(name + ".bak"));
         var transferDir = quote(remoteTransferDir);
-        runRemote("if [ -e %1$s ]; then { if [ -e %2$s ]; then if [ -e %3$s ]; then chmod -R u+w %3$s 2>/dev/null || true; rm -rf %3$s; fi && mv %2$s %3$s; fi; } && mv %1$s %2$s; fi && if [ -e %4$s ]; then chmod -R u+w %4$s 2>/dev/null || true; rm -rf %4$s; fi"
-            .formatted(uploaded, existing, backup, transferDir),
+        runRemote(
+            "if [ -e %1$s ]; then { if [ -e %2$s ]; then if [ -e %3$s ]; then chmod -R u+w %3$s 2>/dev/null || true; rm -rf %3$s; fi && mv %2$s %3$s; fi; } && mv %1$s %2$s; fi && if [ -e %4$s ]; then chmod -R u+w %4$s 2>/dev/null || true; rm -rf %4$s; fi"
+                .formatted(uploaded, existing, backup, transferDir),
             "Moving " + name + " into place");
     }
 
@@ -342,10 +348,6 @@ public class RsyncedDmfTarArchive implements Archive {
         commandRunner.runWithRetry(config.sshCommand(script), placeholders, description, null);
     }
 
-    static String quote(Path path) {
-        return "'" + path.toString().replace("'", "'\\''") + "'";
-    }
-
     @Override
     public boolean fileExists(String filePath) {
         moratoriumManager.failIfUnderMoratorium();
@@ -365,6 +367,7 @@ public class RsyncedDmfTarArchive implements Archive {
         try {
             var it = remoteArchive.listAllItems();
             return new Iterator<>() {
+
                 @Override
                 public boolean hasNext() {
                     moratoriumManager.failIfUnderMoratorium();

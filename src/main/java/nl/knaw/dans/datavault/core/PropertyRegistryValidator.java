@@ -27,8 +27,7 @@ import java.util.Iterator;
 import java.util.Map;
 
 /**
- * Validates object version properties against the property registry that is stored in the storage root
- * at extensions/property-registry/config.json.
+ * Validates object version properties against the property registry that is stored in the storage root at extensions/property-registry/config.json.
  */
 public class PropertyRegistryValidator {
     private static final String REGISTRY_PATH = "extensions/property-registry/config.json";
@@ -47,8 +46,7 @@ public class PropertyRegistryValidator {
     }
 
     /**
-     * Validate the property-registry config.json against the documented rules.
-     * Throws IllegalStateException when the configuration is invalid.
+     * Validate the property-registry config.json against the documented rules. Throws IllegalStateException when the configuration is invalid.
      */
     public void validate() {
         try (var in = itemStore.readFile(REGISTRY_PATH)) {
@@ -59,7 +57,6 @@ public class PropertyRegistryValidator {
             throw new IllegalStateException("Failed to read property registry from " + REGISTRY_PATH, e);
         }
     }
-
 
     /**
      * Validate the given custom properties map against the loaded registry.

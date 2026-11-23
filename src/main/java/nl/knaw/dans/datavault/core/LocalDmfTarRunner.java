@@ -39,8 +39,8 @@ public class LocalDmfTarRunner {
     }
 
     /**
-     * Creates a dmftar directory at the target path from the contents of the directory (not including the directory itself). dmftar creates temporary cache directories in the working
-     * directory; these are removed, also if the command fails.
+     * Creates a dmftar directory at the target path from the contents of the directory (not including the directory itself). dmftar creates temporary cache directories in the working directory; these
+     * are removed, also if the command fails.
      */
     public void tarDirectory(Path directory, Path target) throws IOException {
         removeCacheDirectories(directory);

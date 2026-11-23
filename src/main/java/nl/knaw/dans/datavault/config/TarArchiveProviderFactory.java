@@ -26,6 +26,7 @@ import java.nio.file.Path;
 public class TarArchiveProviderFactory implements ArchiveProviderFactory {
     @JsonProperty
     private Path archiveRoot;
+
     @Override
     public ArchiveProvider build() {
         return new TarArchiveProvider(archiveRoot);

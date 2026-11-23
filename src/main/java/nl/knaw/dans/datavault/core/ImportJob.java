@@ -35,39 +35,32 @@ import java.util.UUID;
 @Builder
 @Entity(name = "import_job")
 public class ImportJob {
+    @Id
+    @GeneratedValue(generator = "UUID")
+    @GenericGenerator(name = "UUID", strategy = "org.hibernate.id.UUIDGenerator")
+    @Column(nullable = false)
+    private UUID id;
+    @Column
+    private String path;
+    @Column
+    private boolean singleObject;
+    @Column(nullable = false)
+    private OffsetDateTime created;
+    @Column
+    private OffsetDateTime started;
+    @Column
+    private OffsetDateTime finished;
+    @Column
+    private Status status;
+    @Column
+    @Lob
+    private String message;
+
     public enum Status {
         PENDING,
         RUNNING,
         SUCCESS,
         FAILED
     }
-
-    @Id
-    @GeneratedValue(generator = "UUID")
-    @GenericGenerator(name = "UUID", strategy = "org.hibernate.id.UUIDGenerator")
-    @Column(nullable = false)
-    private UUID id;
-
-    @Column
-    private String path;
-
-    @Column
-    private boolean singleObject;
-
-    @Column(nullable = false)
-    private OffsetDateTime created;
-
-    @Column
-    private OffsetDateTime started;
-
-    @Column
-    private OffsetDateTime finished;
-
-    @Column
-    private Status status;
-
-    @Column
-    @Lob
-    private String message;
 
 }

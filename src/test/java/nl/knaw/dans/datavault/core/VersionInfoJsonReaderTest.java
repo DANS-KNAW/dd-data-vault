@@ -100,7 +100,6 @@ public class VersionInfoJsonReaderTest extends AbstractTestFixture {
         assertThat(ex.getMessage()).isEqualTo("Invalid email address: mailto:invalid-email");
     }
 
-
     @Test
     public void should_allow_custom_properties_and_return_them_without_prefix() throws Exception {
         // Given

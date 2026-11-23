@@ -35,20 +35,12 @@ import java.util.stream.StreamSupport;
 @Slf4j
 @RequiredArgsConstructor
 public class ObjectCreateOrUpdateTask implements Runnable {
-    public enum Status {
-        PENDING,
-        RUNNING,
-        SUCCESS,
-        FAILED
-    }
-
     @NonNull
     private final Path objectDirectory;
     @NonNull
     private final Path batchOutbox;
     @NonNull
     private final RepositoryProvider repositoryProvider;
-
     @Getter
     private Status status = Status.PENDING;
 
@@ -109,5 +101,12 @@ public class ObjectCreateOrUpdateTask implements Runnable {
         catch (IOException e) {
             log.error("Failed to move object directory {} to outbox {}", objectDirectory, outboxSubdir, e);
         }
+    }
+
+    public enum Status {
+        PENDING,
+        RUNNING,
+        SUCCESS,
+        FAILED
     }
 }

@@ -42,6 +42,27 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ConsistencyCheck {
+    @Id
+    @GeneratedValue(generator = "UUID")
+    @GenericGenerator(name = "UUID", strategy = "org.hibernate.id.UUIDGenerator")
+    @Column(name = "id", nullable = false)
+    private UUID id;
+    @Column(nullable = false)
+    private Type type;
+    @Column(name = "layer_id")
+    private long layerId;
+    @Column(name = "created", nullable = false)
+    private OffsetDateTime created;
+    @Column(name = "started")
+    private OffsetDateTime started;
+    @Column(name = "finished")
+    private OffsetDateTime finished;
+    @Column(name = "result")
+    private Result result;
+    @Column(name = "message")
+    @Lob
+    private String message;
+
     public enum Type {
         LAYER_IDS, LISTING_RECORDS
     }
@@ -49,33 +70,5 @@ public class ConsistencyCheck {
     public enum Result {
         OK, NOT_OK, ERROR
     }
-
-    @Id
-    @GeneratedValue(generator = "UUID")
-    @GenericGenerator(name = "UUID", strategy = "org.hibernate.id.UUIDGenerator")
-    @Column(name = "id", nullable = false)
-    private UUID id;
-
-    @Column(nullable = false)
-    private Type type;
-
-    @Column(name = "layer_id")
-    private long layerId;
-
-    @Column(name = "created", nullable = false)
-    private OffsetDateTime created;
-
-    @Column(name = "started")
-    private OffsetDateTime started;
-
-    @Column(name = "finished")
-    private OffsetDateTime finished;
-
-    @Column(name = "result")
-    private Result result;
-
-    @Column(name = "message")
-    @Lob
-    private String message;
 
 }

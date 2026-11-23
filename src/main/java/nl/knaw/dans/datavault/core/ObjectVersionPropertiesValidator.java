@@ -23,8 +23,7 @@ import nl.knaw.dans.layerstore.ItemStore;
 import java.util.Map;
 
 /**
- * Validates a candidate object_version_properties.json content against the schema in the OCFL root.
- * The schema filename used is 'object-version-properties.schema.json'.
+ * Validates a candidate object_version_properties.json content against the schema in the OCFL root. The schema filename used is 'object-version-properties.schema.json'.
  */
 public class ObjectVersionPropertiesValidator {
     private static final String SCHEMA_FILE = "object-version-properties.schema.json";

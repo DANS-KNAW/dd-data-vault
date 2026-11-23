@@ -36,6 +36,10 @@ class PropertyRegistryValidatorTest {
 
     private PropertyRegistryValidator validator;
 
+    private static InputStream toStream(String json) {
+        return new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8));
+    }
+
     @BeforeEach
     void setUp() throws Exception {
         // Minimal valid registry with several properties and nested object type
@@ -268,9 +272,5 @@ class PropertyRegistryValidatorTest {
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("Unsupported itemType")
             .hasMessageContaining("object");
-    }
-
-    private static InputStream toStream(String json) {
-        return new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8));
     }
 }

@@ -112,6 +112,18 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
             rootExtensionsInitChecks, vaultObjectDao);
     }
 
+    private static Object getNodeToReplace(RootExtensionsInitEdit edit, Object matchesRaw) {
+        List<?> matches = matchesRaw instanceof List ? (List<?>) matchesRaw : List.of(matchesRaw);
+        if (matches.isEmpty()) {
+            throw new IllegalStateException("JSONPath did not match any nodes: " + edit.getJsonPath() + " in file " + edit.getFile());
+        }
+        if (matches.size() != 1) {
+            throw new IllegalStateException("JSONPath matched multiple nodes (" + matches.size() + ") for " + edit.getJsonPath() + " in file " + edit.getFile());
+        }
+        var current = matches.get(0);
+        return current;
+    }
+
     @Override
     public void addVersion(String objectId, int version, Path objectVersionDirectory) {
         log.debug("Adding version import directory {} to object {} as version v{}", objectVersionDirectory, objectId, version);
@@ -498,18 +510,6 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
             Files.writeString(targetFile, updated);
             log.info("Applied root extension init edit on {} at {}", edit.getFile(), edit.getJsonPath());
         }
-    }
-
-    private static Object getNodeToReplace(RootExtensionsInitEdit edit, Object matchesRaw) {
-        List<?> matches = matchesRaw instanceof List ? (List<?>) matchesRaw : List.of(matchesRaw);
-        if (matches.isEmpty()) {
-            throw new IllegalStateException("JSONPath did not match any nodes: " + edit.getJsonPath() + " in file " + edit.getFile());
-        }
-        if (matches.size() != 1) {
-            throw new IllegalStateException("JSONPath matched multiple nodes (" + matches.size() + ") for " + edit.getJsonPath() + " in file " + edit.getFile());
-        }
-        var current = matches.get(0);
-        return current;
     }
 
     private boolean isTypeCompatible(Object current, Object replacement) {

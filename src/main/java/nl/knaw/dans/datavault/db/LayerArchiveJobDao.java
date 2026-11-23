@@ -29,8 +29,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Persists {@link LayerArchiveJob}s. The public methods declare their own {@link UnitOfWork}, so the DAO must be created with a {@code UnitOfWorkAwareProxyFactory}. This makes it usable from
- * inside and outside other units of work, for example from the API resources and from long-running worker threads that must not hold a database connection.
+ * Persists {@link LayerArchiveJob}s. The public methods declare their own {@link UnitOfWork}, so the DAO must be created with a {@code UnitOfWorkAwareProxyFactory}. This makes it usable from inside
+ * and outside other units of work, for example from the API resources and from long-running worker threads that must not hold a database connection.
  */
 public class LayerArchiveJobDao extends AbstractDAO<LayerArchiveJob> implements TaskSource<LayerArchiveJob> {
     private final int maxParallelJobs;

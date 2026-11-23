@@ -20,7 +20,7 @@ import java.util.Comparator;
 
 public class TimestampDirectoryComparator implements Comparator<Path> {
     public static final TimestampDirectoryComparator INSTANCE = new TimestampDirectoryComparator();
-    
+
     @Override
     public int compare(Path p1, Path p2) {
         try {

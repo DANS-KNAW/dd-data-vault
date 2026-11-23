@@ -38,47 +38,38 @@ import java.util.UUID;
 @Builder
 @Entity(name = "layer_archive_job")
 public class LayerArchiveJob {
+    @Id
+    @GeneratedValue(generator = "UUID")
+    @GenericGenerator(name = "UUID", strategy = "org.hibernate.id.UUIDGenerator")
+    @Column(nullable = false)
+    private UUID id;
+    @Column(nullable = false)
+    private long layerId;
+    @Column(name = "active_layer_id", unique = true)
+    private Long activeLayerId;
+    @Column(nullable = false)
+    private OffsetDateTime created;
+    @Column
+    private OffsetDateTime started;
+    @Column
+    private OffsetDateTime finished;
+    @Column(nullable = false)
+    private Status status;
+    @Column
+    private int attempts;
+    /**
+     * Whether an existing archive of the layer must be overwritten, because a rearchive was requested.
+     */
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private boolean overwrite;
+    @Column
+    @Lob
+    private String message;
+
     public enum Status {
         PENDING,
         RUNNING,
         SUCCESS,
         FAILED
     }
-
-    @Id
-    @GeneratedValue(generator = "UUID")
-    @GenericGenerator(name = "UUID", strategy = "org.hibernate.id.UUIDGenerator")
-    @Column(nullable = false)
-    private UUID id;
-
-    @Column(nullable = false)
-    private long layerId;
-
-    @Column(name = "active_layer_id", unique = true)
-    private Long activeLayerId;
-
-    @Column(nullable = false)
-    private OffsetDateTime created;
-
-    @Column
-    private OffsetDateTime started;
-
-    @Column
-    private OffsetDateTime finished;
-
-    @Column(nullable = false)
-    private Status status;
-
-    @Column
-    private int attempts;
-
-    /**
-     * Whether an existing archive of the layer must be overwritten, because a rearchive was requested.
-     */
-    @Column(nullable = false, columnDefinition = "boolean default false")
-    private boolean overwrite;
-
-    @Column
-    @Lob
-    private String message;
 }

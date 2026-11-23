@@ -97,6 +97,7 @@ public class DmfTarArchiveProviderFactory implements ArchiveProviderFactory {
         var ssh = new SshRunner(sshExecutable, user, host, archiveRoot);
         var remoteProvider = new DmfTarArchiveProvider(new DmfTarRunner(dmfTarExecutable, ssh, user, host, archiveRoot), ssh);
         var moratoriumManager = new MoratoriumManager(moratorium);
-        return new RsyncedDmfTarArchiveProvider(remoteProvider, this, new Semaphore(maxParallelUnarchive), new ExternalCommandRunner(moratoriumManager, retry), new LocalDmfTarRunner(dmfTarExecutable), moratoriumManager);
+        return new RsyncedDmfTarArchiveProvider(remoteProvider, this, new Semaphore(maxParallelUnarchive), new ExternalCommandRunner(moratoriumManager, retry), new LocalDmfTarRunner(dmfTarExecutable),
+            moratoriumManager);
     }
 }

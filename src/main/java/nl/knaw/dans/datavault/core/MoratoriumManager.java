@@ -26,8 +26,8 @@ import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
 /**
- * Makes the service refrain from network actions towards the remote archive for a while, to avoid triggering the hammer protection of the remote storage. One instance is shared by all
- * components that perform such actions.
+ * Makes the service refrain from network actions towards the remote archive for a while, to avoid triggering the hammer protection of the remote storage. One instance is shared by all components that
+ * perform such actions.
  */
 @Slf4j
 public class MoratoriumManager {

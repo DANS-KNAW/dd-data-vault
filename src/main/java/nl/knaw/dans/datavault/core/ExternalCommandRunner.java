@@ -29,23 +29,24 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 /**
- * Runs configured external commands towards the remote archive. All commands are subject to the moratorium: none is started while a moratorium is in effect, and a failing command whose
- * output contains the moratorium trigger text starts one.
+ * Runs configured external commands towards the remote archive. All commands are subject to the moratorium: none is started while a moratorium is in effect, and a failing command whose output
+ * contains the moratorium trigger text starts one.
  */
 @Slf4j
 public class ExternalCommandRunner {
-    public record CommandResult(int exitCode, String output) {
-        public boolean succeeded() {
-            return exitCode == 0;
-        }
-    }
-
     private final MoratoriumManager moratoriumManager;
     private final RetryConfig retryConfig;
-
     public ExternalCommandRunner(MoratoriumManager moratoriumManager, RetryConfig retryConfig) {
         this.moratoriumManager = moratoriumManager;
         this.retryConfig = retryConfig;
+    }
+
+    private static String substitute(String template, Map<String, String> placeholders) {
+        var result = template;
+        for (var entry : placeholders.entrySet()) {
+            result = result.replace("${" + entry.getKey() + "}", entry.getValue());
+        }
+        return result;
     }
 
     /**
@@ -80,7 +81,7 @@ public class ExternalCommandRunner {
     /**
      * Runs the command until it succeeds, waiting the configured backoff time between attempts.
      *
-     * @param description a description of the action, for logging and error messages
+     * @param description  a description of the action, for logging and error messages
      * @param stopOnOutput if the output of a failed attempt contains this text, the failed result is returned instead of trying again; may be null
      * @return the result of the successful attempt, or of the attempt that stopped the retrying
      * @throws MoratoriumException    if a moratorium is (or becomes) in effect
@@ -88,8 +89,13 @@ public class ExternalCommandRunner {
      */
     public CommandResult runWithRetry(ExternalCommandConfig command, Map<String, String> placeholders, String description, String stopOnOutput) {
         for (var attempt = 1; ; attempt++) {
+            log.info("Attempting {} (attempt {} of {})", description, attempt, retryConfig.getMaxAttempts());
             var result = run(command, placeholders);
             if (result.succeeded() || (stopOnOutput != null && result.output().contains(stopOnOutput))) {
+                log.info("{} succeeded (attempt {} of {})", description, attempt, retryConfig.getMaxAttempts());
+                if (stopOnOutput != null && result.output().contains(stopOnOutput)) {
+                    log.info("{} stopped retrying due to stopOnOutput (attempt {} of {})", description, attempt, retryConfig.getMaxAttempts());
+                }
                 return result;
             }
             log.warn("{} failed (attempt {} of {}), exit code {}: {}", description, attempt, retryConfig.getMaxAttempts(), result.exitCode(), result.output());
@@ -107,11 +113,9 @@ public class ExternalCommandRunner {
         }
     }
 
-    private static String substitute(String template, Map<String, String> placeholders) {
-        var result = template;
-        for (var entry : placeholders.entrySet()) {
-            result = result.replace("${" + entry.getKey() + "}", entry.getValue());
+    public record CommandResult(int exitCode, String output) {
+        public boolean succeeded() {
+            return exitCode == 0;
         }
-        return result;
     }
 }

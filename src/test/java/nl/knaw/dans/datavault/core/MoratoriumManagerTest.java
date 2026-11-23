@@ -30,29 +30,6 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 public class MoratoriumManagerTest {
-    private static class MutableClock extends Clock {
-        private Instant now = Instant.parse("2026-01-01T00:00:00Z");
-
-        void advance(Duration d) {
-            now = now.plus(d);
-        }
-
-        @Override
-        public ZoneId getZone() {
-            return ZoneOffset.UTC;
-        }
-
-        @Override
-        public Clock withZone(ZoneId zone) {
-            return this;
-        }
-
-        @Override
-        public Instant instant() {
-            return now;
-        }
-    }
-
     private final MutableClock clock = new MutableClock();
     private final MoratoriumManager manager = new MoratoriumManager(List.of("Connection refused"), Duration.ofMinutes(15), clock);
 
@@ -132,5 +109,28 @@ public class MoratoriumManagerTest {
         clock.advance(Duration.ofMinutes(-5));
         manager.checkOutput("Connection refused");
         assertThat(manager.remaining()).isEqualTo(Duration.ofMinutes(20));
+    }
+
+    private static class MutableClock extends Clock {
+        private Instant now = Instant.parse("2026-01-01T00:00:00Z");
+
+        void advance(Duration d) {
+            now = now.plus(d);
+        }
+
+        @Override
+        public ZoneId getZone() {
+            return ZoneOffset.UTC;
+        }
+
+        @Override
+        public Clock withZone(ZoneId zone) {
+            return this;
+        }
+
+        @Override
+        public Instant instant() {
+            return now;
+        }
     }
 }
