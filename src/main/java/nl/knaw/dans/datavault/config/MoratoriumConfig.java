@@ -19,12 +19,13 @@ import io.dropwizard.util.Duration;
 import lombok.Data;
 
 import javax.validation.constraints.NotNull;
+import java.util.List;
 
 @Data
 public class MoratoriumConfig {
-    // When this text is in the output of a command, all network actions towards the remote archive are suspended for the given duration.
+    // When a pattern matches command output, network actions towards the remote archive are suspended for the given duration.
     @NotNull
-    private String triggerOn = "Connection refused";
+    private List<@NotNull String> triggerOn = List.of("Connection refused");
 
     @NotNull
     private Duration duration = Duration.minutes(15);

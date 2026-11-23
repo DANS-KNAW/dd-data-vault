@@ -65,6 +65,28 @@ public class ExternalCommandRunnerTest {
     }
 
     @Test
+    public void configured_timeout_regex_triggers_only_on_failed_output() {
+        moratoriumConfig.setTriggerOn(List.of("Connection refused", "Connection timed? out"));
+        var manager = new MoratoriumManager(moratoriumConfig);
+        var configuredRunner = new ExternalCommandRunner(manager, retryConfig);
+        var success = configuredRunner.run(new ExternalCommandConfig("/bin/sh", List.of("-c", "echo 'Connection timed out'")), Map.of());
+        assertThat(success.succeeded()).isTrue();
+        assertThat(manager.isUnderMoratorium()).isFalse();
+        var failure = configuredRunner.run(new ExternalCommandConfig("/bin/sh", List.of("-c", "echo 'Connection reset'; exit 255")), Map.of());
+        assertThat(failure.exitCode()).isEqualTo(255);
+        assertThat(manager.isUnderMoratorium()).isFalse();
+        configuredRunner.run(new ExternalCommandConfig("/bin/sh", List.of("-c", "echo 'ssh: Connection timed out'; exit 255")), Map.of());
+        assertThat(manager.isUnderMoratorium()).isTrue();
+        assertThatThrownBy(() -> configuredRunner.run(new ExternalCommandConfig("/bin/true", List.of()), Map.of())).isInstanceOf(MoratoriumException.class);
+    }
+
+    @Test
+    public void timeout_is_not_a_default_trigger() {
+        runner.run(new ExternalCommandConfig("/bin/sh", List.of("-c", "echo 'Connection timed out'; exit 255")), Map.of());
+        assertThat(moratoriumManager.isUnderMoratorium()).isFalse();
+    }
+
+    @Test
     public void runWithRetry_throws_when_all_attempts_fail() {
         assertThatThrownBy(() -> runner.runWithRetry(new ExternalCommandConfig("/bin/sh", List.of("-c", "echo nope; exit 1")), Map.of(), "Doing it", null))
             .isInstanceOf(CommandFailedException.class)

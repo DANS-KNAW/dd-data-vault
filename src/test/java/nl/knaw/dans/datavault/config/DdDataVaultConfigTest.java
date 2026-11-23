@@ -93,7 +93,7 @@ public class DdDataVaultConfigTest {
         assertThat(factory.getRetry().getMaxAttempts()).isEqualTo(10);
         assertThat(factory.isVerifyDownloadedCopy()).isFalse();
         assertThat(factory.getMaxParallelUnarchive()).isEqualTo(2);
-        assertThat(factory.getMoratorium().getTriggerOn()).isEqualTo("Connection refused");
+        assertThat(factory.getMoratorium().getTriggerOn()).containsExactly("Connection refused");
         assertThat(factory.getMoratorium().getDuration()).isEqualTo(Duration.minutes(15));
     }
 
@@ -125,7 +125,7 @@ public class DdDataVaultConfigTest {
                 maxAttempts: 3
                 backoff: 5 seconds
               moratorium:
-                triggerOn: "refused"
+                triggerOn: [ 'refused', 'Connection timed out' ]
                 duration: 1 hour
             """);
 
@@ -136,7 +136,46 @@ public class DdDataVaultConfigTest {
         assertThat(factory.getMaxParallelUnarchive()).isEqualTo(4);
         assertThat(factory.getVerify().getInvalidOn()).isEqualTo("bad");
         assertThat(factory.getRetry().getBackoff()).isEqualTo(Duration.seconds(5));
+        assertThat(factory.getMoratorium().getTriggerOn()).containsExactly("refused", "Connection timed out");
         assertThat(factory.getMoratorium().getDuration()).isEqualTo(Duration.hours(1));
+    }
+
+    private Path configWithTriggers(String name, String triggers) throws IOException {
+        return debugConfigWithArchiveProvider(name, """
+            archiveProvider:
+              type: DMFTAR
+              dmfTarExecutable: /usr/local/bin/dmftar
+              sshExecutable: /usr/bin/ssh
+              host: dmf.example.org
+              user: vault
+              archiveRoot: /remote/archive
+              localTransferRoot: data/vault/transfer
+              moratorium:
+                triggerOn: %s
+            """.formatted(triggers));
+    }
+
+    @Test
+    public void empty_trigger_list_can_be_parsed() throws Exception {
+        var factory = (DmfTarArchiveProviderFactory) parse(configWithTriggers("empty-triggers.yml", "[]"))
+            .getDataVault().getLayerStore().getArchiveProvider();
+        assertThat(factory.getMoratorium().getTriggerOn()).isEmpty();
+    }
+
+    @Test
+    public void null_trigger_list_and_elements_are_rejected() throws Exception {
+        for (var triggers : new String[] { "null", "[ 'Connection refused', null ]" }) {
+            var file = configWithTriggers("null-triggers.yml", triggers);
+            assertThatThrownBy(() -> parse(file))
+                .isInstanceOf(ConfigurationValidationException.class)
+                .hasMessageContaining("triggerOn");
+        }
+    }
+
+    @Test
+    public void scalar_trigger_override_is_rejected() throws Exception {
+        var file = configWithTriggers("scalar-trigger.yml", "'Connection refused'");
+        assertThatThrownBy(() -> parse(file)).hasMessageContaining("triggerOn");
     }
 
     @Test
