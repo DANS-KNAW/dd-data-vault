@@ -93,7 +93,7 @@ public class DdDataVaultConfigTest {
         assertThat(factory.getRetry().getMaxAttempts()).isEqualTo(10);
         assertThat(factory.isVerifyDownloadedCopy()).isFalse();
         assertThat(factory.getMaxParallelUnarchive()).isEqualTo(2);
-        assertThat(factory.getMoratorium().getTriggerOn()).containsExactly("Connection refused");
+        assertThat(factory.getMoratorium().getTriggerOn()).containsExactly("Connection refused", "Connection timed out");
         assertThat(factory.getMoratorium().getDuration()).isEqualTo(Duration.minutes(15));
     }
 

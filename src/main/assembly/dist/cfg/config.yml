@@ -184,11 +184,12 @@ dataVault:
     #     backoff: 1 minute
     #   # Suspend network actions when any Java regex matches anywhere in failed command output (case-sensitive unless flags say otherwise).
     #   # Convert existing scalar triggerOn overrides to a list; escape regex metacharacters when matching literal text.
-    #   # An empty list disables output-triggered moratoriums. Connection refused is the only default; timeout is optional.
+    #   # The defaults are Connection refused and Connection timed out. An explicitly configured list replaces these defaults;
+    #   # an empty list disables output-triggered moratoriums.
     #   moratorium:
     #     triggerOn:
     #       - 'Connection refused'
-    #       # - 'Connection timed out' # optional
+    #       - 'Connection timed out'
     #     duration: 15 minutes
 
     #

@@ -81,12 +81,6 @@ public class ExternalCommandRunnerTest {
     }
 
     @Test
-    public void timeout_is_not_a_default_trigger() {
-        runner.run(new ExternalCommandConfig("/bin/sh", List.of("-c", "echo 'Connection timed out'; exit 255")), Map.of());
-        assertThat(moratoriumManager.isUnderMoratorium()).isFalse();
-    }
-
-    @Test
     public void runWithRetry_throws_when_all_attempts_fail() {
         assertThatThrownBy(() -> runner.runWithRetry(new ExternalCommandConfig("/bin/sh", List.of("-c", "echo nope; exit 1")), Map.of(), "Doing it", null))
             .isInstanceOf(CommandFailedException.class)

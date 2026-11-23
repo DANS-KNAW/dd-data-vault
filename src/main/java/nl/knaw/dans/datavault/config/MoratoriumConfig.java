@@ -23,9 +23,8 @@ import java.util.List;
 
 @Data
 public class MoratoriumConfig {
-    // When a pattern matches command output, network actions towards the remote archive are suspended for the given duration.
     @NotNull
-    private List<@NotNull String> triggerOn = List.of("Connection refused");
+    private List<@NotNull String> triggerOn = List.of("Connection refused", "Connection timed out");
 
     @NotNull
     private Duration duration = Duration.minutes(15);
