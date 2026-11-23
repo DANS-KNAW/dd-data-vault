@@ -15,11 +15,16 @@
  */
 package nl.knaw.dans.datavault.config;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.dropwizard.util.Duration;
 import lombok.Data;
 
+import javax.validation.constraints.AssertTrue;
 import javax.validation.constraints.NotNull;
 import java.util.List;
+import java.util.Objects;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 @Data
 public class MoratoriumConfig {
@@ -28,4 +33,22 @@ public class MoratoriumConfig {
 
     @NotNull
     private Duration duration = Duration.minutes(15);
+
+    @JsonIgnore
+    @AssertTrue(message = "triggerOn must contain valid regular expressions")
+    public boolean isTriggerOnValidRegexes() {
+        return triggerOn == null || triggerOn.stream()
+            .filter(Objects::nonNull)
+            .allMatch(MoratoriumConfig::isValidRegex);
+    }
+
+    private static boolean isValidRegex(String regex) {
+        try {
+            Pattern.compile(regex);
+            return true;
+        }
+        catch (PatternSyntaxException e) {
+            return false;
+        }
+    }
 }
