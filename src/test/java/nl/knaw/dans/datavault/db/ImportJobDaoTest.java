@@ -23,6 +23,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 import java.time.OffsetDateTime;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -68,5 +69,46 @@ public class ImportJobDaoTest {
         assertThat(successfulJobs)
             .extracting(ImportJob::getId)
             .containsExactly(job1.getId(), job3.getId());
+    }
+
+    @Test
+    public void list_filtered_should_apply_status_and_exact_path_filters() {
+        var now = OffsetDateTime.now();
+        var first = createJob("batch", ImportJob.Status.SUCCESS, now.minusHours(1));
+        var second = createJob("batch", ImportJob.Status.FAILED, now);
+        createJob("batch", ImportJob.Status.PENDING, now);
+        createJob("batch-extra", ImportJob.Status.SUCCESS, now);
+
+        var jobs = daoTestRule.inTransaction(() -> dao.listFiltered(
+            Set.of(ImportJob.Status.SUCCESS, ImportJob.Status.FAILED), "batch", null, null));
+        assertThat(jobs).extracting(ImportJob::getId).containsExactly(first.getId(), second.getId());
+        assertThat(daoTestRule.inTransaction(() -> dao.listFiltered(Set.of(ImportJob.Status.RUNNING), "batch", null, null))).isEmpty();
+    }
+
+    @Test
+    public void list_filtered_should_page_in_stable_created_and_id_order() {
+        var now = OffsetDateTime.now();
+        var early = createJob("early", ImportJob.Status.PENDING, now.minusHours(1));
+        createJob("same", ImportJob.Status.SUCCESS, now);
+        createJob("same", ImportJob.Status.FAILED, now);
+        var late = createJob("late", ImportJob.Status.RUNNING, now.plusHours(1));
+
+        var all = daoTestRule.inTransaction(() -> dao.listFiltered(null, null, null, null));
+        assertThat(all).hasSize(4);
+        assertThat(all.get(0).getId()).isEqualTo(early.getId());
+        assertThat(all.get(3).getId()).isEqualTo(late.getId());
+        assertThat(all.get(1).getId().toString()).isLessThan(all.get(2).getId().toString());
+        var page = daoTestRule.inTransaction(() -> dao.listFiltered(Set.of(), null, 2, 1));
+        assertThat(page).extracting(ImportJob::getId)
+            .containsExactly(all.get(1).getId(), all.get(2).getId());
+        assertThat(daoTestRule.inTransaction(() -> dao.listFiltered(null, null, 2, 4))).isEmpty();
+    }
+
+    private ImportJob createJob(String path, ImportJob.Status status, OffsetDateTime created) {
+        return daoTestRule.inTransaction(() -> dao.create(ImportJob.builder()
+            .path(path)
+            .status(status)
+            .created(created)
+            .build()));
     }
 }

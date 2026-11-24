@@ -28,12 +28,14 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.OffsetDateTime;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
 
 public class ImportsApiResourceTest {
     private final Path testDir = Path.of("target/test/ImportsApiResourceTest");
@@ -126,11 +128,31 @@ public class ImportsApiResourceTest {
             .created(OffsetDateTime.now())
             .build();
 
-        when(importJobDao.list()).thenReturn(List.of(job));
+        when(importJobDao.listFiltered(EnumSet.noneOf(ImportJob.Status.class), null, null, null)).thenReturn(List.of(job));
 
-        var response = resource.importsGet();
+        var response = resource.importsGet(null, null, null, null);
 
         assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+        assertThat((List<?>) response.getEntity()).hasSize(1);
+    }
+
+    @Test
+    public void imports_get_normalizes_batch_and_passes_filters() {
+        var statuses = EnumSet.of(ImportJob.Status.PENDING, ImportJob.Status.FAILED);
+        assertThat(resource.importsGet(List.of("PENDING", "FAILED"), 10, 2, "dir/../batch").getStatus()).isEqualTo(200);
+        verify(importJobDao).listFiltered(statuses, "batch", 10, 2);
+        assertThat(resource.importsGet(null, null, null, inbox.toAbsolutePath().resolve("dir/../batch").toString()).getStatus()).isEqualTo(200);
+        verify(importJobDao).listFiltered(EnumSet.noneOf(ImportJob.Status.class), "batch", null, null);
+    }
+
+    @Test
+    public void imports_get_rejects_invalid_filters() {
+        assertThat(resource.importsGet(List.of("INVALID"), null, null, null).getStatus()).isEqualTo(400);
+        assertThat(resource.importsGet(null, 0, null, null).getStatus()).isEqualTo(400);
+        assertThat(resource.importsGet(null, 1, -1, null).getStatus()).isEqualTo(400);
+        assertThat(resource.importsGet(null, null, 0, null).getStatus()).isEqualTo(400);
+        assertThat(resource.importsGet(null, null, null, "../escape").getStatus()).isEqualTo(400);
+        assertThat(resource.importsGet(null, null, null, inbox.toAbsolutePath().resolveSibling("inbox-other/batch").toString()).getStatus()).isEqualTo(400);
     }
 
     @Test

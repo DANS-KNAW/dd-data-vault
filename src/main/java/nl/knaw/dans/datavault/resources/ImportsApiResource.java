@@ -27,6 +27,8 @@ import org.mapstruct.factory.Mappers;
 import javax.ws.rs.core.Response;
 import java.nio.file.Path;
 import java.time.OffsetDateTime;
+import java.util.EnumSet;
+import java.util.List;
 import java.util.UUID;
 
 import static javax.ws.rs.core.Response.Status.CREATED;
@@ -40,9 +42,32 @@ public class ImportsApiResource implements ImportsApi {
 
     @Override
     @UnitOfWork
-    public Response importsGet() {
-        var jobs = importJobDao.list();
-        return Response.ok(conversions.convert(jobs)).build();
+    public Response importsGet(List<String> status, Integer limit, Integer offset, String batch) {
+        try {
+            if ((limit != null && limit <= 0) || (offset != null && (offset < 0 || limit == null))) {
+                throw new IllegalArgumentException("Invalid pagination parameters");
+            }
+            var statuses = EnumSet.noneOf(ImportJob.Status.class);
+            if (status != null) {
+                for (var value : status) {
+                    statuses.add(ImportJob.Status.valueOf(value));
+                }
+            }
+            String relativeBatch = null;
+            if (batch != null) {
+                var normalizedInbox = inbox.toAbsolutePath().normalize();
+                var normalizedPath = normalizedInbox.resolve(Path.of(batch)).normalize();
+                if (!normalizedPath.startsWith(normalizedInbox)) {
+                    throw new IllegalArgumentException("Path traverses outside of inbox directory");
+                }
+                relativeBatch = normalizedInbox.relativize(normalizedPath).toString();
+            }
+            var jobs = importJobDao.listFiltered(statuses, relativeBatch, limit, offset);
+            return Response.ok(conversions.convert(jobs)).build();
+        }
+        catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.BAD_REQUEST).entity(e.getMessage()).build();
+        }
     }
 
     @Override

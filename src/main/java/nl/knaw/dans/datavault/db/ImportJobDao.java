@@ -22,6 +22,7 @@ import org.hibernate.SessionFactory;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 public class ImportJobDao extends AbstractDAO<ImportJob> implements TaskSource<ImportJob> {
@@ -78,5 +79,28 @@ public class ImportJobDao extends AbstractDAO<ImportJob> implements TaskSource<I
         var root = query.from(ImportJob.class);
         query.orderBy(criteria.asc(root.get("created")));
         return currentSession().createQuery(query).getResultList();
+    }
+
+    public List<ImportJob> listFiltered(Set<ImportJob.Status> statuses, String path, Integer limit, Integer offset) {
+        var criteria = currentSession().getCriteriaBuilder();
+        var query = criteria.createQuery(ImportJob.class);
+        var root = query.from(ImportJob.class);
+        var predicate = criteria.conjunction();
+        if (statuses != null && !statuses.isEmpty()) {
+            predicate = criteria.and(predicate, root.get("status").in(statuses));
+        }
+        if (path != null) {
+            predicate = criteria.and(predicate, criteria.equal(root.get("path"), path));
+        }
+        query.where(predicate);
+        query.orderBy(criteria.asc(root.get("created")), criteria.asc(root.get("id")));
+        var typedQuery = currentSession().createQuery(query);
+        if (offset != null) {
+            typedQuery.setFirstResult(offset);
+        }
+        if (limit != null) {
+            typedQuery.setMaxResults(limit);
+        }
+        return typedQuery.getResultList();
     }
 }
