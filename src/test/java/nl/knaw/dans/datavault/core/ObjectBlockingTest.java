@@ -67,5 +67,25 @@ class ObjectBlockingTest {
         assertThat(object.isBlocked()).isFalse();
         assertThat(object.isIngested()).isFalse();
         verify(dao).lockObject("object");
+        verify(dao).save(object);
+    }
+
+    @Test
+    void clearing_an_already_unblocked_object_saves_it() {
+        var object = VaultObject.builder().blocked(false).ingested(true).build();
+        when(dao.findByObjectId("object")).thenReturn(Optional.of(object));
+        assertThat(provider.clearObjectBlock("object")).contains(false);
+        assertThat(object.isBlocked()).isFalse();
+        assertThat(object.isIngested()).isTrue();
+        verify(dao).lockObject("object");
+        verify(dao).save(object);
+    }
+
+    @Test
+    void clearing_a_missing_object_does_not_save() {
+        when(dao.findByObjectId("missing")).thenReturn(Optional.empty());
+        assertThat(provider.clearObjectBlock("missing")).isEmpty();
+        verify(dao).lockObject("missing");
+        verify(dao, never()).save(any());
     }
 }

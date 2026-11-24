@@ -56,7 +56,7 @@ public class OcflApiResource implements OcflApi {
     @Override
     public Response ocflObjectsIdBlockedDelete(String id) {
         return ocflRepositoryProvider.clearObjectBlock(id)
-            .map(Response::ok)
+            .map(ignored -> Response.noContent())
             .orElseGet(() -> Response.status(Response.Status.NOT_FOUND))
             .build();
     }

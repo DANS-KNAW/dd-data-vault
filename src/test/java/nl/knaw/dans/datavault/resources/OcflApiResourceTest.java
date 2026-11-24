@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
@@ -92,8 +93,8 @@ public class OcflApiResourceTest {
 
         var existing = resource.ocflObjectsIdBlockedDelete("existing");
         var missing = resource.ocflObjectsIdBlockedDelete("missing");
-        assertEquals(200, existing.getStatus());
-        assertEquals(false, existing.getEntity());
+        assertEquals(204, existing.getStatus());
+        assertNull(existing.getEntity());
         assertEquals(404, missing.getStatus());
         verify(repositoryProvider).clearObjectBlock("existing");
         verify(repositoryProvider).clearObjectBlock("missing");
