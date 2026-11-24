@@ -19,14 +19,20 @@ import io.dropwizard.hibernate.UnitOfWork;
 import lombok.AllArgsConstructor;
 import nl.knaw.dans.datavault.Conversions;
 import nl.knaw.dans.datavault.api.ImportCommandDto;
+import nl.knaw.dans.datavault.api.RestageFailedRequestDto;
 import nl.knaw.dans.datavault.core.BatchCleaner;
 import nl.knaw.dans.datavault.core.ImportJob;
 import nl.knaw.dans.datavault.db.ImportJobDao;
 import org.mapstruct.factory.Mappers;
 
 import javax.ws.rs.core.Response;
+import java.io.IOException;
+import java.nio.file.FileAlreadyExistsException;
+import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.UUID;
@@ -108,6 +114,106 @@ public class ImportsApiResource implements ImportsApi {
             cleaner.deleteBatchDirs();
         }
         return Response.ok().build();
+    }
+
+    @Override
+    @UnitOfWork
+    public Response importsRestageFailedPost(RestageFailedRequestDto request) {
+        try {
+            if (request == null || request.getSelector() == null || request.getSelector().isBlank()) {
+                throw new IllegalArgumentException("Selector is required");
+            }
+            var selector = request.getSelector();
+            UUID id = null;
+            try {
+                var parsed = UUID.fromString(selector);
+                if (parsed.toString().equalsIgnoreCase(selector)) {
+                    id = parsed;
+                }
+            }
+            catch (IllegalArgumentException ignored) {
+                // A non-UUID selector is a path.
+            }
+            ImportJob selected = id == null ? null : importJobDao.get(id);
+            if (id != null && selected == null) {
+                return Response.status(Response.Status.NOT_FOUND).build();
+            }
+            var root = inbox.toAbsolutePath().normalize();
+            var path = root.resolve(selected == null ? Path.of(selector) : Path.of(selected.getPath())).normalize();
+            if (!path.startsWith(root) || path.equals(root)) {
+                throw new IllegalArgumentException("Path must be inside inbox");
+            }
+            var relative = root.relativize(path);
+            for (var job : importJobDao.listFiltered(EnumSet.of(ImportJob.Status.PENDING, ImportJob.Status.RUNNING), null, null, null)) {
+                var active = root.resolve(job.getPath()).normalize();
+                if (path.startsWith(active) || active.startsWith(path)) {
+                    return Response.status(Response.Status.CONFLICT).entity("Import job is active").build();
+                }
+            }
+            var failed = outbox.toAbsolutePath().normalize().resolve(relative).resolve("failed");
+            checkNoSymlinks(root, path);
+            checkNoSymlinks(outbox.toAbsolutePath().normalize(), failed);
+            if (!Files.exists(failed, LinkOption.NOFOLLOW_LINKS)) {
+                return Response.ok().build();
+            }
+            var sources = new ArrayList<Path>();
+            var single = selected != null && selected.isSingleObject();
+            if (single) {
+                var source = failed.resolve(path.getFileName());
+                checkNoSymlinks(outbox.toAbsolutePath().normalize(), source);
+                if (Files.isDirectory(source, LinkOption.NOFOLLOW_LINKS)) {
+                    sources.add(source);
+                }
+            }
+            else {
+                try (var entries = Files.newDirectoryStream(failed)) {
+                    for (var entry : entries) {
+                        if (Files.isSymbolicLink(entry)) {
+                            throw new IllegalArgumentException("Symbolic links are not allowed");
+                        }
+                        if (Files.isDirectory(entry, LinkOption.NOFOLLOW_LINKS)) {
+                            sources.add(entry);
+                        }
+                    }
+                }
+            }
+            for (var source : sources) {
+                var destination = single ? path : path.resolve(source.getFileName());
+                checkNoSymlinks(root, destination);
+                if (Files.exists(destination, LinkOption.NOFOLLOW_LINKS)) {
+                    return Response.status(Response.Status.CONFLICT).entity("Destination already exists: " + destination).build();
+                }
+            }
+            for (var source : sources) {
+                var destination = single ? path : path.resolve(source.getFileName());
+                Files.createDirectories(destination.getParent());
+                Files.move(source, destination);
+                Files.deleteIfExists(failed.resolve(source.getFileName() + "-error.txt"));
+            }
+            return Response.ok().build();
+        }
+        catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.BAD_REQUEST).entity(e.getMessage()).build();
+        }
+        catch (FileAlreadyExistsException e) {
+            return Response.status(Response.Status.CONFLICT).entity(e.getMessage()).build();
+        }
+        catch (IOException e) {
+            return Response.serverError().entity(e.getMessage()).build();
+        }
+    }
+
+    private void checkNoSymlinks(Path root, Path path) {
+        var current = root;
+        if (Files.isSymbolicLink(current)) {
+            throw new IllegalArgumentException("Symbolic links are not allowed");
+        }
+        for (var part : root.relativize(path)) {
+            current = current.resolve(part);
+            if (Files.isSymbolicLink(current)) {
+                throw new IllegalArgumentException("Symbolic links are not allowed");
+            }
+        }
     }
 
     private String getInboxRelativePath(Path path) {

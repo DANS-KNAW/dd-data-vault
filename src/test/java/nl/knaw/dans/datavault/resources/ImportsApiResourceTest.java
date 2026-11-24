@@ -16,6 +16,7 @@
 package nl.knaw.dans.datavault.resources;
 
 import nl.knaw.dans.datavault.api.ImportCommandDto;
+import nl.knaw.dans.datavault.api.RestageFailedRequestDto;
 import nl.knaw.dans.datavault.core.ImportJob;
 import nl.knaw.dans.datavault.db.ImportJobDao;
 import org.apache.commons.io.FileUtils;
@@ -211,5 +212,90 @@ public class ImportsApiResourceTest {
         var response = resource.importsPost(cmd);
 
         assertThat(response.getStatus()).isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+    }
+
+    @Test
+    public void restage_moves_failed_objects_and_removes_only_their_error_files() throws Exception {
+        var failed = outbox.resolve("batch/failed");
+        Files.createDirectories(failed.resolve("object/v1"));
+        Files.writeString(failed.resolve("object-error.txt"), "error");
+        Files.writeString(failed.resolve("other-error.txt"), "keep");
+        assertThat(restage("batch").getStatus()).isEqualTo(200);
+        assertThat(inbox.resolve("batch/object/v1")).isDirectory();
+        assertThat(failed.resolve("object")).doesNotExist();
+        assertThat(failed.resolve("object-error.txt")).doesNotExist();
+        assertThat(failed.resolve("other-error.txt")).exists();
+        assertThat(restage("batch").getStatus()).isEqualTo(200);
+    }
+
+    @Test
+    public void restage_single_object_by_job_id() throws Exception {
+        var id = UUID.randomUUID();
+        when(importJobDao.get(id)).thenReturn(ImportJob.builder().path("batch/object").singleObject(true).build());
+        var failed = outbox.resolve("batch/object/failed");
+        Files.createDirectories(failed.resolve("object/v1"));
+        Files.createDirectories(failed.resolve("other/v1"));
+        Files.writeString(failed.resolve("object-error.txt"), "remove");
+        Files.writeString(failed.resolve("other-error.txt"), "keep");
+        Files.createSymbolicLink(failed.resolve("unrelated-link"), testDir.toAbsolutePath());
+        assertThat(restage(id.toString()).getStatus()).isEqualTo(200);
+        assertThat(inbox.resolve("batch/object/v1")).isDirectory();
+        assertThat(failed.resolve("object")).doesNotExist();
+        assertThat(failed.resolve("object-error.txt")).doesNotExist();
+        assertThat(failed.resolve("other/v1")).isDirectory();
+        assertThat(failed.resolve("other-error.txt")).hasContent("keep");
+        assertThat(Files.isSymbolicLink(failed.resolve("unrelated-link"))).isTrue();
+    }
+
+    @Test
+    public void restage_single_object_rejects_selected_source_symlink() throws Exception {
+        var id = UUID.randomUUID();
+        when(importJobDao.get(id)).thenReturn(ImportJob.builder().path("batch/object").singleObject(true).build());
+        var failed = outbox.resolve("batch/object/failed");
+        Files.createDirectories(failed);
+        Files.createSymbolicLink(failed.resolve("object"), inbox.toAbsolutePath());
+
+        assertThat(restage(id.toString()).getStatus()).isEqualTo(400);
+        assertThat(Files.isSymbolicLink(failed.resolve("object"))).isTrue();
+        assertThat(inbox.resolve("batch/object")).doesNotExist();
+    }
+
+    @Test
+    public void restage_uuid_shaped_path_and_missing_failed_directory() throws Exception {
+        var name = UUID.randomUUID().toString();
+        Files.createDirectories(outbox.resolve(name).resolve("failed/object"));
+        assertThat(restage(name).getStatus()).isEqualTo(404);
+        assertThat(restage("./" + name).getStatus()).isEqualTo(200);
+        assertThat(inbox.resolve(name).resolve("object")).isDirectory();
+        assertThat(restage("absent").getStatus()).isEqualTo(200);
+    }
+
+    @Test
+    public void restage_rejects_conflicts_before_moving_anything() throws Exception {
+        var failed = outbox.resolve("batch/failed");
+        Files.createDirectories(failed.resolve("a"));
+        Files.createDirectories(failed.resolve("b"));
+        Files.createDirectories(inbox.resolve("batch/b"));
+        assertThat(restage("batch").getStatus()).isEqualTo(409);
+        assertThat(failed.resolve("a")).exists();
+        assertThat(failed.resolve("b")).exists();
+    }
+
+    @Test
+    public void restage_rejects_active_overlapping_jobs_and_invalid_paths() throws Exception {
+        when(importJobDao.listFiltered(EnumSet.of(ImportJob.Status.PENDING, ImportJob.Status.RUNNING), null, null, null))
+            .thenReturn(List.of(ImportJob.builder().path("batch/object").build()));
+        assertThat(restage("batch").getStatus()).isEqualTo(409);
+        assertThat(restage("../outside").getStatus()).isEqualTo(400);
+        assertThat(restage("").getStatus()).isEqualTo(400);
+        assertThat(restage(UUID.randomUUID().toString()).getStatus()).isEqualTo(404);
+        Files.createSymbolicLink(outbox.resolve("link"), testDir.toAbsolutePath());
+        assertThat(restage("link").getStatus()).isEqualTo(400);
+    }
+
+    private Response restage(String selector) {
+        var request = new RestageFailedRequestDto();
+        request.setSelector(selector);
+        return resource.importsRestageFailedPost(request);
     }
 }
