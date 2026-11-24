@@ -64,7 +64,7 @@ public class OcflApiResourceTest {
     }
 
     @Test
-    public void ocfl_objects_get_should_pass_include_uningested_without_blocked_filter() {
+    public void ocfl_objects_get_should_pass_ingested_without_blocked_filter() {
         resource.ocflObjectsGet(null, null, null, true);
         verify(repositoryProvider).listObjectIds(null, null, null, true);
     }

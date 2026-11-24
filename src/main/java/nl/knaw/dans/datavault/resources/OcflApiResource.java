@@ -37,8 +37,8 @@ public class OcflApiResource implements OcflApi {
 
     @UnitOfWork
     @Override
-    public Response ocflObjectsGet(Integer limit, Integer offset, Boolean blocked, Boolean includeUningested) {
-        var result = ocflRepositoryProvider.listObjectIds(limit, offset, blocked, includeUningested);
+    public Response ocflObjectsGet(Integer limit, Integer offset, Boolean blocked, Boolean ingested) {
+        var result = ocflRepositoryProvider.listObjectIds(limit, offset, blocked, ingested);
 
         return Response.ok(result).build();
     }

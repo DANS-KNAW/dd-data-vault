@@ -54,7 +54,7 @@ public interface RepositoryProvider extends Managed {
 
     Optional<Boolean> clearObjectBlock(String objectId);
 
-    List<String> listObjectIds(Integer limit, Integer offset, Boolean blocked, Boolean includeUningested);
+    List<String> listObjectIds(Integer limit, Integer offset, Boolean blocked, Boolean ingested);
 
     /**
      * Retrieves the version information for the object identified by the given object id and version number.

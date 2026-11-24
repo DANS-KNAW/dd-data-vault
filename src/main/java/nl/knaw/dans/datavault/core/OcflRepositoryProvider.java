@@ -224,8 +224,8 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
     }
 
     @Override
-    public List<String> listObjectIds(Integer limit, Integer offset, Boolean blocked, Boolean includeUningested) {
-        return vaultObjectDao.findObjectIds(limit, offset, blocked, Boolean.TRUE.equals(includeUningested));
+    public List<String> listObjectIds(Integer limit, Integer offset, Boolean blocked, Boolean ingested) {
+        return vaultObjectDao.findObjectIds(limit, offset, blocked, ingested);
     }
 
     @Override

@@ -37,6 +37,8 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 
@@ -355,6 +357,21 @@ public class OcflRepositoryProviderTest extends AbstractTestFixture {
 
         var offsetBeyond = db.inTransaction(() -> ocflRepositoryProvider.listObjectIds(2, 10));
         assertThat(offsetBeyond).isEmpty();
+    }
+
+    @Test
+    public void list_object_ids_should_preserve_nullable_independent_filters() {
+        var now = Instant.now();
+        db.inTransaction(() -> vaultObjectDao.saveAll(List.of(
+            VaultObject.builder().objectId("a").createdAt(now).updatedAt(now).ingested(true).build(),
+            VaultObject.builder().objectId("b").createdAt(now).updatedAt(now).blocked(true).build(),
+            VaultObject.builder().objectId("c").createdAt(now).updatedAt(now).build()
+        )));
+
+        assertThat(db.inTransaction(() -> ocflRepositoryProvider.listObjectIds(null, null, null, null))).containsExactly("a", "b", "c");
+        assertThat(db.inTransaction(() -> ocflRepositoryProvider.listObjectIds(null, null, null, false))).containsExactly("b", "c");
+        assertThat(db.inTransaction(() -> ocflRepositoryProvider.listObjectIds(null, null, false, false))).containsExactly("c");
+        assertThat(db.inTransaction(() -> ocflRepositoryProvider.listObjectIds(1, 1, null, false))).containsExactly("c");
     }
 
     @Test

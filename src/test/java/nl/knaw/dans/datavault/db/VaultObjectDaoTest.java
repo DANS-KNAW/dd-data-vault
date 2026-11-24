@@ -127,10 +127,19 @@ public class VaultObjectDaoTest {
             VaultObject.builder().objectId("c").createdAt(now).updatedAt(now).blocked(true).build(),
             VaultObject.builder().objectId("d").createdAt(now).updatedAt(now).build()
         )));
-        assertThat(daoTestRule.inTransaction(() -> dao.findObjectIds(null, null, null, false))).containsExactly("a", "b");
-        assertThat(daoTestRule.inTransaction(() -> dao.findObjectIds(null, null, null, true))).containsExactly("a", "b", "c", "d");
-        assertThat(daoTestRule.inTransaction(() -> dao.findObjectIds(null, null, true, false))).containsExactly("b", "c");
+        assertThat(daoTestRule.inTransaction(() -> dao.findObjectIds(null, null))).containsExactly("a", "b", "c", "d");
+        assertThat(daoTestRule.inTransaction(() -> dao.findObjectIds(null, null, null, null))).containsExactly("a", "b", "c", "d");
+        assertThat(daoTestRule.inTransaction(() -> dao.findObjectIds(null, null, null, true))).containsExactly("a", "b");
+        assertThat(daoTestRule.inTransaction(() -> dao.findObjectIds(null, null, null, false))).containsExactly("c", "d");
+        assertThat(daoTestRule.inTransaction(() -> dao.findObjectIds(null, null, true, null))).containsExactly("b", "c");
+        assertThat(daoTestRule.inTransaction(() -> dao.findObjectIds(null, null, false, null))).containsExactly("a", "d");
+        assertThat(daoTestRule.inTransaction(() -> dao.findObjectIds(null, null, true, true))).containsExactly("b");
+        assertThat(daoTestRule.inTransaction(() -> dao.findObjectIds(null, null, true, false))).containsExactly("c");
         assertThat(daoTestRule.inTransaction(() -> dao.findObjectIds(null, null, false, true))).containsExactly("a");
-        assertThat(daoTestRule.inTransaction(() -> dao.findObjectIds(1, 1, true, false))).containsExactly("c");
+        assertThat(daoTestRule.inTransaction(() -> dao.findObjectIds(null, null, false, false))).containsExactly("d");
+        assertThat(daoTestRule.inTransaction(() -> dao.findObjectIds(1, 1, null, false))).containsExactly("d");
+        assertThat(daoTestRule.inTransaction(() -> dao.findObjectIds(1, 1, true, null))).containsExactly("c");
+        assertThat(daoTestRule.inTransaction(() -> dao.findObjectIds(0, 0, false, false))).isEmpty();
+        assertThat(daoTestRule.inTransaction(() -> dao.findObjectIds(1, 1, false, false))).isEmpty();
     }
 }

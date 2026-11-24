@@ -61,8 +61,8 @@ public class UnitOfWorkDeclaringRepositoryProviderAdapter implements RepositoryP
 
     @Override
     @UnitOfWork
-    public List<String> listObjectIds(Integer limit, Integer offset, Boolean blocked, Boolean includeUningested) {
-        return delegate.listObjectIds(limit, offset, blocked, includeUningested);
+    public List<String> listObjectIds(Integer limit, Integer offset, Boolean blocked, Boolean ingested) {
+        return delegate.listObjectIds(limit, offset, blocked, ingested);
     }
 
     @Override

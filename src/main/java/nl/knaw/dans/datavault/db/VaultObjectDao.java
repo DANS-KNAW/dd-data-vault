@@ -70,10 +70,10 @@ public class VaultObjectDao extends AbstractDAO<VaultObject> {
     }
 
     public List<String> findObjectIds(Integer limit, Integer offset) {
-        return findObjectIds(limit, offset, null, false);
+        return findObjectIds(limit, offset, null, null);
     }
 
-    public List<String> findObjectIds(Integer limit, Integer offset, Boolean blocked, boolean includeUningested) {
+    public List<String> findObjectIds(Integer limit, Integer offset, Boolean blocked, Boolean ingested) {
         var cb = currentSession().getCriteriaBuilder();
         var cq = cb.createQuery(String.class);
         var root = cq.from(VaultObject.class);
@@ -82,8 +82,8 @@ public class VaultObjectDao extends AbstractDAO<VaultObject> {
         if (blocked != null) {
             predicates.add(cb.equal(root.get("blocked"), blocked));
         }
-        if ((!Boolean.TRUE.equals(blocked) && !includeUningested) || Boolean.FALSE.equals(blocked)) {
-            predicates.add(cb.isTrue(root.get("ingested")));
+        if (ingested != null) {
+            predicates.add(cb.equal(root.get("ingested"), ingested));
         }
         cq.where(predicates.toArray(new Predicate[0]));
         cq.orderBy(cb.asc(root.get("objectId")));
