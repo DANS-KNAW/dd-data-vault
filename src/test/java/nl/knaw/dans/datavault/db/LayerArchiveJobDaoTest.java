@@ -78,6 +78,51 @@ public class LayerArchiveJobDaoTest {
     }
 
     @Test
+    public void find_latest_by_layer_returns_empty_when_layer_has_no_jobs() {
+        dao.register(2L, false);
+
+        assertThat(dao.findLatestByLayer(1L)).isEmpty();
+    }
+
+    @Test
+    public void find_latest_by_layer_selects_newest_job_including_unfinished_retry() {
+        var failed = dao.register(1L, false);
+        failed.setCreated(OffsetDateTime.parse("2024-01-01T00:00:00Z"));
+        dao.finish(failed.getId(), Status.FAILED, "failed");
+        var retry = dao.register(1L, false);
+        retry.setCreated(OffsetDateTime.parse("2024-01-02T00:00:00Z"));
+        var unrelated = dao.register(2L, false);
+        unrelated.setCreated(OffsetDateTime.parse("2024-01-03T00:00:00Z"));
+
+        var session = daoTestRule.getSessionFactory().getCurrentSession();
+        session.flush();
+        session.clear();
+
+        assertThat(dao.findLatestByLayer(1L)).get().satisfies(job -> {
+            assertThat(job.getId()).isEqualTo(retry.getId());
+            assertThat(job.getStatus()).isEqualTo(Status.PENDING);
+        });
+        assertThat(dao.findLatestByLayer(2L)).get().extracting(LayerArchiveJob::getId).isEqualTo(unrelated.getId());
+    }
+
+    @Test
+    public void find_latest_by_layer_breaks_creation_time_ties_by_descending_id() {
+        var created = OffsetDateTime.parse("2024-01-01T00:00:00Z");
+        var first = dao.register(1L, false);
+        first.setCreated(created);
+        dao.finish(first.getId(), Status.FAILED, "failed");
+        var second = dao.register(1L, false);
+        second.setCreated(created);
+        var expectedId = first.getId().toString().compareTo(second.getId().toString()) > 0 ? first.getId() : second.getId();
+
+        var session = daoTestRule.getSessionFactory().getCurrentSession();
+        session.flush();
+        session.clear();
+
+        assertThat(dao.findLatestByLayer(1L)).get().extracting(LayerArchiveJob::getId).isEqualTo(expectedId);
+    }
+
+    @Test
     public void finish_clears_active_layer_id_for_success_and_failed() {
         var first = dao.register(1L, false);
         dao.finish(first.getId(), Status.SUCCESS, "done");

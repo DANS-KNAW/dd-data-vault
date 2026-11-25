@@ -69,6 +69,19 @@ public class LayerArchiveJobDao extends AbstractDAO<LayerArchiveJob> implements 
         return Optional.ofNullable(get(id));
     }
 
+    /**
+     * Finds the most recently created job for a layer, using the job ID to break timestamp ties.
+     */
+    @UnitOfWork
+    public Optional<LayerArchiveJob> findLatestByLayer(long layerId) {
+        var criteria = currentSession().getCriteriaBuilder();
+        var query = criteria.createQuery(LayerArchiveJob.class);
+        var root = query.from(LayerArchiveJob.class);
+        query.where(criteria.equal(root.get("layerId"), layerId));
+        query.orderBy(criteria.desc(root.get("created")), criteria.desc(root.get("id")));
+        return currentSession().createQuery(query).setMaxResults(1).uniqueResultOptional();
+    }
+
     @UnitOfWork
     public List<LayerArchiveJob> findByStatus(Status status) {
         return jobsByStatus(status).getResultList();

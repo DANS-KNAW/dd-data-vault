@@ -16,6 +16,7 @@
 
 package nl.knaw.dans.datavault;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import io.dropwizard.core.Application;
@@ -24,6 +25,7 @@ import io.dropwizard.core.setup.Environment;
 import io.dropwizard.hibernate.HibernateBundle;
 import io.dropwizard.hibernate.UnitOfWorkAwareProxyFactory;
 import lombok.extern.slf4j.Slf4j;
+import nl.knaw.dans.datavault.api.LayerStatusDto;
 import nl.knaw.dans.datavault.config.DdDataVaultConfig;
 import nl.knaw.dans.datavault.core.ConsistencyCheckTaskFactory;
 import nl.knaw.dans.datavault.core.DbBackedLayerArchiver;
@@ -85,8 +87,7 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
     @Override
     public void run(final DdDataVaultConfig configuration, final Environment environment) {
         VaultObjectSchemaMigration.migrate(hibernateBundle.getSessionFactory());
-        environment.getObjectMapper().registerModule(new JavaTimeModule());
-        environment.getObjectMapper().disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        configureObjectMapper(environment.getObjectMapper());
         var uowFactory = new UnitOfWorkAwareProxyFactory(hibernateBundle);
 
         var layerDatabaseDao = new LayerDatabaseImpl(new PersistenceProviderImpl<>(hibernateBundle.getSessionFactory(), ItemRecord.class));
@@ -143,7 +144,7 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
             configuration.getDataVault().getIngest().getInbox(),
             configuration.getDataVault().getIngest().getOutbox()
         ));
-        environment.jersey().register(new LayersApiResource(layeredItemStore));
+        environment.jersey().register(new LayersApiResource(layeredItemStore, archiveJobDao));
         environment.jersey().register(new ItemstoreApiResource(createUnitOfWorkAwareProxy(uowFactory, layeredItemStore), configuration.getDataVault().getItemstore()));
         environment.jersey().register(new ObjectsApiResource(ocflRepositoryProvider));
         environment.jersey().register(new OcflApiResource(ocflRepositoryProvider));
@@ -178,6 +179,12 @@ public class DdDataVaultApplication extends Application<DdDataVaultConfig> {
             )
         ));
 
+    }
+
+    public static void configureObjectMapper(ObjectMapper mapper) {
+        mapper.registerModule(new JavaTimeModule());
+        mapper.addMixIn(LayerStatusDto.class, LayerStatusJsonMixin.class);
+        mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
     }
 
     private RepositoryProvider createUnitOfWorkAwareProxy(UnitOfWorkAwareProxyFactory uowFactory, RepositoryProvider repositoryProvider) {

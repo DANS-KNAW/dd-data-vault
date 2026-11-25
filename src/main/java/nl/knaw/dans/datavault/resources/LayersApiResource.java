@@ -18,6 +18,9 @@ package nl.knaw.dans.datavault.resources;
 import io.dropwizard.hibernate.UnitOfWork;
 import lombok.AllArgsConstructor;
 import nl.knaw.dans.datavault.api.LayerStatusDto;
+import nl.knaw.dans.datavault.core.LayerArchiveJob;
+import nl.knaw.dans.datavault.db.LayerArchiveJobDao;
+import nl.knaw.dans.layerstore.LayerState;
 import nl.knaw.dans.layerstore.LayeredItemStore;
 
 import javax.ws.rs.core.Response;
@@ -33,6 +36,7 @@ import static javax.ws.rs.core.Response.Status.OK;
 @AllArgsConstructor
 public class LayersApiResource implements LayersApi {
     private final LayeredItemStore layeredItemStore;
+    private final LayerArchiveJobDao archiveJobDao;
 
     /*
      * The @UnitOfWork annotation will do no good here, as the archiving process is off-loaded to a separate thread. The part that interacts with the database is the LayerConsistencyChecker which
@@ -67,10 +71,7 @@ public class LayersApiResource implements LayersApi {
     @UnitOfWork
     public Response layersIdGet(Long layerId) {
         try {
-            return Response.ok(new LayerStatusDto()
-                    .layerId(layerId)
-                    .sizeInBytes(layeredItemStore.getLayerSizeInBytes(layerId)))
-                .build();
+            return Response.ok(layerStatus(layerId)).build();
         }
         catch (IllegalArgumentException e) {
             return Response.status(NOT_FOUND).build();
@@ -112,7 +113,7 @@ public class LayersApiResource implements LayersApi {
     @UnitOfWork
     public Response layersPost() {
         try {
-            return Response.status(CREATED).entity(new LayerStatusDto().layerId(layeredItemStore.newTopLayer())).build();
+            return Response.status(CREATED).entity(layerStatus(layeredItemStore.newTopLayer())).build();
         }
         catch (IOException e) {
             return Response.status(INTERNAL_SERVER_ERROR).build();
@@ -123,13 +124,37 @@ public class LayersApiResource implements LayersApi {
     @UnitOfWork
     public Response layersTopGet() {
         try {
-            return Response.ok(new LayerStatusDto()
-                    .layerId(layeredItemStore.getTopLayerId())
-                    .sizeInBytes(layeredItemStore.getTopLayerSizeInBytes()))
-                .build();
+            return Response.ok(layerStatus(layeredItemStore.getTopLayerId())).build();
         }
         catch (IOException e) {
             return Response.status(INTERNAL_SERVER_ERROR).build();
         }
+    }
+
+    private LayerStatusDto layerStatus(long layerId) throws IOException {
+        var state = layeredItemStore.getLayerState(layerId);
+        Long size = null;
+        if (state != LayerState.ARCHIVED) {
+            try {
+                size = layeredItemStore.getLayerSizeInBytes(layerId);
+            }
+            catch (IOException | RuntimeException e) {
+                if (layeredItemStore.getLayerState(layerId) != LayerState.ARCHIVED) {
+                    throw e;
+                }
+            }
+            state = layeredItemStore.getLayerState(layerId);
+            if (state == LayerState.ARCHIVED) {
+                size = null;
+            }
+        }
+        var result = new LayerStatusDto().layerId(layerId)
+            .status(LayerStatusDto.StatusEnum.valueOf(state.name())).sizeInBytes(size);
+        if (state != LayerState.ARCHIVED) {
+            archiveJobDao.findLatestByLayer(layerId)
+                .filter(job -> job.getStatus() == LayerArchiveJob.Status.FAILED)
+                .ifPresent(job -> result.message(job.getMessage()));
+        }
+        return result;
     }
 }
