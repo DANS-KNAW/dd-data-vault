@@ -15,6 +15,8 @@
  */
 package nl.knaw.dans.datavault.core;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jayway.jsonpath.Configuration;
 import com.jayway.jsonpath.JsonPath;
 import com.jayway.jsonpath.Option;
@@ -52,6 +54,7 @@ import org.apache.commons.io.FileUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
@@ -60,11 +63,13 @@ import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.PosixFilePermission;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
 import static java.nio.file.StandardCopyOption.COPY_ATTRIBUTES;
@@ -81,6 +86,7 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
         PosixFilePermission.GROUP_READ, PosixFilePermission.GROUP_WRITE, PosixFilePermission.GROUP_EXECUTE);
     private static final Set<PosixFilePermission> FILE_PERMISSIONS = Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE,
         PosixFilePermission.GROUP_READ, PosixFilePermission.GROUP_WRITE);
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     @NonNull
     private final LayeredItemStore layeredItemStore;
@@ -333,6 +339,83 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
         catch (IOException e) {
             throw new RuntimeException("Error reading extension file: " + path + " in object " + objectId, e);
         }
+    }
+
+    @Override
+    public Map<String, Object> getObjectVersionProperties(String objectId, String versionNumber) {
+        var version = resolveExistingVersion(objectId, versionNumber);
+        return loadObjectVersionProperties(objectId).getVersionProperties(version);
+    }
+
+    @Override
+    public void setObjectVersionProperty(String objectId, String versionNumber, @NonNull String name, @NonNull Object value) {
+        editObjectVersionProperties(objectId, versionNumber, (properties, version) -> properties.putProperty(version, name, value));
+    }
+
+    @Override
+    public void deleteObjectVersionProperty(String objectId, String versionNumber, @NonNull String name) {
+        editObjectVersionProperties(objectId, versionNumber, (properties, version) -> {
+            if (!properties.removeProperty(version, name)) {
+                throw new NoSuchElementException("Property '" + name + "' not found in version v" + version + " of object " + objectId);
+            }
+        });
+    }
+
+    /**
+     * Applies an edit to the object version properties of an existing object version. The object is locked for the duration of the current transaction, so
+     * that the edit cannot interfere with an import of the same object. The result is validated before anything is written.
+     */
+    private void editObjectVersionProperties(String objectId, @NonNull String versionNumber, BiConsumer<ObjectVersionProperties, Long> edit) {
+        vaultObjectDao.lockObject(objectId);
+        if (vaultObjectDao.findByObjectId(objectId).map(VaultObject::isBlocked).orElse(false)) {
+            throw new IllegalStateException("Object is blocked: " + objectId);
+        }
+        var version = resolveExistingVersion(objectId, versionNumber);
+        var properties = loadObjectVersionProperties(objectId);
+        edit.accept(properties, version);
+        propertyRegistryValidator.validate(toJsonNodes(properties.getVersionProperties(version)));
+        objectVersionPropertiesValidator.validate(properties.getProperties());
+        properties.save();
+        log.info("Updated object version properties of version v{} of object {}", version, objectId);
+    }
+
+    /**
+     * Checks that the version exists and returns its number.
+     *
+     * @param objectId      the object id
+     * @param versionNumber the version number in OCFL format, or null for the head version
+     * @return the version number as a long
+     * @throws NoSuchElementException   if the object or version does not exist
+     * @throws IllegalArgumentException if the version number is invalid
+     */
+    private long resolveExistingVersion(String objectId, String versionNumber) {
+        if (ocflRepository == null) {
+            throw new IllegalStateException("OCFL repository is not yet started");
+        }
+        var objectVersionId = versionNumber == null ? ObjectVersionId.head(objectId) : ObjectVersionId.version(objectId, versionNumber);
+        try {
+            return ocflRepository.describeVersion(objectVersionId).getVersionNum().getVersionNum();
+        }
+        catch (NotFoundException e) {
+            throw new NoSuchElementException("Object or version not found: " + objectVersionId);
+        }
+    }
+
+    private ObjectVersionProperties loadObjectVersionProperties(String objectId) {
+        var properties = new ObjectVersionProperties(layeredItemStore, ocflStorage.objectRootPath(objectId));
+        try {
+            properties.load();
+        }
+        catch (IOException e) {
+            throw new UncheckedIOException("Failed to load object version properties of object " + objectId, e);
+        }
+        return properties;
+    }
+
+    private Map<String, JsonNode> toJsonNodes(Map<String, Object> properties) {
+        var result = new HashMap<String, JsonNode>();
+        properties.forEach((key, value) -> result.put(key, MAPPER.valueToTree(value)));
+        return result;
     }
 
     private OcflFileDetailsDto mapToFileDetailsDto(io.ocfl.api.model.OcflObjectVersionFile file) {

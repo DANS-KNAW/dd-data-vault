@@ -26,6 +26,7 @@ import nl.knaw.dans.datavault.api.OcflVersionDetailsDto;
 import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -105,6 +106,24 @@ public class UnitOfWorkDeclaringRepositoryProviderAdapter implements RepositoryP
     @UnitOfWork
     public InputStream getExtensionFile(String objectId, String path) {
         return delegate.getExtensionFile(objectId, path);
+    }
+
+    @Override
+    @UnitOfWork
+    public Map<String, Object> getObjectVersionProperties(String objectId, String versionNumber) {
+        return delegate.getObjectVersionProperties(objectId, versionNumber);
+    }
+
+    @Override
+    @UnitOfWork
+    public void setObjectVersionProperty(String objectId, String versionNumber, String name, Object value) {
+        delegate.setObjectVersionProperty(objectId, versionNumber, name, value);
+    }
+
+    @Override
+    @UnitOfWork
+    public void deleteObjectVersionProperty(String objectId, String versionNumber, String name) {
+        delegate.deleteObjectVersionProperty(objectId, versionNumber, name);
     }
 
     @Override

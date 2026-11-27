@@ -25,6 +25,7 @@ import nl.knaw.dans.datavault.api.OcflVersionDetailsDto;
 import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 
@@ -118,4 +119,42 @@ public interface RepositoryProvider extends Managed {
      * @throws NoSuchElementException when the object or the file does not exist
      */
     InputStream getExtensionFile(String objectId, String path) throws NoSuchElementException;
+
+    /**
+     * Returns the object version properties of a version of an object, as recorded by the object-version-properties extension.
+     *
+     * @param objectId      The identifier of the object
+     * @param versionNumber The version number in OCFL format (e.g. 'v1'), or null for the head version
+     * @return the properties of the version; an empty map if none are recorded
+     * @throws NoSuchElementException   when the object or the version does not exist
+     * @throws IllegalArgumentException when the version number is invalid
+     */
+    Map<String, Object> getObjectVersionProperties(String objectId, String versionNumber) throws NoSuchElementException;
+
+    /**
+     * Adds or replaces an object version property. The resulting properties of the version are validated against the property registry and the resulting
+     * object_version_properties.json is validated against its schema before anything is written.
+     *
+     * @param objectId      The identifier of the object
+     * @param versionNumber The version number in OCFL format (e.g. 'v1')
+     * @param name          The name of the property
+     * @param value         The new value; a JSON-compatible value (String, Number, Boolean, List or Map)
+     * @throws NoSuchElementException   when the object or the version does not exist
+     * @throws IllegalArgumentException when the version number is invalid or the result is invalid
+     * @throws IllegalStateException    when the object is blocked
+     */
+    void setObjectVersionProperty(String objectId, String versionNumber, String name, Object value);
+
+    /**
+     * Removes an object version property. The resulting properties of the version are validated against the property registry before anything is written,
+     * so a required property cannot be removed.
+     *
+     * @param objectId      The identifier of the object
+     * @param versionNumber The version number in OCFL format (e.g. 'v1')
+     * @param name          The name of the property
+     * @throws NoSuchElementException   when the object, the version or the property does not exist
+     * @throws IllegalArgumentException when the version number is invalid or the result is invalid
+     * @throws IllegalStateException    when the object is blocked
+     */
+    void deleteObjectVersionProperty(String objectId, String versionNumber, String name);
 }

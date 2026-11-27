@@ -25,14 +25,9 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.util.NoSuchElementException;
 import java.util.Optional;
-import java.util.regex.Pattern;
 
 @AllArgsConstructor
 public class OcflApiResource implements OcflApi {
-    private static final Pattern V_PREFIXED_NUMBER_PATTERN = Pattern.compile("v\\d+");
-    private static final Pattern NUMBER_PATTERN = Pattern.compile("\\d+");
-    private static final String LATEST_FLAG = "latest";
-
     private final RepositoryProvider ocflRepositoryProvider;
 
     @UnitOfWork
@@ -75,7 +70,7 @@ public class OcflApiResource implements OcflApi {
     public Response ocflObjectsIdVersionsNrDetailsGet(String id, String nr) {
         var versionNumber = validateAndFormatVersionNumber(nr);
 
-        if (versionNumber.isEmpty() && !LATEST_FLAG.equalsIgnoreCase(nr)) {
+        if (versionNumber.isEmpty() && !VersionNumbers.isLatest(nr)) {
             return Response.status(Response.Status.BAD_REQUEST).entity("Invalid version number").build();
         }
 
@@ -90,7 +85,7 @@ public class OcflApiResource implements OcflApi {
     public Response ocflObjectsIdVersionsNrFilesGet(String id, String nr) {
         var versionNumber = validateAndFormatVersionNumber(nr);
 
-        if (versionNumber.isEmpty() && !LATEST_FLAG.equalsIgnoreCase(nr)) {
+        if (versionNumber.isEmpty() && !VersionNumbers.isLatest(nr)) {
             return Response.status(Response.Status.BAD_REQUEST).entity("Invalid version number").build();
         }
 
@@ -125,18 +120,6 @@ public class OcflApiResource implements OcflApi {
     }
 
     private Optional<String> validateAndFormatVersionNumber(String nr) {
-        if (LATEST_FLAG.equalsIgnoreCase(nr)) {
-            return Optional.empty();
-        }
-
-        if (V_PREFIXED_NUMBER_PATTERN.matcher(nr).matches()) {
-            return Optional.of(nr);
-        }
-
-        if (NUMBER_PATTERN.matcher(nr).matches()) {
-            return Optional.of("v" + nr);
-        }
-
-        return Optional.empty();
+        return VersionNumbers.isLatest(nr) ? Optional.empty() : VersionNumbers.toOcflFormat(nr);
     }
 }

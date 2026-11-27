@@ -13,4 +13,11 @@ hierarchy, or **item store**. The service contains API endpoints that let you pe
     to "disabled" after you have finished using them to prevent accidental use. Also, make sure that no imports are running concurrently when doing these 
     low-level edits. You should shut down `dd-transfer-to-vault` before starting your edits and check that there are no pending imports in the queue.
 
+!!! tip "Changing object version properties"
+
+    Do not use the item store API to replace `object_version_properties.json`. Use the `/object-version-properties` endpoints of the [API](./to-api.md)
+    or the [data-vault object-property]{:target=_blank} command instead. They validate the change against the property registry and the schema, and
+    update the checksum sidecar file.
+
+[data-vault object-property]: {{ data_vault_cli_object_properties_url }}
 [dans-layer-store-lib]: https://dans-knaw.github.io/dans-layer-store-lib/#the-itemstore-interface
