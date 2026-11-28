@@ -23,11 +23,12 @@ import nl.knaw.dans.datavault.api.CopyFileOutOfRequestDto;
 import nl.knaw.dans.datavault.api.CreateDirectoryRequestDto;
 import nl.knaw.dans.datavault.api.DeleteDirectoryRequestDto;
 import nl.knaw.dans.datavault.api.DeleteFilesRequestDto;
+import nl.knaw.dans.datavault.config.ItemstoreConfig;
 import nl.knaw.dans.layerstore.ItemStore;
 import org.apache.commons.io.FileUtils;
 
+import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -43,7 +44,7 @@ import static javax.ws.rs.core.Response.Status.OK;
 @AllArgsConstructor
 public class ItemstoreApiResource implements ItemstoreApi {
     private final ItemStore layeredItemStore;
-    private final nl.knaw.dans.datavault.config.ItemstoreConfig itemstoreConfig;
+    private final ItemstoreConfig itemstoreConfig;
 
     @Override
     public Response itemstoreCopyDirectoryIntoPost(CopyDirectoryIntoRequestDto copyDirectoryIntoRequestDto) {
@@ -52,11 +53,7 @@ public class ItemstoreApiResource implements ItemstoreApi {
             return Response.status(Response.Status.FORBIDDEN).build();
         }
         try {
-            var source = Paths.get(copyDirectoryIntoRequestDto.getSource());
-            if (!source.isAbsolute()) {
-                log.warn("Source path must be absolute: {}", source);
-                return Response.status(BAD_REQUEST).entity("Source path must be absolute").build();
-            }
+            var source = exchangeDir().existingDirectoryWithoutSymlinks(copyDirectoryIntoRequestDto.getSource(), "Source");
             var stagingDir = Paths.get(itemstoreConfig.getWorkDir()).resolve(UUID.randomUUID().toString());
             Files.createDirectories(stagingDir);
             try {
@@ -72,12 +69,21 @@ public class ItemstoreApiResource implements ItemstoreApi {
             return Response.status(CONFLICT).build();
         }
         catch (IllegalArgumentException e) {
-            return Response.status(BAD_REQUEST).entity(e.getMessage()).build();
+            return badRequest(e.getMessage());
         }
         catch (IOException e) {
             log.error("Internal server error", e);
             return Response.status(INTERNAL_SERVER_ERROR).build();
         }
+    }
+
+    private ExchangeDir exchangeDir() {
+        return new ExchangeDir(itemstoreConfig.getExchangeDir());
+    }
+
+    private Response badRequest(String message) {
+        // Explicit text/plain, so that a message is never interpreted as HTML by a client
+        return Response.status(BAD_REQUEST).entity(message).type(MediaType.TEXT_PLAIN_TYPE).build();
     }
 
     private String removeLeadingSlashes(String path) {
@@ -91,12 +97,8 @@ public class ItemstoreApiResource implements ItemstoreApi {
             return Response.status(Response.Status.FORBIDDEN).build();
         }
         try {
-            var source = Paths.get(copyFileIntoRequestDto.getSource());
-            if (!source.isAbsolute()) {
-                log.warn("Source path must be absolute: {}", source);
-                return Response.status(BAD_REQUEST).entity("Source path must be absolute").build();
-            }
-            try (var is = new FileInputStream(copyFileIntoRequestDto.getSource())) {
+            var source = exchangeDir().existingFile(copyFileIntoRequestDto.getSource(), "Source");
+            try (var is = Files.newInputStream(source)) {
                 layeredItemStore.writeFile(removeLeadingSlashes(copyFileIntoRequestDto.getDestination()), is);
                 log.debug("Copied file {} to item store at {}", copyFileIntoRequestDto.getSource(), copyFileIntoRequestDto.getDestination());
             }
@@ -106,7 +108,7 @@ public class ItemstoreApiResource implements ItemstoreApi {
             return Response.status(CONFLICT).build();
         }
         catch (IllegalArgumentException e) {
-            return Response.status(BAD_REQUEST).entity(e.getMessage()).build();
+            return badRequest(e.getMessage());
         }
         catch (IOException e) {
             log.error("Internal server error", e);
@@ -121,11 +123,7 @@ public class ItemstoreApiResource implements ItemstoreApi {
             return Response.status(Response.Status.FORBIDDEN).build();
         }
         try {
-            var destination = Paths.get(copyFileOutOfRequestDto.getDestination());
-            if (!destination.isAbsolute()) {
-                log.warn("Destination path must be absolute: {}", destination);
-                return Response.status(BAD_REQUEST).entity("Destination path must be absolute").build();
-            }
+            var destination = exchangeDir().newFile(copyFileOutOfRequestDto.getDestination(), "Destination");
             try (var is = layeredItemStore.readFile(removeLeadingSlashes(copyFileOutOfRequestDto.getSource()))) {
                 Files.copy(is, destination);
                 log.debug("Copied file {} from item store to {}", copyFileOutOfRequestDto.getSource(), copyFileOutOfRequestDto.getDestination());
@@ -136,7 +134,7 @@ public class ItemstoreApiResource implements ItemstoreApi {
             return Response.status(CONFLICT).build();
         }
         catch (IllegalArgumentException e) {
-            return Response.status(BAD_REQUEST).entity(e.getMessage()).build();
+            return badRequest(e.getMessage());
         }
         catch (IOException e) {
             log.error("Internal server error", e);
@@ -159,7 +157,7 @@ public class ItemstoreApiResource implements ItemstoreApi {
             return Response.status(CONFLICT).build();
         }
         catch (IllegalArgumentException e) {
-            return Response.status(BAD_REQUEST).entity(e.getMessage()).build();
+            return badRequest(e.getMessage());
         }
         catch (IOException e) {
             log.error("Internal server error", e);
@@ -182,7 +180,7 @@ public class ItemstoreApiResource implements ItemstoreApi {
             return Response.status(CONFLICT).build();
         }
         catch (IllegalArgumentException e) {
-            return Response.status(BAD_REQUEST).entity(e.getMessage()).build();
+            return badRequest(e.getMessage());
         }
         catch (IOException e) {
             log.error("Internal server error", e);
@@ -205,7 +203,7 @@ public class ItemstoreApiResource implements ItemstoreApi {
             return Response.status(CONFLICT).build();
         }
         catch (IllegalArgumentException e) {
-            return Response.status(BAD_REQUEST).entity(e.getMessage()).build();
+            return badRequest(e.getMessage());
         }
         catch (IOException e) {
             log.error("Internal server error", e);

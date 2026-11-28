@@ -13,6 +13,14 @@ hierarchy, or **item store**. The service contains API endpoints that let you pe
     to "disabled" after you have finished using them to prevent accidental use. Also, make sure that no imports are running concurrently when doing these 
     low-level edits. You should shut down `dd-transfer-to-vault` before starting your edits and check that there are no pending imports in the queue.
 
+### The exchange directory
+
+The endpoints that copy files between the local file system and the item store (`copy-directory-into`, `copy-file-into` and `copy-file-out-of`) only
+accept local paths inside the **exchange directory**, configured as `dataVault.itemstore.exchangeDir` (by default `/data/vault/exchange`; the Ansible
+role creates `exchange` in the instance's data directory). Put files that are to be copied into the item store in this directory, and retrieve files
+that have been copied out of it from there. Paths outside this directory, including paths that lead outside it via `..` or symbolic links, are refused.
+A directory to be copied into the item store must not contain symbolic links, and `copy-file-out-of` does not overwrite existing files.
+
 !!! tip "Changing object version properties"
 
     Do not use the item store API to replace `object_version_properties.json`. Use the `/object-version-properties` endpoints of the [API](./to-api.md)

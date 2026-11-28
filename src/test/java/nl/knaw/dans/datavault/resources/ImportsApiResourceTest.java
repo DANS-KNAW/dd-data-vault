@@ -24,6 +24,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
+import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -279,6 +280,19 @@ public class ImportsApiResourceTest {
         assertThat(restage("batch").getStatus()).isEqualTo(409);
         assertThat(failed.resolve("a")).exists();
         assertThat(failed.resolve("b")).exists();
+    }
+
+    @Test
+    public void restage_error_message_with_user_provided_path_is_plain_text() throws Exception {
+        var name = "<img src=x onerror=alert(1)>";
+        Files.createDirectories(outbox.resolve("batch/failed").resolve(name));
+        Files.createDirectories(inbox.resolve("batch").resolve(name));
+
+        var response = restage("batch");
+
+        assertThat(response.getStatus()).isEqualTo(409);
+        assertThat(response.getMediaType()).isEqualTo(MediaType.TEXT_PLAIN_TYPE);
+        assertThat((String) response.getEntity()).startsWith("Destination already exists: ").endsWith(name);
     }
 
     @Test
