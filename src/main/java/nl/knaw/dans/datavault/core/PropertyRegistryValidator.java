@@ -79,13 +79,25 @@ public class PropertyRegistryValidator {
         // 2. Check that all required properties are present
         for (var entry : registry.entrySet()) {
             var key = entry.getKey();
-            var desc = entry.getValue();
-            var requiredNode = desc.get("required");
-            boolean required = requiredNode != null && requiredNode.isBoolean() && requiredNode.asBoolean();
-            if (required && !customProperties.containsKey(key)) {
+            if (isRequired(key) && !customProperties.containsKey(key)) {
                 throw new IllegalArgumentException("Missing required property per property-registry: " + key);
             }
         }
+    }
+
+    /**
+     * Returns whether the property is marked as required in the registry.
+     *
+     * @param name the name of the property
+     * @return true if the property is known and required, false otherwise
+     */
+    public boolean isRequired(@NonNull String name) {
+        var descriptor = registry.get(name);
+        if (descriptor == null) {
+            return false;
+        }
+        var requiredNode = descriptor.get("required");
+        return requiredNode != null && requiredNode.isBoolean() && requiredNode.asBoolean();
     }
 
     private void validateValueAgainstDescriptor(String path, JsonNode value, JsonNode descriptor) {

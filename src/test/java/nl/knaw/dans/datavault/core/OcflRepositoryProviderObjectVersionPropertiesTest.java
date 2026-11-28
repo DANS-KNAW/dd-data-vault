@@ -135,6 +135,14 @@ public class OcflRepositoryProviderObjectVersionPropertiesTest extends AbstractT
     }
 
     @Test
+    public void get_and_set_throw_NoSuchElementException_for_object_id_that_storage_layout_cannot_map() {
+        assertThatThrownBy(() -> db.inTransaction(() -> provider.getObjectVersionProperties("x", "v1")))
+            .isInstanceOf(NoSuchElementException.class);
+        assertThatThrownBy(() -> db.inTransaction(() -> provider.setObjectVersionProperty("x", "v1", "dataset-version", "1.0")))
+            .isInstanceOf(NoSuchElementException.class);
+    }
+
+    @Test
     public void set_adds_property_to_requested_version_only_and_updates_sidecar() throws Exception {
         db.inTransaction(() -> provider.setObjectVersionProperty(OBJECT_ID, "v1", "deaccessioned", deaccessioned()));
 
@@ -225,7 +233,7 @@ public class OcflRepositoryProviderObjectVersionPropertiesTest extends AbstractT
     public void delete_rejects_removing_required_property() {
         assertThatThrownBy(() -> db.inTransaction(() -> provider.deleteObjectVersionProperty(OBJECT_ID, "v1", "packaging-format")))
             .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Missing required property");
+            .hasMessage("Property 'packaging-format' is required by the property registry and cannot be deleted");
         assertThat(db.inTransaction(() -> provider.getObjectVersionProperties(OBJECT_ID, "v1")))
             .containsEntry("packaging-format", PACKAGING_FORMAT);
     }

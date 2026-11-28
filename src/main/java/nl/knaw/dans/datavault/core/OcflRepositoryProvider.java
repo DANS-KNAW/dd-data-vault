@@ -23,6 +23,7 @@ import com.jayway.jsonpath.Option;
 import io.dropwizard.lifecycle.Managed;
 import io.ocfl.api.OcflRepository;
 import io.ocfl.api.exception.NotFoundException;
+import io.ocfl.api.exception.OcflExtensionException;
 import io.ocfl.api.model.ObjectVersionId;
 import io.ocfl.core.OcflRepositoryBuilder;
 import io.ocfl.core.extension.UnsupportedExtensionBehavior;
@@ -358,6 +359,10 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
             if (!properties.removeProperty(version, name)) {
                 throw new NoSuchElementException("Property '" + name + "' not found in version v" + version + " of object " + objectId);
             }
+            // Checked here for a clear message; the validation of the result would also refuse it, but describe it as a missing property
+            if (propertyRegistryValidator.isRequired(name)) {
+                throw new IllegalArgumentException("Property '" + name + "' is required by the property registry and cannot be deleted");
+            }
         });
     }
 
@@ -398,6 +403,10 @@ public class OcflRepositoryProvider implements RepositoryProvider, Managed {
         }
         catch (NotFoundException e) {
             throw new NoSuchElementException("Object or version not found: " + objectVersionId);
+        }
+        catch (OcflExtensionException e) {
+            // The storage layout cannot map the object ID to a path (e.g. it lacks the ':' delimiter), so the object cannot exist
+            throw new NoSuchElementException("Object not found: " + objectId + " (" + e.getMessage() + ")");
         }
     }
 
