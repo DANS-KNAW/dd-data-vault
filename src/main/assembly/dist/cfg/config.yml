@@ -113,6 +113,9 @@ dataVault:
   #
   itemstore:
     workDir: /data/vault/tmp/itemstore
+    # The local directory that the copy endpoints (copy-directory-into, copy-file-into, copy-file-out-of) may read from and write to. Paths outside
+    # this directory, also via symbolic links, are refused. Put files to be copied into the item store here, and retrieve copied-out files from here.
+    exchangeDir: /data/vault/exchange
     enableEndpoints:
       copyDirectoryInto: false
       copyFileOutOf: false

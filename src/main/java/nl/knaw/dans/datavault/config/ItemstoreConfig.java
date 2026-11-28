@@ -19,11 +19,18 @@ import lombok.Data;
 
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
+import java.nio.file.Path;
 
 @Data
 public class ItemstoreConfig {
     @NotNull
     private String workDir;
+
+    /**
+     * The local directory that the copy endpoints may read from and write to.
+     */
+    @NotNull
+    private Path exchangeDir;
 
     @NotNull
     @Valid

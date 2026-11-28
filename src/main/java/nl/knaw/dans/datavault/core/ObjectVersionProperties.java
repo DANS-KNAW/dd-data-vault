@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.security.MessageDigest;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -116,6 +117,38 @@ public class ObjectVersionProperties {
         Map<String, Object> versionProperties = properties.getOrDefault(versionKey, new HashMap<>());
         versionProperties.put(key, value);
         properties.put(versionKey, versionProperties);
+    }
+
+    /**
+     * Returns the properties of the given version. If no properties are recorded for the version, an empty map is returned.
+     *
+     * @param version the version number
+     * @return an unmodifiable view of the properties of the version
+     */
+    public Map<String, Object> getVersionProperties(long version) {
+        if (properties == null) {
+            throw new IllegalStateException("Properties have not been loaded");
+        }
+        return Collections.unmodifiableMap(properties.getOrDefault("v" + version, Map.of()));
+    }
+
+    /**
+     * Removes a property from the given version.
+     *
+     * @param version the version number
+     * @param key     the property key
+     * @return true if the property was present and has been removed, false otherwise
+     */
+    public boolean removeProperty(long version, String key) {
+        if (properties == null) {
+            throw new IllegalStateException("Properties have not been loaded");
+        }
+        var versionProperties = properties.get("v" + version);
+        if (versionProperties == null || !versionProperties.containsKey(key)) {
+            return false;
+        }
+        versionProperties.remove(key);
+        return true;
     }
 
     /**

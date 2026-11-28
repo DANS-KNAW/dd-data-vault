@@ -25,6 +25,7 @@ import nl.knaw.dans.datavault.core.ImportJob;
 import nl.knaw.dans.datavault.db.ImportJobDao;
 import org.mapstruct.factory.Mappers;
 
+import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.IOException;
 import java.nio.file.FileAlreadyExistsException;
@@ -72,7 +73,7 @@ public class ImportsApiResource implements ImportsApi {
             return Response.ok(conversions.convert(jobs)).build();
         }
         catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST).entity(e.getMessage()).build();
+            return textResponse(Response.Status.BAD_REQUEST, e.getMessage());
         }
     }
 
@@ -100,7 +101,7 @@ public class ImportsApiResource implements ImportsApi {
                 .build();
         }
         catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST).entity(e.getMessage()).build();
+            return textResponse(Response.Status.BAD_REQUEST, e.getMessage());
         }
     }
 
@@ -147,7 +148,7 @@ public class ImportsApiResource implements ImportsApi {
             for (var job : importJobDao.listFiltered(EnumSet.of(ImportJob.Status.PENDING, ImportJob.Status.RUNNING), null, null, null)) {
                 var active = root.resolve(job.getPath()).normalize();
                 if (path.startsWith(active) || active.startsWith(path)) {
-                    return Response.status(Response.Status.CONFLICT).entity("Import job is active").build();
+                    return textResponse(Response.Status.CONFLICT, "Import job is active");
                 }
             }
             var failed = outbox.toAbsolutePath().normalize().resolve(relative).resolve("failed");
@@ -181,7 +182,7 @@ public class ImportsApiResource implements ImportsApi {
                 var destination = single ? path : path.resolve(source.getFileName());
                 checkNoSymlinks(root, destination);
                 if (Files.exists(destination, LinkOption.NOFOLLOW_LINKS)) {
-                    return Response.status(Response.Status.CONFLICT).entity("Destination already exists: " + destination).build();
+                    return textResponse(Response.Status.CONFLICT, "Destination already exists: " + destination);
                 }
             }
             for (var source : sources) {
@@ -193,13 +194,13 @@ public class ImportsApiResource implements ImportsApi {
             return Response.ok().build();
         }
         catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST).entity(e.getMessage()).build();
+            return textResponse(Response.Status.BAD_REQUEST, e.getMessage());
         }
         catch (FileAlreadyExistsException e) {
-            return Response.status(Response.Status.CONFLICT).entity(e.getMessage()).build();
+            return textResponse(Response.Status.CONFLICT, e.getMessage());
         }
         catch (IOException e) {
-            return Response.serverError().entity(e.getMessage()).build();
+            return textResponse(Response.Status.INTERNAL_SERVER_ERROR, e.getMessage());
         }
     }
 
@@ -225,5 +226,13 @@ public class ImportsApiResource implements ImportsApi {
             return relativePath;
         }
         throw new IllegalArgumentException("Path traverses outside of inbox directory");
+    }
+
+    /**
+     * Returns a plain text response. The content type is set explicitly, so that a message containing user-provided values (such as a path) is never
+     * interpreted as HTML by a client, whatever media type it asks for.
+     */
+    private static Response textResponse(Response.Status status, String message) {
+        return Response.status(status).entity(message).type(MediaType.TEXT_PLAIN_TYPE).build();
     }
 }

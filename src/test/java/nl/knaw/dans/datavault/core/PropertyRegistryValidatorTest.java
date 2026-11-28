@@ -27,6 +27,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
@@ -117,6 +118,13 @@ class PropertyRegistryValidatorTest {
 
         assertThatThrownBy(() -> validator.validate(customProps))
             .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void isRequired_reflects_registry() {
+        assertThat(validator.isRequired("version")).isTrue();
+        assertThat(validator.isRequired("title")).isFalse();
+        assertThat(validator.isRequired("unknown")).isFalse();
     }
 
     @Test

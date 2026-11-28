@@ -108,8 +108,12 @@ Requirements and notes:
 - `version-info.user.email` may be specified with or without the `mailto:` prefix; the service will normalize it to `mailto:`.
 - The `object-version-properties` object is optional and may contain any custom properties to be stored for the object version. These are written to the
   [Object Version Properties]{:target=_blank} extension.
+- The object version properties can be changed after the import, for instance to deaccession a version, with the `/object-version-properties`
+  endpoints of the [API](./to-api.md) or with the [data-vault object-property]{:target=_blank} command. Each change is validated against the property
+  registry of the storage root before it is stored.
 
 [Object Version Properties]: {{ object_version_properties_ext }}
+[data-vault object-property]: {{ data_vault_cli_object_properties_url }}
 
 Processing
 ----------
